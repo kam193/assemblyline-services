@@ -1,3 +1,5 @@
+# TODO: Release a docker image for each service that has a changed VERSION file
+
 name: test-detecting-version-changes
 run-name: Detecting changes in VERSION files
 on:
