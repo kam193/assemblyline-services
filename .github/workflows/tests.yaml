@@ -11,13 +11,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
       - name: Store services with changed VERSION files
         id: changed-services
         run: |
-          echo "::set-output name=services::$(git diff --name-only ${{ github.event.before }} ${{ github.event.after }} | grep '/VERSION$' | cut -d '/' -f 1 | uniq)"
+          echo "services=$(git diff --name-only ${{ github.event.before }} ${{ github.event.after }} | grep '/VERSION$' | cut -d '/' -f 1 | uniq)" >> $GITHUB_OUTPUT
       - name: Print services with changed VERSION files
         run: |
           echo "Services with changed VERSION files: ${{ steps.changed-services.outputs.services }}"
