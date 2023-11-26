@@ -26,6 +26,7 @@ jobs:
   for-each-changed:
     needs: print-changed-services
     runs-on: ubuntu-latest
+    if: needs.print-changed-services.outputs.services != '[]'
     strategy:
       matrix:
         service: ${{ fromJson(needs.print-changed-services.outputs.services) }}
