@@ -17,7 +17,7 @@ jobs:
       - name: Store services with changed VERSION files
         id: changed-services
         run: |
-          echo "::set-output name=services::$(git diff --name-only ${{ github.event.before }} ${{ github.event.after }} | grep '*/VERSION' | cut -d '/' -f 1 | uniq)"
+          echo "::set-output name=services::$(git diff --name-only ${{ github.event.before }} ${{ github.event.after }} | grep '/VERSION$' | cut -d '/' -f 1 | uniq)"
       - name: Print services with changed VERSION files
         run: |
           echo "Services with changed VERSION files: ${{ steps.changed-services.outputs.services }}"
