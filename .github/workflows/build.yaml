@@ -1,0 +1,46 @@
+name: build-containers
+run-name: Building service containers
+on:
+  push:
+
+jobs:
+  discover-services:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Discover directories with Dockerfiles
+        id: services
+        run: |
+          echo "services=$(find . -type f -name Dockerfile | xargs -n 1 dirname | uniq | cut -d '/' -f 2 | grep -v 'TEMPLATE' | jq -R -s -c 'split("\n")[:-1]')" >> "$GITHUB_OUTPUT"
+      - name: Print services with Dockerfiles
+        run: |
+          echo "Services with Dockerfiles: ${{ steps.services.outputs.services }}"
+    outputs:
+      services: ${{ steps.services.outputs.services }}
+  build-containers:
+    needs: discover-services
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service: ${{ fromJson(needs.discover-services.outputs.services) }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Enter service directory
+        run: cd ${{ matrix.service }}
+      - name: Build container
+        run: |
+          make build
+      - name: Check service was changed in the commit
+        id: check-service-changed
+        run: |
+          git diff --quiet ${{ github.event.before }} ${{ github.event.after }} -- ${{ matrix.service }}
+      - name: Run tests
+        if: steps.check-service-changed.outputs.exit-code != 0
+        run: |
+          make test
