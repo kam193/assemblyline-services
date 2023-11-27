@@ -58,7 +58,7 @@ jobs:
       - name: Check if the current version has already been pushed
         id: check-if-pushed
         run: |
-          export GHCR_TOKEN=$(echo $GITHUB_TOKEN | base64)
+          export GHCR_TOKEN=$(echo ${{ secrets.GITHUB_TOKEN }} | base64)
           export TAG=$BASE_TAG$(cat VERSION)
           curl -H "Authorization: Bearer ${GHCR_TOKEN}" https://ghcr.io/v2/kam193/${{ matrix.service }}/manifests/$TAG
       - name: Push container
