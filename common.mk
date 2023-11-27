@@ -5,6 +5,7 @@ BASE_TAG=4.4.0.stable
 
 manifest:
 	sed -i "s/assemblyline-service-template/${SERVICE_NAME}/g" service_manifest.yml
+	sed -i "s/assemblyline-service-template/${SERVICE_NAME}/g" README.md
 
 CACHE=
 build: manifest
