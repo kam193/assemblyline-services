@@ -34,6 +34,7 @@ jobs:
       matrix:
         service: ${{ fromJson(needs.discover-services.outputs.services) }}
     permissions:
+      contents: read
       packages: write
     defaults:
       run:
