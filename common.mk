@@ -1,5 +1,6 @@
 REGISTRY?=
 PUSH_REGISTRY?=
+BASE_IMAGE?=${REGISTRY}/cccs/assemblyline-v4-service-base:stable
 SERVICE_NAME=assemblyline-service-template
 BASE_TAG=4.4.0.stable
 
@@ -9,7 +10,7 @@ manifest:
 
 CACHE=
 build: manifest
-	docker build -t kam193/${SERVICE_NAME}:latest --build-arg REGISTRY=${REGISTRY} ${CACHE} .
+	docker build -t kam193/${SERVICE_NAME}:latest --build-arg REGISTRY=${REGISTRY} --build-arg BASE_IMAGE=${BASE_IMAGE} ${CACHE} .
 
 TAG=$(shell cat VERSION)
 push: build

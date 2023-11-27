@@ -3,6 +3,10 @@ run-name: Building service containers
 on:
   push:
 
+env:
+  BASE_IMAGE: docker.pkg.github.com/cybercentrecanada/assemblyline/assemblyline-v4-service-base:stable
+  REGISTRY: ghcr.io
+
 jobs:
   discover-services:
     runs-on: ubuntu-latest

@@ -1,5 +1,6 @@
 ARG REGISTRY=
-FROM ${REGISTRY:-}/cccs/assemblyline-v4-service-base:stable
+ARG BASE_IMAGE=${REGISTRY:-}/cccs/assemblyline-v4-service-base:stable
+FROM ${BASE_IMAGE}
 
 ENV SERVICE_PATH service.main.ClamAVService
 
