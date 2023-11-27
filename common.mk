@@ -1,5 +1,5 @@
-REGISTRY=${REGISTRY:-}
-PUSH_REGISTRY=${PUSH_REGISTRY:-}
+REGISTRY?=
+PUSH_REGISTRY?=
 SERVICE_NAME=assemblyline-service-template
 BASE_TAG=4.4.0.stable
 
@@ -29,5 +29,5 @@ refresh: CACHE="--no-cache"
 refresh: build
 
 test:
-	;
+	true
 
