@@ -33,6 +33,8 @@ jobs:
     strategy:
       matrix:
         service: ${{ fromJson(needs.discover-services.outputs.services) }}
+    permissions:
+      packages: write
     defaults:
       run:
         working-directory: ${{ matrix.service }}
