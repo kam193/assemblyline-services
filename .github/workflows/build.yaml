@@ -23,6 +23,7 @@ jobs:
   build-containers:
     needs: discover-services
     runs-on: ubuntu-latest
+    if: needs.discover-services.outputs.services != '[]'
     strategy:
       matrix:
         service: ${{ fromJson(needs.discover-services.outputs.services) }}
