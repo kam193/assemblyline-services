@@ -2,7 +2,7 @@ REGISTRY?=
 PUSH_REGISTRY?=
 BASE_IMAGE?=${REGISTRY}/cccs/assemblyline-v4-service-base:stable
 SERVICE_NAME=assemblyline-service-template
-BASE_TAG=4.4.0.stable
+BASE_TAG?=4.4.0.stable
 
 manifest:
 	sed -i "s/assemblyline-service-template/${SERVICE_NAME}/g" service_manifest.yml

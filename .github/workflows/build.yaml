@@ -6,6 +6,7 @@ on:
 env:
   BASE_IMAGE: cccs/assemblyline-v4-service-base:stable
   REGISTRY: ghcr.io
+  BASE_TAG: 4.4.0.stable
 
 jobs:
   discover-services:
@@ -54,10 +55,12 @@ jobs:
         if: steps.check-service-changed.outputs.exit-code != 0
         run: |
           make test
-      - name: Check VERSION file was changed in the commit
-        id: check-version-changed
+      - name: Check if the current version has already been pushed
+        id: check-if-pushed
         run: |
-          git diff --quiet ${{ github.event.before }} ${{ github.event.after }} -- ${{ matrix.service }}/VERSION
+          export GHCR_TOKEN=$(echo $GITHUB_TOKEN | base64)
+          export TAG=$BASE_TAG$(cat VERSION)
+          curl -H "Authorization: Bearer ${GHCR_TOKEN}" https://ghcr.io/v2/kam193/${{ matrix.service }}/manifests/$TAG
       - name: Push container
         if: steps.check-version-changed.outputs.exit-code != 0
         run: |
