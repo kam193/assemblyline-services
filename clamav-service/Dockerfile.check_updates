@@ -1,0 +1,7 @@
+ARG REGISTRY=
+ARG TAG=latest
+FROM ${REGISTRY:-}/kam193/assemblyline-service-clamav:4.4.0.stable${TAG}
+
+USER root
+
+CMD apt update && apt list --upgradable

@@ -1,0 +1,4 @@
+-e ../assemblyline/assemblyline-base/
+-e ../assemblyline//assemblyline-core
+-e ../assemblyline/assemblyline-service-client
+-e ../assemblyline/assemblyline-v4-service
