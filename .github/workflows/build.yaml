@@ -4,7 +4,7 @@ on:
   push:
 
 env:
-  BASE_IMAGE: docker.pkg.github.com/cybercentrecanada/assemblyline/assemblyline-v4-service-base:stable
+  BASE_IMAGE: cccs/assemblyline-v4-service-base:stable
   REGISTRY: ghcr.io
 
 jobs:
