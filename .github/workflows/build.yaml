@@ -31,6 +31,9 @@ jobs:
     strategy:
       matrix:
         service: ${{ fromJson(needs.discover-services.outputs.services) }}
+    defaults:
+      run:
+        working-directory: ${{ matrix.service }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -42,9 +45,6 @@ jobs:
         run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login docker.pkg.github.com -u ${{ github.actor }} --password-stdin
       - name: Build container
         run: |
-          cd ${{ matrix.service }}
-          pwd
-          ls -la
           make build
       - name: Check service was changed in the commit
         id: check-service-changed
@@ -54,3 +54,11 @@ jobs:
         if: steps.check-service-changed.outputs.exit-code != 0
         run: |
           make test
+      - name: Check VERSION file was changed in the commit
+        id: check-version-changed
+        run: |
+          git diff --quiet ${{ github.event.before }} ${{ github.event.after }} -- ${{ matrix.service }}/VERSION
+      - name: Push container
+        if: steps.check-version-changed.outputs.exit-code != 0
+        run: |
+          make push

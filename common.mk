@@ -13,12 +13,18 @@ build: manifest
 	docker build -t kam193/${SERVICE_NAME}:latest --build-arg REGISTRY=${REGISTRY} --build-arg BASE_IMAGE=${BASE_IMAGE} ${CACHE} .
 
 TAG=$(shell cat VERSION)
-push: build
+bump_version:
 	NEW_TAG=$$((${TAG}+1)) && echo $$NEW_TAG > VERSION
+
+tag:
 	docker tag kam193/${SERVICE_NAME}:latest $(PUSH_REGISTRY)/kam193/${SERVICE_NAME}:latest
 	docker tag kam193/${SERVICE_NAME}:latest $(PUSH_REGISTRY)/kam193/${SERVICE_NAME}:${BASE_TAG}$$(cat VERSION)
+
+push: build tag
 	docker push $(PUSH_REGISTRY)/kam193/${SERVICE_NAME}:${BASE_TAG}$$(cat VERSION)
 	docker push $(PUSH_REGISTRY)/kam193/${SERVICE_NAME}:latest
+
+release: bump_version push
 
 run: build
 	docker run --rm --env SERVICE_API_HOST=http://al_service_server:5003 --network=al_registration -e LOG_LEVEL=DEBUG --name ${SERVICE_NAME} kam193/${SERVICE_NAME}:latest
@@ -31,4 +37,3 @@ refresh: build
 
 test:
 	true
-
