@@ -1,10 +1,13 @@
 REGISTRY?=
 PUSH_REGISTRY?=
 BASE_IMAGE?=${REGISTRY}/cccs/assemblyline-v4-service-base:stable
-SERVICE_NAME=assemblyline-service-template
+AL_SERVICE_NAME=Template
+SERVICE_NAME=assemblyline-service-$(shell echo ${AL_SERVICE_NAME} | tr '[:upper:]' '[:lower:]')
 BASE_TAG?=4.4.0.stable
 
 manifest:
+	sed -i "s/al-name-template/${AL_SERVICE_NAME}/g" service_manifest.yml
+	sed -i "s/al-name-template/${AL_SERVICE_NAME}/g" README.md
 	sed -i "s/assemblyline-service-template/${SERVICE_NAME}/g" service_manifest.yml
 	sed -i "s/assemblyline-service-template/${SERVICE_NAME}/g" README.md
 
@@ -26,14 +29,33 @@ push: build tag
 
 release: bump_version push
 
+COMMAND=
+ARGS=
+CONTAINER_NAME=${SERVICE_NAME}
+CONTAINER_NETWORK=al_registration
 run: build
-	docker run --rm --env SERVICE_API_HOST=http://al_service_server:5003 --network=al_registration -e LOG_LEVEL=DEBUG --name ${SERVICE_NAME} kam193/${SERVICE_NAME}:latest
+	docker run --rm --env SERVICE_API_HOST=http://al_service_server:5003 --network=${CONTAINER_NETWORK} \
+	-e LOG_LEVEL=DEBUG \
+	-v "${PWD}/../config.yml:/etc/assemblyline/config.yml" \
+	-e AL_SERVICE_NAME=${AL_SERVICE_NAME} \
+	${ARGS} \
+	--name ${CONTAINER_NAME} kam193/${SERVICE_NAME}:latest ${COMMAND}
 
 run-with-host: build
-	docker run --rm --env SERVICE_API_HOST=http://al_service_server:5003 --network=al_registration --add-host=host.docker.internal:host-gateway -e LOG_LEVEL=DEBUG --name ${SERVICE_NAME} kam193/${SERVICE_NAME}:latest
+run-with-host: ARGS=--add-host=host.docker.internal:host-gateway
+run-with-host: run
+
+run-updater: build
+run-updater: COMMAND=python -m service.updater
+run-updater: CONTAINER_NAME=${SERVICE_NAME}_update
+run-updater: CONTAINER_NETWORK=external
+run-updater: run
 
 refresh: CACHE="--no-cache"
 refresh: build
 
 test:
 	true
+
+print:
+	echo ${SERVICE_NAME}

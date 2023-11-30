@@ -1,3 +1,4 @@
 include ../common.mk
 
-SERVICE_NAME=assemblyline-service-template
+AL_SERVICE_NAME=Template
+# SERVICE_NAME=assemblyline-service-template

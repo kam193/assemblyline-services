@@ -1,1 +1,1 @@
-# assemblyline-service-template
+# al-name-template

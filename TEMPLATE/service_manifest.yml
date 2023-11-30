@@ -1,4 +1,4 @@
-name: assemblyline-service-template
+name: al-name-template
 version: 4.4.0.stable$VERSION
 description: FIXME
 enabled: true
