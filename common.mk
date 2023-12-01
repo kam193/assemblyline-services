@@ -49,7 +49,12 @@ run-updater: build
 run-updater: COMMAND=python -m service.updater
 run-updater: CONTAINER_NAME=${SERVICE_NAME}_update
 run-updater: CONTAINER_NETWORK=external
+run-updater: ARGS=-e AL_INSTANCE_KEY=changeme
 run-updater: run
+
+run-with-updates: ARGS=-e updates_host=${SERVICE_NAME}_update -e updates_port=5003 -e updates_key=changeme
+run-with-updates: CONTAINER_NETWORK=external
+run-with-updates: run
 
 refresh: CACHE="--no-cache"
 refresh: build

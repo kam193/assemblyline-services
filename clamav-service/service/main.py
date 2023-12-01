@@ -78,10 +78,14 @@ class ClamAVService(ServiceBase):
     def _load_rules(self) -> None:
         if self.rules_directory:
             self.log.info("Copying ClamAV rules from %s", self.rules_directory)
-            for root, _, files in os.walk(self.rules_directory):
-                for file in files:
-                    self.log.info("Copying %s/%s", root, file)
-                    shutil.copy(os.path.join(root, file), "/opt/clamav_db")
+            for root, subdirs, _ in os.walk(self.rules_directory):
+                for subdir in subdirs:
+                    shutil.copytree(
+                        os.path.join(root, subdir), "/opt/clamav_db", dirs_exist_ok=True
+                    )
+                # for file in files:
+                #     self.log.info("Copying %s/%s", root, file)
+                #     shutil.copy(os.path.join(root, file), "/opt/clamav_db")
             # shutil.copytree(self.rules_directory, "/opt/clamav_db", dirs_exist_ok=True)
             if self.clamd:
                 self.log.info("Reloading ClamAV daemon")
