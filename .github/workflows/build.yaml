@@ -61,6 +61,7 @@ jobs:
           make test
       - name: Check if the current version has already been pushed
         id: check-if-pushed
+        continue-on-error: true
         run: |
           export GHCR_TOKEN=$(echo ${{ secrets.GITHUB_TOKEN }} | base64)
           export TAG=$BASE_TAG$(cat VERSION)
