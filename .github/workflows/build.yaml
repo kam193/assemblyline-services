@@ -70,6 +70,7 @@ jobs:
           echo https://ghcr.io/v2/kam193/$(make print)/manifests/$TAG
           echo $(curl -s -H "Authorization: Bearer ${GHCR_TOKEN}" https://ghcr.io/v2/kam193/$(make print)/manifests/$TAG)
           echo manifest=$(curl -s -H "Authorization: Bearer ${GHCR_TOKEN}" https://ghcr.io/v2/kam193/$(make print)/manifests/$TAG | grep "manifest unknown") > $GITHUB_OUTPUT
+          echo manifest=$(curl -s -H "Authorization: Bearer ${GHCR_TOKEN}" https://ghcr.io/v2/kam193/$(make print)/manifests/$TAG | grep "manifest unknown")
       - name: Push container
         if: steps.check-if-pushed.outputs.manifest
         run: |
