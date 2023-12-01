@@ -62,18 +62,11 @@ jobs:
           make test
       - name: Check if the current version has already been pushed
         id: check-if-pushed
-        # continue-on-error: true
         run: |
           export GHCR_TOKEN=$(echo ${{ secrets.GITHUB_TOKEN }} | base64)
           export TAG=$BASE_TAG$(cat VERSION)
-          echo $TAG
-          echo https://ghcr.io/v2/kam193/$(make print)/manifests/$TAG
-          echo $(curl -s -H "Authorization: Bearer ${GHCR_TOKEN}" https://ghcr.io/v2/kam193/$(make print)/manifests/$TAG)
           echo manifest=$(curl -s -H "Authorization: Bearer ${GHCR_TOKEN}" https://ghcr.io/v2/kam193/$(make print)/manifests/$TAG | grep "manifest unknown") > $GITHUB_OUTPUT
-          echo manifest=$(curl -s -H "Authorization: Bearer ${GHCR_TOKEN}" https://ghcr.io/v2/kam193/$(make print)/manifests/$TAG | grep "manifest unknown")
       - name: Push container
         if: steps.check-if-pushed.outputs.manifest
         run: |
-          echo "${{ steps.check-if-pushed.outputs.manifest }}"
-          echo "${{ steps.check-if-pushed.outputs }}"
-          # make push
+          make push
