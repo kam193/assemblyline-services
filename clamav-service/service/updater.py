@@ -9,7 +9,7 @@ import subprocess
 
 TIMEOUT = 600
 
-FRESHCALM_SOURCE_NAME = "freshcalm"
+FRESHCLAM_SOURCE_NAME = "freshclam"
 
 
 class ClamavServiceUpdater(ServiceUpdater):
@@ -54,18 +54,18 @@ class ClamavServiceUpdater(ServiceUpdater):
                 source["name"] for source in service.update_config.sources
             ]
 
-        if FRESHCALM_SOURCE_NAME in specific_sources:
-            freshcalm_config = next(
+        if FRESHCLAM_SOURCE_NAME in specific_sources:
+            freshclam_config = next(
                 filter(
-                    lambda x: x["name"] == FRESHCALM_SOURCE_NAME,
+                    lambda x: x["name"] == FRESHCLAM_SOURCE_NAME,
                     service.update_config.sources,
                 ),
                 None,
             )
-            self._update_freshcalm(service, freshcalm_config)
+            self._update_freshclam(service, freshclam_config)
 
         specific_sources = [
-            source for source in specific_sources if source != FRESHCALM_SOURCE_NAME
+            source for source in specific_sources if source != FRESHCLAM_SOURCE_NAME
         ]
         if not specific_sources:
             self.set_active_config_hash(self.config_hash(service))
@@ -75,7 +75,7 @@ class ClamavServiceUpdater(ServiceUpdater):
         self.log.debug(f"Updating {specific_sources}...")
         super().do_source_update(service, specific_sources)
 
-    def _update_freshcalm(self, service: Service, source_obj):
+    def _update_freshclam(self, service: Service, source_obj):
         if not source_obj:
             return
 

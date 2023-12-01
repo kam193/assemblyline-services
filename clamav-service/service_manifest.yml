@@ -55,8 +55,8 @@ update_config:
   wait_for_update: true
   sources:
     # Source named "freshclam" is reserved for updates using FreshClam utility
-    # Headers are treated as freshaclam.conf options
-    - name: freshcalm
+    # Headers are treated as freshclam.conf options
+    - name: freshclam
       uri: database.clamav.net
       headers:
         - name: DNSDatabaseInfo
