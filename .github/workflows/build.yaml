@@ -55,23 +55,24 @@ jobs:
         id: check-service-changed
         run: |
           git diff --quiet ${{ github.event.before }} ${{ github.event.after }} -- ${{ matrix.service }}
+          echo exit-code=$? > $GITHUB_OUTPUT
       - name: Run tests
         if: steps.check-service-changed.outputs.exit-code != 0
         run: |
           make test
       - name: Check if the current version has already been pushed
         id: check-if-pushed
-        continue-on-error: true
+        # continue-on-error: true
         run: |
           export GHCR_TOKEN=$(echo ${{ secrets.GITHUB_TOKEN }} | base64)
           export TAG=$BASE_TAG$(cat VERSION)
           echo $TAG
           echo https://ghcr.io/v2/kam193/$(make print)/manifests/$TAG
-          curl -s -H "Authorization: Bearer ${GHCR_TOKEN}" https://ghcr.io/v2/kam193/$(make print)/manifests/$TAG
-          curl -s -H "Authorization: Bearer ${GHCR_TOKEN}" https://ghcr.io/v2/kam193/$(make print)/manifests/$TAG | grep "manifest unknown"
+          echo $(curl -s -H "Authorization: Bearer ${GHCR_TOKEN}" https://ghcr.io/v2/kam193/$(make print)/manifests/$TAG)
+          echo manifest=$(curl -s -H "Authorization: Bearer ${GHCR_TOKEN}" https://ghcr.io/v2/kam193/$(make print)/manifests/$TAG | grep "manifest unknown") > $GITHUB_OUTPUT
       - name: Push container
-        if: steps.check-if-pushed.outputs.exit-code == 0
+        if: steps.check-if-pushed.outputs.manifest
         run: |
-          echo "${{ steps.check-if-pushed.outputs.exit-code }}"
+          echo "${{ steps.check-if-pushed.outputs.manifest }}"
           echo "${{ steps.check-if-pushed.outputs }}"
           # make push
