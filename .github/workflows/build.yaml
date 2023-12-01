@@ -70,8 +70,8 @@ jobs:
           curl -s -H "Authorization: Bearer ${GHCR_TOKEN}" https://ghcr.io/v2/kam193/$(make print)/manifests/$TAG
           curl -s -H "Authorization: Bearer ${GHCR_TOKEN}" https://ghcr.io/v2/kam193/$(make print)/manifests/$TAG | grep "manifest unknown"
       - name: Push container
-        if: steps.check-version-changed.outputs.exit-code == 0
+        if: steps.check-if-pushed.outputs.exit-code == 0
         run: |
-          echo "${{ steps.check-version-changed.outputs.exit-code }}"
+          echo "${{ steps.check-if-pushed.outputs.exit-code }}"
           echo "${{ steps.check-if-pushed.outputs }}"
           # make push
