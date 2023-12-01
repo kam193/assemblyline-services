@@ -58,4 +58,4 @@ test:
 	true
 
 print:
-	echo ${SERVICE_NAME}
+	@echo ${SERVICE_NAME}
