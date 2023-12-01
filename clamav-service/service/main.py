@@ -1,5 +1,4 @@
 import os
-import pathlib
 import shutil
 import subprocess
 import tempfile
@@ -83,10 +82,6 @@ class ClamAVService(ServiceBase):
                     shutil.copytree(
                         os.path.join(root, subdir), "/opt/clamav_db", dirs_exist_ok=True
                     )
-                # for file in files:
-                #     self.log.info("Copying %s/%s", root, file)
-                #     shutil.copy(os.path.join(root, file), "/opt/clamav_db")
-            # shutil.copytree(self.rules_directory, "/opt/clamav_db", dirs_exist_ok=True)
             if self.clamd:
                 self.log.info("Reloading ClamAV daemon")
                 self.clamd.reload()

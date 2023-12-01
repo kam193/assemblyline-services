@@ -54,26 +54,29 @@ update_config:
   generates_signatures: false
   wait_for_update: true
   sources:
-    # FIXME: Only one entry is supported at the moment
-    # But you can declare DatabaseCustomURLs as additional sources
-    # https://github.com/extremeshok/clamav-unofficial-sigs/tree/master
-    # https://ftp.swin.edu.au/sanesecurity/ (https://sanesecurity.com/usage/signatures/)
-    # https://malware.expert/howto/extending-clamav-signatures-with-rfxn-database-for-php-malwares/
-    - name: Official_ClamAV_Database
+    # Source named "freshclam" is reserved for updates using FreshClam utility
+    # Headers are treated as freshaclam.conf options
+    - name: freshcalm
       uri: database.clamav.net
       headers:
         - name: DNSDatabaseInfo
           value: current.cvd.clamav.net
-        - name: DatabaseCustomURL
-          value: http://www.rfxn.com/downloads/rfxn.ndb
-        - name: DatabaseCustomURL
-          value: http://www.rfxn.com/downloads/rfxn.hdb
-        - name: DatabaseCustomURL
-          value: http://www.rfxn.com/downloads/rfxn.yara
-        - name: DatabaseCustomURL
-          value: https://ftp.swin.edu.au/sanesecurity/rogue.hdb
-        - name: DatabaseCustomURL
-          value: https://mirror.rollernet.us/sanesecurity/winnow_malware.hdb
+        # Additional databases can be specified using DatabaseCustomURL option
+        # - name: DatabaseCustomURL
+        #   value: http://www.rfxn.com/downloads/rfxn.ndb
+    # Other sources are just downloaded and put in the database directory
+    # More resources:
+    # https://github.com/extremeshok/clamav-unofficial-sigs/tree/master
+    # https://ftp.swin.edu.au/sanesecurity/ (https://sanesecurity.com/usage/signatures/)
+    # https://malware.expert/howto/extending-clamav-signatures-with-rfxn-database-for-php-malwares/
+    - name: RFXN - HDB database
+      uri: http://www.rfxn.com/downloads/rfxn.hdb
+    - name: RFXN - YARA database
+      uri: http://www.rfxn.com/downloads/rfxn.yara
+    - name: SanseSecurity - rouge.hdb
+      uri: https://ftp.swin.edu.au/sanesecurity/rogue.hdb
+    - name: Rollernet.us - winnow_malware.hdb
+      uri: https://mirror.rollernet.us/sanesecurity/winnow_malware.hdb
 
 dependencies:
   updates:
