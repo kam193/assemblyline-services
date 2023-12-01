@@ -65,6 +65,8 @@ jobs:
         run: |
           export GHCR_TOKEN=$(echo ${{ secrets.GITHUB_TOKEN }} | base64)
           export TAG=$BASE_TAG$(cat VERSION)
+          echo $TAG
+          echo https://ghcr.io/v2/kam193/$(make print)/manifests/$TAG
           curl -s -H "Authorization: Bearer ${GHCR_TOKEN}" https://ghcr.io/v2/kam193/$(make print)/manifests/$TAG | grep "manifest unknown"
       - name: Push container
         if: steps.check-version-changed.outputs.exit-code == 0
