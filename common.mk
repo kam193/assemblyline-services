@@ -59,6 +59,9 @@ run-with-updates: run
 refresh: CACHE="--no-cache"
 refresh: build
 
+bash:
+	docker exec -it ${SERVICE_NAME} bash
+
 test:
 	true
 

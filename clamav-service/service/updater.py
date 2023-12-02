@@ -46,6 +46,13 @@ class ClamavServiceUpdater(ServiceUpdater):
 
         return service_configs
 
+    def _clean_up_old_sources(self, service: Service, update_dir: str) -> None:
+        active_sources = [source["name"] for source in service.update_config.sources]
+        for source in os.listdir(update_dir):
+            if os.path.isdir(f"{update_dir}/{source}") and source not in active_sources:
+                self.log.info(f"Removing old source {source}")
+                shutil.rmtree(f"{update_dir}/{source}")
+
     def do_source_update(
         self, service: Service, specific_sources: list[str] = []
     ) -> None:
@@ -74,6 +81,7 @@ class ClamavServiceUpdater(ServiceUpdater):
 
         self.log.debug(f"Updating {specific_sources}...")
         super().do_source_update(service, specific_sources)
+        self._clean_up_old_sources(service, self.latest_updates_dir)
 
     def _update_freshclam(self, service: Service, source_obj):
         if not source_obj:
