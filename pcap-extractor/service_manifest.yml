@@ -13,6 +13,7 @@ is_external: false
 
 config:
   local_networks: "172.17.0.0/16"
+  ignore_ips: "192.168.0.1"
   command_timeout: 30
 
 # submission_params:
@@ -28,12 +29,17 @@ config:
 # 700 - 999: highly suspicious
 # >= 1000: malicious
 
-# heuristics:
-#   - description: Some score
-#     filetype: "*"
-#     heur_id: 1
-#     name: Score
-#     score: 0
+heuristics:
+  - description: Connection to external IP was found in the PCAP
+    filetype: "*"
+    heur_id: 1
+    name: External HTTP connection
+    score: 300
+  - description: Connection to non-standard port was found in the PCAP. Very suspicious.
+    filetype: "*"
+    heur_id: 2
+    name: Connection to non-standard port
+    score: 700
 
 docker_config:
   image: ${REGISTRY}kam193/assemblyline-service-pcap-extractor:4.4.0.stable$VERSION

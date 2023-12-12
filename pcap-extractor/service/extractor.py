@@ -17,6 +17,7 @@ class Conversation:
     dst_port: int
     stream_file: str = None
 
+    @property
     def is_http(self) -> bool:
         return self.dst_port in [80, 443] or self.src_port in [80, 443]
 
@@ -35,6 +36,7 @@ class Extractor:
         pcap_path: str,
         base_logger: logging.Logger = None,
         timeout: int = 20,
+        ignore_ips: list[ipaddress._IPAddressBase] = None,
     ) -> None:
         self.pcap_path = pcap_path
         self.tshark_path = TSHARK_PATH
@@ -44,13 +46,27 @@ class Extractor:
             else logging.getLogger(__name__)
         )
         self.timeout = timeout
+        self.ignore_ips = ignore_ips or []
+
+    def _ignored_filter(self) -> list[str]:
+        if not self.ignore_ips:
+            return []
+        return [
+            "-2",
+            "-R",
+            f"ip.addr not in {{{','.join([str(ip) for ip in self.ignore_ips])}}}",
+        ]
 
     def execute(self, command: list[str], out_file: str = None) -> str:
         kwargs = {}
         if out_file:
             kwargs["stdout"] = open(out_file, "w")
         result = subprocess.run(
-            [self.tshark_path, "-r", self.pcap_path, "-q"] + command,
+            (
+                [self.tshark_path, "-r", self.pcap_path, "-q"]
+                + self._ignored_filter()
+                + command
+            ),
             capture_output=True if not out_file else False,
             text=True,
             timeout=self.timeout,
@@ -99,7 +115,7 @@ class Extractor:
 
     def process_conversations(self) -> Iterable[Conversation]:
         for conv in self.get_tcp_conversations():
-            if conv.is_http():
+            if conv.is_http:
                 self._extract_http_stream(conv)
             else:
                 self._extract_tcp_stream(conv)
