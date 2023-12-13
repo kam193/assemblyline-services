@@ -12,7 +12,7 @@ manifest:
 	true
 
 build-base:
-	docker build -t kam193/${BASE_NAME}:latest --build-arg version=${AL_VERSION} --build-arg REGISTRY=${REGISTRY}/ -f Dockerfile.base ${CACHE} ./assemblyline-base
+	docker build -t kam193/${BASE_NAME}:latest --build-arg version=${AL_VERSION} -f Dockerfile.base ${CACHE} ./assemblyline-base
 	docker tag kam193/${BASE_NAME}:latest ${REGISTRY}/kam193/${BASE_NAME}:latest
 
 bump_version-base:
