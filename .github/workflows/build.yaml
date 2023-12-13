@@ -10,7 +10,44 @@ env:
   BASE_TAG: 4.4.0.stable
 
 jobs:
+  build-base:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    defaults:
+      run:
+        working-directory: al-service-with-py11
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: true
+      - name: Authorize to GitHub Packages
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+      - name: Check if the current version has already been pushed
+        id: check-if-pushed
+        run: |
+          export GHCR_TOKEN=$(echo ${{ secrets.GITHUB_TOKEN }} | base64)
+          export TAG=$BASE_TAG$(cat BASE_VERSION)
+          echo manifest_base=$(curl -s -H "Authorization: Bearer ${GHCR_TOKEN}" https://ghcr.io/v2/kam193/assemblyline-base-py11/manifests/$TAG | grep "manifest unknown") > $GITHUB_OUTPUT
+          export TAG=$BASE_TAG$(cat VERSION)
+          echo manifest_service=$(curl -s -H "Authorization: Bearer ${GHCR_TOKEN}" https://ghcr.io/v2/kam193/assemblyline-service-base-py11/manifests/$TAG | grep "manifest unknown") > $GITHUB_OUTPUT
+      - name: Build base and service image
+        if: steps.check-if-pushed.outputs.manifest_base || steps.check-if-pushed.outputs.manifest_service
+        run: |
+          make build-base
+          make build-service
+      - name: Push base image
+        if: steps.check-if-pushed.outputs.manifest_base
+        run: |
+          make push-base
+      - name: Push service image
+        if: steps.check-if-pushed.outputs.manifest_service
+        run: |
+          make push-service
   discover-services:
+    needs: build-base
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -20,7 +57,7 @@ jobs:
       - name: Discover directories with Dockerfiles
         id: services
         run: |
-          echo "services=$(find . -type f -name Dockerfile | xargs -n 1 dirname | uniq | cut -d '/' -f 2 | grep -v 'TEMPLATE' | jq -R -s -c 'split("\n")[:-1]')" >> "$GITHUB_OUTPUT"
+          echo "services=$(find . -type f -name Dockerfile | xargs -n 1 dirname | uniq | cut -d '/' -f 2 | grep -v 'TEMPLATE' | grep -v 'al-service-with-py11' | jq -R -s -c 'split("\n")[:-1]')" >> "$GITHUB_OUTPUT"
       - name: Print services with Dockerfiles
         run: |
           echo "Services with Dockerfiles: ${{ steps.services.outputs.services }}"
