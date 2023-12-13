@@ -5,7 +5,7 @@ SERVICE_NAME=assemblyline-service-base-py11
 AL_VERSION=4.4.0
 BASE_NAME=assemblyline-base-py11
 
-BASE_TAG=$(shell cat BASE_VERSION)
+BASE_VER_TAG=$(shell cat BASE_VERSION)
 CACHE=
 
 manifest:
@@ -16,7 +16,7 @@ build-base:
 	docker tag kam193/${BASE_NAME}:latest ${REGISTRY}/kam193/${BASE_NAME}:latest
 
 bump_version-base:
-	NEW_TAG=$$((${BASE_TAG}+1)) && echo $$NEW_TAG > BASE_VERSION
+	NEW_TAG=$$((${BASE_VER_TAG}+1)) && echo $$NEW_TAG > BASE_VERSION
 
 push-base: build-base
 	docker tag kam193/${BASE_NAME}:latest ${PUSH_REGISTRY}/kam193/${BASE_NAME}:latest
