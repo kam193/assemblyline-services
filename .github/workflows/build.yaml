@@ -30,9 +30,9 @@ jobs:
         run: |
           export GHCR_TOKEN=$(echo ${{ secrets.GITHUB_TOKEN }} | base64)
           export TAG=$BASE_TAG$(cat BASE_VERSION)
-          echo manifest_base=$(curl -s -H "Authorization: Bearer ${GHCR_TOKEN}" https://ghcr.io/v2/kam193/assemblyline-base-py11/manifests/$TAG | grep "manifest unknown") > $GITHUB_OUTPUT
+          echo manifest_base=$(curl -s -H "Authorization: Bearer ${GHCR_TOKEN}" https://ghcr.io/v2/kam193/assemblyline-base-py11/manifests/$TAG | grep "manifest unknown") >> $GITHUB_OUTPUT
           export TAG=$BASE_TAG$(cat VERSION)
-          echo manifest_service=$(curl -s -H "Authorization: Bearer ${GHCR_TOKEN}" https://ghcr.io/v2/kam193/assemblyline-service-base-py11/manifests/$TAG | grep "manifest unknown") > $GITHUB_OUTPUT
+          echo manifest_service=$(curl -s -H "Authorization: Bearer ${GHCR_TOKEN}" https://ghcr.io/v2/kam193/assemblyline-service-base-py11/manifests/$TAG | grep "manifest unknown") >> $GITHUB_OUTPUT
       - name: Build base
         if: steps.check-if-pushed.outputs.manifest_base
         run: |
@@ -95,7 +95,7 @@ jobs:
         id: check-service-changed
         run: |
           git diff --quiet ${{ github.event.before }} ${{ github.event.after }} -- ${{ matrix.service }}
-          echo exit-code=$? > $GITHUB_OUTPUT
+          echo exit-code=$? >> $GITHUB_OUTPUT
       - name: Run tests
         if: steps.check-service-changed.outputs.exit-code != 0
         run: |
@@ -105,7 +105,7 @@ jobs:
         run: |
           export GHCR_TOKEN=$(echo ${{ secrets.GITHUB_TOKEN }} | base64)
           export TAG=$BASE_TAG$(cat VERSION)
-          echo manifest=$(curl -s -H "Authorization: Bearer ${GHCR_TOKEN}" https://ghcr.io/v2/kam193/$(make print)/manifests/$TAG | grep "manifest unknown") > $GITHUB_OUTPUT
+          echo manifest=$(curl -s -H "Authorization: Bearer ${GHCR_TOKEN}" https://ghcr.io/v2/kam193/$(make print)/manifests/$TAG | grep "manifest unknown") >> $GITHUB_OUTPUT
       - name: Push container
         if: steps.check-if-pushed.outputs.manifest
         run: |
