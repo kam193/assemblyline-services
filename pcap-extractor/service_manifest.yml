@@ -44,8 +44,8 @@ heuristics:
 docker_config:
   image: ${REGISTRY}kam193/assemblyline-service-pcap-extractor:4.4.0.stable$VERSION
   cpu_cores: 1.0
-  ram_mb: 512
-  allow_internet_access: true
+  ram_mb: 1024
+  allow_internet_access: false
 # update_config:
 #   update_interval_seconds: 7200 # 2 hours
 #   generates_signatures: false

@@ -61,12 +61,13 @@ class Extractor:
         kwargs = {}
         if out_file:
             kwargs["stdout"] = open(out_file, "w")
+        full_command = (
+            [self.tshark_path, "-r", self.pcap_path, "-q"]
+            + self._ignored_filter()
+            + command
+        )
         result = subprocess.run(
-            (
-                [self.tshark_path, "-r", self.pcap_path, "-q"]
-                + self._ignored_filter()
-                + command
-            ),
+            full_command,
             capture_output=True if not out_file else False,
             text=True,
             timeout=self.timeout,
@@ -75,7 +76,9 @@ class Extractor:
         )
         if result.returncode != 0:
             self.logger.error("Error executing tshark command: %s", result.stderr)
-            raise RuntimeError("Error executing tshark command: %s", command)
+            if result.returncode == 137:
+                raise RuntimeError("Memory limit exceeded")
+            raise RuntimeError("Error executing tshark command: %s", full_command)
         return result.stdout if not out_file else out_file
 
     def get_tcp_conversations(self) -> Iterable[Conversation]:
