@@ -67,3 +67,9 @@ test:
 
 print:
 	@echo ${SERVICE_NAME}
+
+lint:
+	WORK_DIR=$$(pwd) tox -e lint -c ../tox.ini
+
+format:
+	WORK_DIR=$$(pwd) tox -e format -c ../tox.ini

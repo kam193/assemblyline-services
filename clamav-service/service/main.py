@@ -29,9 +29,7 @@ class ClamAVService(ServiceBase):
         self.clamd_conf: str = None
 
     def _generate_clamd_config(self) -> None:
-        conf_file = tempfile.NamedTemporaryFile(
-            mode="w+", prefix="clamd_conf", delete=False
-        )
+        conf_file = tempfile.NamedTemporaryFile(mode="w+", prefix="clamd_conf", delete=False)
         conf_file.writelines(STATIC_CONFIGS)
 
         for key, value in self.service_attributes.config.items():
@@ -52,26 +50,18 @@ class ClamAVService(ServiceBase):
             try:
                 self.clamd = ClamdUnixSocket(CLAMD_SOCKET)
                 self.clamd.ping()
-                self.log.info(
-                    "ClamAV daemon is ready, version: %s", self.clamd.version()
-                )
+                self.log.info("ClamAV daemon is ready, version: %s", self.clamd.version())
                 break
             except ConnectionError:
-                self.log.debug(
-                    f"ClamAV daemon not ready yet, waiting...", exc_info=True
-                )
+                self.log.debug("ClamAV daemon not ready yet, waiting...", exc_info=True)
                 if self.daemon_process.returncode:
                     # Break and go to else clause
                     start_time = time() - WAIT_FOR_DAEMON
                 sleep(0.5)
         else:
-            self.log.error(
-                f"ClamAV daemon not ready after {time() - start_time} seconds, aborting"
-            )
+            self.log.error(f"ClamAV daemon not ready after {time() - start_time} seconds, aborting")
             if self.daemon_process.returncode:
-                self.log.error(
-                    f"ClamAV daemon exited with code {self.daemon_process.returncode}"
-                )
+                self.log.error(f"ClamAV daemon exited with code {self.daemon_process.returncode}")
             raise RuntimeError("Cannot start ClamAV daemon")
 
     def _load_rules(self) -> None:

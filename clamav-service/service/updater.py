@@ -2,10 +2,11 @@ import os
 import pathlib
 import re
 import shutil
-from assemblyline_v4_service.updater.updater import ServiceUpdater, Service
-import time
-import tempfile
 import subprocess
+import tempfile
+import time
+
+from assemblyline_v4_service.updater.updater import Service, ServiceUpdater
 
 TIMEOUT = 600
 
@@ -37,9 +38,7 @@ class ClamavServiceUpdater(ServiceUpdater):
                     add_default_mirror = False
 
             if add_default_mirror:
-                self.log.debug(
-                    f"Adding DatabaseMirror {config['uri']} to freshclam.conf"
-                )
+                self.log.debug(f"Adding DatabaseMirror {config['uri']} to freshclam.conf")
                 f.write(f"DatabaseMirror {config.uri}\n")
 
         self.log.info("Done generating config file")
@@ -52,36 +51,6 @@ class ClamavServiceUpdater(ServiceUpdater):
             if os.path.isdir(f"{update_dir}/{source}") and source not in active_sources:
                 self.log.info(f"Removing old source {source}")
                 shutil.rmtree(f"{update_dir}/{source}")
-
-    def do_source_update(
-        self, service: Service, specific_sources: list[str] = []
-    ) -> None:
-        if not specific_sources:
-            specific_sources = [
-                source["name"] for source in service.update_config.sources
-            ]
-
-        if FRESHCLAM_SOURCE_NAME in specific_sources:
-            freshclam_config = next(
-                filter(
-                    lambda x: x["name"] == FRESHCLAM_SOURCE_NAME,
-                    service.update_config.sources,
-                ),
-                None,
-            )
-            self._update_freshclam(service, freshclam_config)
-
-        specific_sources = [
-            source for source in specific_sources if source != FRESHCLAM_SOURCE_NAME
-        ]
-        if not specific_sources:
-            self.set_active_config_hash(self.config_hash(service))
-            self.local_update_flag.set()
-            return
-
-        self.log.debug(f"Updating {specific_sources}...")
-        super().do_source_update(service, specific_sources)
-        self._clean_up_old_sources(service, self.latest_updates_dir)
 
     def _update_freshclam(self, service: Service, source_obj):
         if not source_obj:
@@ -165,9 +134,33 @@ class ClamavServiceUpdater(ServiceUpdater):
                 dirs_exist_ok=True,
             )
 
-    def import_update(
-        self, files_sha256, client, source, default_classification
-    ) -> None:
+    def do_source_update(self, service: Service, specific_sources: list[str] = []) -> None:
+        if not specific_sources:
+            specific_sources = [source["name"] for source in service.update_config.sources]
+
+        if FRESHCLAM_SOURCE_NAME in specific_sources:
+            freshclam_config = next(
+                filter(
+                    lambda x: x["name"] == FRESHCLAM_SOURCE_NAME,
+                    service.update_config.sources,
+                ),
+                None,
+            )
+            self._update_freshclam(service, freshclam_config)
+
+        specific_sources = [
+            source for source in specific_sources if source != FRESHCLAM_SOURCE_NAME
+        ]
+        if not specific_sources:
+            self.set_active_config_hash(self.config_hash(service))
+            self.local_update_flag.set()
+            return
+
+        self.log.debug(f"Updating {specific_sources}...")
+        super().do_source_update(service, specific_sources)
+        self._clean_up_old_sources(service, self.latest_updates_dir)
+
+    def import_update(self, files_sha256, client, source, default_classification) -> None:
         output_dir = os.path.join(self.latest_updates_dir, source)
         os.makedirs(os.path.join(self.latest_updates_dir, source), exist_ok=True)
         for file, _ in files_sha256:
