@@ -59,7 +59,7 @@ class AssemblylineService(ServiceBase):
 
     def _scan(self, file_path: str) -> str:
         self.log.debug("Scanning %s", file_path)
-        self._wait_for_db(timeout=self.scan_timeout / 10)
+        self._wait_for_db(timeout=self.scan_timeout * 0.8)
         result = subprocess.run(
             [COMODO_SCAN_PATH, "-v", "-s", file_path],
             stdout=subprocess.PIPE,
