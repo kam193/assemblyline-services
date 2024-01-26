@@ -2,13 +2,13 @@ include ../common.mk
 
 SERVICE_NAME=assemblyline-service-base-py11
 
-AL_VERSION=4.4.0.89
+AL_VERSION=4.4.0.90
 BASE_NAME=assemblyline-base-py11
 
 BASE_VER_TAG=$(shell cat BASE_VERSION)
 CACHE=
 
-UPSTREAM_GIT_TAG=v4.4.0.stable89
+UPSTREAM_GIT_TAG=v4.4.0.stable90
 
 # checkout:
 # 	cd assemblyline-base && git checkout ${UPSTREAM_GIT_TAG} && cd ..
