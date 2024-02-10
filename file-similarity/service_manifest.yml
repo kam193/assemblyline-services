@@ -1,0 +1,73 @@
+name: File-Similarity
+version: 4.4.0.stable$VERSION
+description: FIXME
+enabled: true
+
+accepts: .* # All files
+rejects: empty
+stage: CORE
+category: Static Analysis
+file_required: false
+timeout: 90
+is_external: false
+
+config:
+  HIGH_TLSH: 50
+  MEDIUM_TLSH: 70
+  LOW_TLSH: 100
+  MAX_IN_DEEP_SCAN: 20 # How many similar files find before stopping deep scan
+  MAX_IN_SCAN: 5
+  REFRESH_INTERVAL: 60 # How often to refresh the similarity database TODO: move to updater
+
+heuristics:
+  - description: High similarity to known malware
+    filetype: "*"
+    heur_id: 1
+    name: High malware similarity
+    score: 1000
+  - description: Medium similarity to known malware
+    filetype: "*"
+    heur_id: 2
+    name: Medium malware similarity
+    score: 300
+  - description: Low similarity to known malware
+    filetype: "*"
+    heur_id: 3
+    name: Low malware similarity
+    score: 50
+  - description: Unknown severity
+    filetype: "*"
+    heur_id: 4
+    name: Unknown severity
+    score: 0
+
+
+docker_config:
+  image: ${REGISTRY}kam193/assemblyline-service-file-similarity:4.4.0.stable$VERSION
+  cpu_cores: 1.0
+  ram_mb: 512
+  allow_internet_access: true
+
+# update_config:
+#   update_interval_seconds: 7200 # 2 hours
+#   generates_signatures: false
+#   wait_for_update: true
+#   sources:
+
+# dependencies:
+#   updates:
+#     container:
+#       ram_mb: 3072
+#       allow_internet_access: true
+#       command: ["python", "-m", "service.updater"]
+#       image: ${REGISTRY}kam193/assemblyline-service-file-similarity:4.4.0.stable$VERSION
+#       ports: ["5003"]
+#       environment:
+#         - name: UPDATER_DIR
+#           value: /opt/clamav_db/
+#     volumes:
+#       updates:
+#         mount_path: /opt/clamav_db/
+#         capacity: 2147483648 # 2 GB
+#         storage_class: default
+#     run_as_core: True

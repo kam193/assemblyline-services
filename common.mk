@@ -56,6 +56,9 @@ run-with-updates: ARGS=-e updates_host=${SERVICE_NAME}_update -e updates_port=50
 run-with-updates: CONTAINER_NETWORK=external
 run-with-updates: run
 
+run-with-external: CONTAINER_NETWORK=external
+run-with-external: run
+
 refresh: CACHE="--no-cache"
 refresh: build
 
