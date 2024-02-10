@@ -10,6 +10,7 @@ category: Static Analysis
 file_required: false
 timeout: 90
 is_external: false
+privileged: true
 
 config:
   HIGH_TLSH: 50
@@ -47,7 +48,6 @@ docker_config:
   cpu_cores: 1.0
   ram_mb: 512
   allow_internet_access: true
-  privileged: true
 
 # update_config:
 #   update_interval_seconds: 7200 # 2 hours

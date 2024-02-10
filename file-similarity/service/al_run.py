@@ -97,7 +97,7 @@ class AssemblylineService(ServiceBase):
     def _load_tlsh_data_from_badlist(self):
         loaded = 0
         self.log.info("Loading TLSH data from Badlist")
-        self.datastore = forge.get_datastore(self.config)
+        self.datastore = forge.get_datastore(forge.CachedObject(forge.get_config))
         # TODO: streaming results and configurable limit
         results: Iterable[Badlist] = self.datastore.badlist.search(
             BADLIST_QUERY, fl="hashes.tlsh, file.type, sources.name, sources.reason", rows=10000
