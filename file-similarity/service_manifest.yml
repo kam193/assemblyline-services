@@ -18,7 +18,7 @@ config:
   LOW_TLSH: 100
   MAX_IN_DEEP_SCAN: 20 # How many similar files find before stopping deep scan
   MAX_IN_SCAN: 5
-  REFRESH_INTERVAL: 60 # How often to refresh the similarity database TODO: move to updater
+  # REFRESH_INTERVAL: 60 # How often to refresh the similarity database TODO: move to updater
 
 heuristics:
   - description: High similarity to known malware
@@ -45,30 +45,31 @@ heuristics:
 
 docker_config:
   image: ${REGISTRY}kam193/assemblyline-service-file-similarity:4.4.0.stable$VERSION
-  cpu_cores: 1.0
+  cpu_cores: 0.5
   ram_mb: 512
-  allow_internet_access: true
+  allow_internet_access: false
 
-# update_config:
-#   update_interval_seconds: 7200 # 2 hours
-#   generates_signatures: false
-#   wait_for_update: true
-#   sources:
+update_config:
+  update_interval_seconds: 7200 # 2 hours
+  generates_signatures: false
+  wait_for_update: true
+  sources:
+    - name: Badlist # This name is reserved to collect data from dynamic badlist
+      uri: http://badlist/
+    - name: Hash collection
+      uri: https://github.com/kam193/assemblyline-data-cleanup.git
+      git_branch: main
+      pattern: .*tlsh_hashes.csv$
 
-# dependencies:
-#   updates:
-#     container:
-#       ram_mb: 3072
-#       allow_internet_access: true
-#       command: ["python", "-m", "service.updater"]
-#       image: ${REGISTRY}kam193/assemblyline-service-file-similarity:4.4.0.stable$VERSION
-#       ports: ["5003"]
-#       environment:
-#         - name: UPDATER_DIR
-#           value: /opt/clamav_db/
-#     volumes:
-#       updates:
-#         mount_path: /opt/clamav_db/
-#         capacity: 2147483648 # 2 GB
-#         storage_class: default
-#     run_as_core: True
+dependencies:
+  updates:
+    container:
+      ram_mb: 256
+      allow_internet_access: true
+      command: ["python", "-m", "service.updater"]
+      image: ${REGISTRY}kam193/assemblyline-service-file-similarity:4.4.0.stable$VERSION
+      ports: ["5003"]
+      environment:
+        - name: UPDATER_DIR
+          value: /tmp/similarity_db/
+    run_as_core: True
