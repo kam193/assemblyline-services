@@ -12,11 +12,13 @@ from assemblyline_v4_service.common.result import Result, ResultTextSection
 
 from .helpers import TLSHData
 
+
 class Severity(Enum):
     HIGH = "high"
     MEDIUM = "medium"
     LOW = "low"
     UNKNOWN = "unknown"
+
 
 @dataclass
 class TLSHResult:

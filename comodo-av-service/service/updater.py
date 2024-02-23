@@ -9,7 +9,7 @@ class AssemblylineServiceUpdater(ServiceUpdater):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-    def import_update(self, files_sha256, client, source, default_classification) -> None:
+    def import_update(self, files_sha256, source, default_classification=None) -> None:
         self.log.info(str(files_sha256))
         output_dir = os.path.join(self.latest_updates_dir, source)
         os.makedirs(os.path.join(self.latest_updates_dir, source), exist_ok=True)

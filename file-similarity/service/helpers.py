@@ -4,6 +4,7 @@ import tlsh
 
 BADLIST_QUERY = "hashes.tlsh:* AND enabled:true"
 
+
 @dataclass
 class TLSHData:
     hash: tlsh.Tlsh

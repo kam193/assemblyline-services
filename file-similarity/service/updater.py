@@ -128,7 +128,7 @@ class AssemblylineServiceUpdater(ServiceUpdater):
         super().do_source_update(service)
         self._clean_up_old_sources(service, self.latest_updates_dir)
 
-    def import_update(self, files_sha256, client, source, default_classification) -> None:
+    def import_update(self, files_sha256, source, default_classification=None) -> None:
         # TODO: preprocess updates
         output_dir = os.path.join(self.latest_updates_dir, source)
         os.makedirs(os.path.join(self.latest_updates_dir, source), exist_ok=True)

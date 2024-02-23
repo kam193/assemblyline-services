@@ -1,11 +1,12 @@
 ARG REGISTRY=
 ARG BASE_IMAGE=cccs/assemblyline-v4-service-base:stable
+ARG MANIFEST_REGISTRY=ghcr.io/
 FROM ${BASE_IMAGE}
 
 ENV SERVICE_PATH service.al_run.AssemblylineService
 
 USER root
-RUN apt-get update && apt-get upgrade -y && apt-get install -y wget libc6 libfontconfig1 libfreetype6 libglib2.0-0 libice6 libsm6 libssl1.1 libxrender1
+RUN apt-get update && apt-get upgrade -y && apt-get install -y wget libc6 libfontconfig1 libfreetype6 libglib2.0-0 libice6 libsm6 libxrender1 #libssl1.1
 
 RUN wget https://cdn.download.comodo.com/cis/download/installs/linux/cav-linux_x64.deb && \
     dpkg -i --ignore-depends=libssl0.9.8 cav-linux_x64.deb && \
@@ -26,7 +27,8 @@ WORKDIR /opt/al_service
 COPY . .
 
 USER root
-RUN sed -i "s/\$VERSION/$(cat VERSION)/g" service_manifest.yml
+RUN sed -i "s|\(image: \${REGISTRY}\).*\(kam193/.*\)|\1$MANIFEST_REGISTRY\2|g" service_manifest.yml && \
+    sed -i "s/\$VERSION/$(cat VERSION)/g" service_manifest.yml
 
 USER assemblyline
 

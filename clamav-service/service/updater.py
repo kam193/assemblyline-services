@@ -134,11 +134,12 @@ class ClamavServiceUpdater(ServiceUpdater):
                 dirs_exist_ok=True,
             )
 
-    def do_source_update(self, service: Service, specific_sources: list[str] = []) -> None:
-        if not specific_sources:
-            specific_sources = [source["name"] for source in service.update_config.sources]
+    def do_source_update(self, service: Service) -> None:
+        sources_to_update = []
+        while not self.update_queue.empty():
+            sources_to_update.append(self.update_queue.get())
 
-        if FRESHCLAM_SOURCE_NAME in specific_sources:
+        if FRESHCLAM_SOURCE_NAME in sources_to_update:
             freshclam_config = next(
                 filter(
                     lambda x: x["name"] == FRESHCLAM_SOURCE_NAME,
@@ -148,19 +149,15 @@ class ClamavServiceUpdater(ServiceUpdater):
             )
             self._update_freshclam(service, freshclam_config)
 
-        specific_sources = [
-            source for source in specific_sources if source != FRESHCLAM_SOURCE_NAME
-        ]
-        if not specific_sources:
-            self.set_active_config_hash(self.config_hash(service))
-            self.local_update_flag.set()
-            return
+        for source in sources_to_update:
+            if source == FRESHCLAM_SOURCE_NAME:
+                continue
+            self.update_queue.put(source)
 
-        self.log.debug(f"Updating {specific_sources}...")
-        super().do_source_update(service, specific_sources)
+        super().do_source_update(service)
         self._clean_up_old_sources(service, self.latest_updates_dir)
 
-    def import_update(self, files_sha256, client, source, default_classification) -> None:
+    def import_update(self, files_sha256, source, default_classification=None) -> None:
         output_dir = os.path.join(self.latest_updates_dir, source)
         os.makedirs(os.path.join(self.latest_updates_dir, source), exist_ok=True)
         for file, _ in files_sha256:

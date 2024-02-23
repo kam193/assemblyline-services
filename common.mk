@@ -1,19 +1,23 @@
 REGISTRY?=
 PUSH_REGISTRY?=
-BASE_IMAGE?=${REGISTRY}/cccs/assemblyline-v4-service-base:stable
+BASE_IMAGE?=${REGISTRY}/cccs/assemblyline-v4-service-base:4.5.stable
 AL_SERVICE_NAME=Template
 SERVICE_NAME=assemblyline-service-$(shell echo ${AL_SERVICE_NAME} | tr '[:upper:]' '[:lower:]')
-BASE_TAG?=4.4.0.stable
+BASE_TAG?=4.5.0.stable
+
+MANIFEST_REGISTRY?=
 
 manifest:
 	sed -i "s/al-name-template/${AL_SERVICE_NAME}/g" service_manifest.yml
 	sed -i "s/al-name-template/${AL_SERVICE_NAME}/g" README.md
-	sed -i "s/assemblyline-service-template/${SERVICE_NAME}/g" service_manifest.yml
+	# sed -i "s/assemblyline-service-template/${SERVICE_NAME}/g" service_manifest.yml
 	sed -i "s/assemblyline-service-template/${SERVICE_NAME}/g" README.md
+	sed -i 's|\(version: \).*|\1${BASE_TAG}$$VERSION|' service_manifest.yml
+	sed -i 's|\(image: \).*kam193/.*|\1$${REGISTRY}ghcr.io/kam193/${SERVICE_NAME}:${BASE_TAG}$$VERSION|g' service_manifest.yml
 
 CACHE=
 build: manifest
-	docker build -t kam193/${SERVICE_NAME}:latest --build-arg REGISTRY=${REGISTRY} --build-arg BASE_IMAGE=${BASE_IMAGE} ${CACHE} .
+	docker build -t kam193/${SERVICE_NAME}:latest --build-arg REGISTRY=${REGISTRY} --build-arg BASE_IMAGE=${BASE_IMAGE} --build-arg MANIFEST_REGISTRY=${MANIFEST_REGISTRY} ${CACHE} .
 
 TAG=$(shell cat VERSION)
 bump_version:
