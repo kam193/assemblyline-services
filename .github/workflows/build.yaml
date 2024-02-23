@@ -4,7 +4,7 @@ on:
   push:
 
 env:
-  BASE_IMAGE: cccs/assemblyline-v4-service-base:stable
+  BASE_IMAGE: cccs/assemblyline-v4-service-base:4.5.stable
   REGISTRY: ghcr.io
   PUSH_REGISTRY: ghcr.io
   BASE_TAG: 4.5.0.stable
