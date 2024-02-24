@@ -1,0 +1,57 @@
+name: Hashlookup
+version: 4.5.0.stable$VERSION
+description: Check for hashes in https://www.circl.lu/services/hashlookup/ using DNS as first step.
+enabled: true
+
+accepts: .* # All files
+rejects: empty
+stage: FILTER
+category: Static Analysis
+file_required: false
+timeout: 30
+is_external: true
+
+config:
+  dns_server: "9.9.9.9"
+  # Prevent further analyze if the file is well known
+  stop_scan_for_well_known: true
+  stop_deep_scan_for_well_known: false
+
+heuristics:
+  - description: File is well known as being benign
+    filetype: "*"
+    heur_id: 1
+    name: Well-known benign file
+    score: -1
+  - description: File is well known as being malicious
+    filetype: "*"
+    heur_id: 2
+    name: Well-known malicious file
+    score: 1000
+
+docker_config:
+  image: ${REGISTRY}ghcr.io/kam193/assemblyline-service-hashlookup:4.5.0.stable$VERSION
+  cpu_cores: 0.5
+  ram_mb: 256
+  allow_internet_access: true
+
+dependencies:
+  hashlookup_redis:
+    container:
+      ram_mb: 256
+      cpu_cores: 0.5
+      allow_internet_access: false
+      command:
+        [
+          "redis-server",
+          "--maxmemory",
+          "200mb",
+          "--maxmemory-policy",
+          "allkeys-lru",
+        ]
+      image: ${REGISTRY}redis:alpine
+      ports: ["6379"]
+      # environment:
+      #   - name: UPDATER_DIR
+      #     value: /opt/clamav_db/
+    run_as_core: false

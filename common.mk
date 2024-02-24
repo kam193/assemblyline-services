@@ -66,6 +66,10 @@ run-with-external: run
 refresh: CACHE="--no-cache"
 refresh: build
 
+run-dep: CONTAINER_NETWORK=external
+run-dep:
+	docker run --rm --network=${CONTAINER_NETWORK} --name ${CONTAINER_NAME} ${ARGS} ${IMAGE} ${COMMAND}
+
 bash:
 	docker exec -it ${SERVICE_NAME} bash
 
