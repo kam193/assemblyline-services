@@ -157,10 +157,25 @@ class ClamavServiceUpdater(ServiceUpdater):
         super().do_source_update(service)
         self._clean_up_old_sources(service, self.latest_updates_dir)
 
+    def _test_database_file(self, file: str) -> bool:
+        result = subprocess.run(
+            ["clamscan", "-d", file, "README.md"], capture_output=True, text=True
+        )
+
+        if result.returncode != 2:
+            return
+
+        self.log.warning(
+            "Database file %s is not a valid ClamAV database file, reason: %s", file, result.stderr
+        )
+
+        raise ValueError(result.stderr)
+
     def import_update(self, files_sha256, source, default_classification=None) -> None:
         output_dir = os.path.join(self.latest_updates_dir, source)
         os.makedirs(os.path.join(self.latest_updates_dir, source), exist_ok=True)
         for file, _ in files_sha256:
+            self._test_database_file(file)
             self.log.debug("Copying %s to %s", file, output_dir)
             shutil.copy(file, output_dir)
 
