@@ -1,7 +1,8 @@
 # Custom services for AssemblyLine 4
 
-A set of custom services extending the capabilities of AssemblyLine 4. They are created as a hobby project,
-so please do not expect production quality. They should work with the latest version of AssemblyLine 4.
+A set of custom services extending the capabilities of [AssemblyLine 4](https://github.com/CybercentreCanada/assemblyline).
+They are created as a hobby project, so please do not expect production quality. They should work with the latest
+version of AssemblyLine 4.
 
 ## Services
 
