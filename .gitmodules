@@ -1,6 +1,0 @@
-[submodule "al-service-with-py11/assemblyline-base"]
-	path = al-service-with-py11/assemblyline-base
-	url = https://github.com/CybercentreCanada/assemblyline-base.git
-[submodule "al-service-with-py11/assemblyline-v4-service"]
-	path = al-service-with-py11/assemblyline-v4-service
-	url = https://github.com/CybercentreCanada/assemblyline-v4-service.git
