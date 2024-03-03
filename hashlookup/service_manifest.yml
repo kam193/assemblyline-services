@@ -6,7 +6,7 @@ enabled: true
 accepts: .* # All files
 rejects: empty
 stage: FILTER
-category: Static Analysis
+category: Filtering
 file_required: false
 timeout: 30
 is_external: true
