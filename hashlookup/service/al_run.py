@@ -258,7 +258,7 @@ class AssemblylineService(ServiceBase):
             "This file was found in the Cymru Malware Hash registry (https://www.team-cymru.com/mhr)."
         )
         description.add_line(f"Last seen: {datetime.fromtimestamp(int(info['last_seen']))}")
-        description.add_line(f"Detected by {info['rate']} of the scanners.")
+        description.add_line(f"Detected by {info['rate']}% of the scanners.")
 
         main_section.add_section_part(description)
         main_section.set_heuristic(2)
