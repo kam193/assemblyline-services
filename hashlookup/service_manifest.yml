@@ -1,6 +1,6 @@
 name: Hashlookup
 version: 4.5.0.stable$VERSION
-description: Check for hashes in https://www.circl.lu/services/hashlookup/ using DNS as first step.
+description: Check for hashes in https://www.circl.lu/services/hashlookup/ and https://www.team-cymru.com/mhr using DNS as first step.
 enabled: true
 
 accepts: .* # All files
@@ -13,21 +13,28 @@ is_external: true
 
 config:
   dns_server: "9.9.9.9"
-  # Prevent further analyze if the file is well known
+  # Prevent further analyze if the file is well known & benign
   stop_scan_for_well_known: true
   stop_deep_scan_for_well_known: false
+  use_circl_hashlookup: true
+  use_cymru_malware_hash: true
 
 heuristics:
-  - description: File is well known as being benign
+  - description: File is well-known as being benign
     filetype: "*"
     heur_id: 1
     name: Well-known benign file
     score: -1
-  - description: File is well known as being malicious
+  - description: File is well-known as being malicious
     filetype: "*"
     heur_id: 2
     name: Well-known malicious file
     score: 1000
+  - description: File is well-known, but can be found in good and bad files
+    filetype: "*"
+    heur_id: 3
+    name: Well-known file
+    score: 0
 
 docker_config:
   image: ${REGISTRY}ghcr.io/kam193/assemblyline-service-hashlookup:4.5.0.stable$VERSION

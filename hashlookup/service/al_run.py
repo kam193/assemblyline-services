@@ -20,6 +20,7 @@ from assemblyline_v4_service.common.result import (
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 from abc import ABC, abstractmethod
+from datetime import datetime
 
 REDIS_SERVER = os.getenv("hashlookup_redis_host", "hashlookup_redis")
 REDIS_TTL = 3600 * 24
@@ -130,6 +131,22 @@ class CIRCLHashlookup(CachedLookup):
         return data
 
 
+class CymruMalwareHash(CachedLookup):
+    HASHLOOKUP_SERVER = "hash.cymru.com"
+    CACHE_TEMPLATE = "cymru:{}"
+
+    def _lookup(self, sha1: str):
+        dns_answer = self._resolver.resolve(f"{sha1.lower()}.{self.HASHLOOKUP_SERVER}", "TXT")
+        dns_answer = dns_answer[0].to_text().replace('"', "")
+        self.log.debug("lookup_sha1(%s) = %s", sha1, dns_answer)
+        timestamp, detection_rate = dns_answer.split(" ")
+        data = {
+            "last_seen": timestamp,
+            "rate": detection_rate,
+        }
+        return data
+
+
 class AssemblylineService(ServiceBase):
     def __init__(self, config=None):
         super().__init__(config)
@@ -155,6 +172,9 @@ class AssemblylineService(ServiceBase):
         self.circl_hashlookup = CIRCLHashlookup(
             self._session, self.redis_client, self._resolver, self.log
         )
+        self.cymru_malware_hash = CymruMalwareHash(
+            self._session, self.redis_client, self._resolver, self.log
+        )
 
     @property
     def redis_client(self):
@@ -173,6 +193,13 @@ class AssemblylineService(ServiceBase):
 
     def execute(self, request: ServiceRequest) -> None:
         request.result = Result()
+
+        self._is_malicious = False
+
+        if self.use_cymru:
+            cymru_section = self._check_cymru(request)
+            if cymru_section:
+                request.result.add_section(cymru_section)
 
         if self.use_circl:
             circl_section = self._check_circl(request)
@@ -210,10 +237,30 @@ class AssemblylineService(ServiceBase):
 
         if info["trust"] <= self.unsafe_level:
             main_section.set_heuristic(2)
+            self._is_malicious = True
         elif info["trust"] >= self.safe_level:
-            main_section.set_heuristic(1)
+            # Do not try to override malicious results
+            main_section.set_heuristic(1 if not self._is_malicious else 3)
             if self.break_on_known and not request.deep_scan:
                 request.drop()
             elif self.break_deep_scan and request.deep_scan:
                 request.drop()
+        return main_section
+
+    def _check_cymru(self, request: ServiceRequest):
+        info = self.cymru_malware_hash.lookup_sha1(request.sha1)
+        if not info:
+            return None
+
+        main_section = ResultMultiSection("Cymru Malware Hash Results")
+        description = TextSectionBody()
+        description.add_line(
+            "This file was found in the Cymru Malware Hash registry (https://www.team-cymru.com/mhr)."
+        )
+        description.add_line(f"Last seen: {datetime.fromtimestamp(int(info['last_seen']))}")
+        description.add_line(f"Detected by {info['rate']} of the scanners.")
+
+        main_section.add_section_part(description)
+        main_section.set_heuristic(2)
+        self._is_malicious = True
         return main_section
