@@ -1,13 +1,13 @@
+import ipaddress
 import os
+
 from assemblyline_v4_service.common.base import ServiceBase
 from assemblyline_v4_service.common.request import ServiceRequest
 from assemblyline_v4_service.common.result import (
     Result,
-    ResultTextSection,
     ResultMemoryDumpSection,
+    ResultTextSection,
 )
-
-import ipaddress
 
 from .extractor import Extractor
 
@@ -95,6 +95,4 @@ class AssemblylineService(ServiceBase):
             )
 
         for file in extractor.get_files():
-            request.add_extracted(
-                file, os.path.basename(file), f"File extracted from PCAP"
-            )
+            request.add_extracted(file, os.path.basename(file), "File extracted from PCAP")

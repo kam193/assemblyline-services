@@ -17,9 +17,7 @@ class AssemblylineServiceUpdater(ServiceUpdater):
     # ) -> None:
     #     pass
 
-    def import_update(
-        self, files_sha256, client, source, default_classification
-    ) -> None:
+    def import_update(self, files_sha256, client, source, default_classification) -> None:
         pass
 
     def prepare_output_directory(self) -> str:

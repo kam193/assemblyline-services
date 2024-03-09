@@ -1,10 +1,10 @@
+import ipaddress
+import logging
 import os
 import subprocess
-import logging
 import tempfile
 from dataclasses import dataclass
 from typing import Iterable
-import ipaddress
 
 TSHARK_PATH = "/usr/bin/tshark"
 
@@ -41,9 +41,7 @@ class Extractor:
         self.pcap_path = pcap_path
         self.tshark_path = TSHARK_PATH
         self.logger = (
-            base_logger.getChild("extractor")
-            if base_logger
-            else logging.getLogger(__name__)
+            base_logger.getChild("extractor") if base_logger else logging.getLogger(__name__)
         )
         self.timeout = timeout
         self.ignore_ips = ignore_ips or []
@@ -62,9 +60,7 @@ class Extractor:
         if out_file:
             kwargs["stdout"] = open(out_file, "w")
         full_command = (
-            [self.tshark_path, "-r", self.pcap_path, "-q"]
-            + self._ignored_filter()
-            + command
+            [self.tshark_path, "-r", self.pcap_path, "-q"] + self._ignored_filter() + command
         )
         result = subprocess.run(
             full_command,
@@ -78,7 +74,9 @@ class Extractor:
             self.logger.error("Error executing tshark command: %s", result.stderr)
             if result.returncode == 137:
                 raise RuntimeError("Memory limit exceeded")
-            raise RuntimeError("Error executing tshark command: %s", full_command)
+            raise RuntimeError(
+                "Error %d executing tshark command: %s", result.returncode, full_command
+            )
         return result.stdout if not out_file else out_file
 
     def get_tcp_conversations(self) -> Iterable[Conversation]:
@@ -104,16 +102,12 @@ class Extractor:
 
     def _extract_tcp_stream(self, conv: Conversation):
         out_file = tempfile.mktemp(prefix="stream_")
-        self.execute(
-            ["-z", f"follow,tcp,ascii,{conv.follow_filter}"], out_file=out_file
-        )
+        self.execute(["-z", f"follow,tcp,ascii,{conv.follow_filter}"], out_file=out_file)
         conv.stream_file = out_file
 
     def _extract_http_stream(self, conv: Conversation):
         out_file = tempfile.mktemp(prefix="http_")
-        self.execute(
-            ["-z", f"follow,http,ascii,{conv.follow_filter}"], out_file=out_file
-        )
+        self.execute(["-z", f"follow,http,ascii,{conv.follow_filter}"], out_file=out_file)
         conv.stream_file = out_file
 
     def process_conversations(self) -> Iterable[Conversation]:
