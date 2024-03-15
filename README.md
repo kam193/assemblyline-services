@@ -37,6 +37,11 @@ files. Responses are cached. Currently supported services:
 
 This service list flows from a pcap file using Tshark. If supported by Tshark, it can also extract files.
 
+### Python Magic
+
+Designed to help with analysis of Python artifacts. Currently supported:
+- unpacking PyInstaller executables (using [pyinstxtractor-ng](https://github.com/pyinstxtractor/pyinstxtractor-ng)),
+
 ### Simple Downloader
 
 Very simple service to download URLs, without running a whole browser. User-agent can be configured.

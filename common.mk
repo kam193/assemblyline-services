@@ -12,12 +12,17 @@ manifest:
 	sed -i "s/al-name-template/${AL_SERVICE_NAME}/g" README.md
 	# sed -i "s/assemblyline-service-template/${SERVICE_NAME}/g" service_manifest.yml
 	sed -i "s/assemblyline-service-template/${SERVICE_NAME}/g" README.md
-	sed -i 's|\(version: \).*|\1${BASE_TAG}$$VERSION|' service_manifest.yml
-	sed -i 's|\(image: \).*kam193/.*|\1$${REGISTRY}ghcr.io/kam193/${SERVICE_NAME}:${BASE_TAG}$$VERSION|g' service_manifest.yml
+	sed -i 's|\(version: \).*|\1$$SERVICE_TAG|' service_manifest.yml
+	sed -i 's|\(image: \).*kam193/.*|\1$${REGISTRY}ghcr.io/kam193/${SERVICE_NAME}:$$SERVICE_TAG|g' service_manifest.yml
 
 CACHE=
 build: manifest
-	docker build -t kam193/${SERVICE_NAME}:latest --build-arg REGISTRY=${REGISTRY} --build-arg BASE_IMAGE=${BASE_IMAGE} --build-arg MANIFEST_REGISTRY=${MANIFEST_REGISTRY} ${CACHE} .
+	docker build -t kam193/${SERVICE_NAME}:latest \
+		--build-arg REGISTRY=${REGISTRY} \
+		--build-arg BASE_IMAGE=${BASE_IMAGE} \
+		--build-arg MANIFEST_REGISTRY=${MANIFEST_REGISTRY} \
+		--build-arg BASE_TAG=${BASE_TAG} \
+		${CACHE} .
 
 TAG=$(shell cat VERSION)
 bump_version:
