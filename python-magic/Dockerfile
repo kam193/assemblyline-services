@@ -8,16 +8,18 @@ ENV SERVICE_PATH service.al_run.AssemblylineService
 USER root
 RUN apt-get update && apt-get install -y curl && apt-get upgrade -y
 
-USER assemblyline
+WORKDIR /opt/al_service
+
 COPY requirements.txt requirements.txt
 COPY helpers/ helpers/
 
 # TODO: multi-stage build?
-RUN pip install --no-cache-dir --user --requirement requirements.txt && \
+RUN PYTHONPATH=/var/lib/assemblyline/.local/lib/python3.11/site-packages pip install \
+    --no-cache-dir --requirement requirements.txt && \
     bash helpers/install-pyinstxtractor.sh && \
     rm -rf ~/.cache/pip
 
-WORKDIR /opt/al_service
+USER assemblyline
 COPY . .
 
 USER root

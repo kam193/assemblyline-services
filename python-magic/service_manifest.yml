@@ -3,7 +3,7 @@ version: $SERVICE_TAG
 description: FIXME
 enabled: true
 
-accepts: .* # All files
+accepts: executable/*
 rejects: empty
 stage: EXTRACT
 category: Static Analysis
@@ -11,15 +11,18 @@ file_required: true
 timeout: 90
 is_external: false
 
-# config:
-#   KEY: "VALUE"
+config:
+  MAX_EXTRACTED: 500
 
-# submission_params:
-#   - default: "auto"
-#     name: platform
-#     type: list
-#     value: "auto"
-#     list: ["auto", "linux"]
+submission_params:
+  - name: extract_all
+    default: false
+    type: bool
+    value: false
+  - name: extract_pyz_content
+    default: false
+    type: bool
+    value: false
 
 # -1000: safe
 # 0 - 299: informative
