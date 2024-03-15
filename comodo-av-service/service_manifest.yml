@@ -1,5 +1,5 @@
 name: Comodo-Antivirus
-version: 4.5.0.stable$VERSION
+version: $SERVICE_TAG
 description: Scans files using COMODO antivirus (https://www.comodo.com/home/internet-security/antivirus-for-linux.php)
 enabled: true
 
@@ -28,7 +28,7 @@ heuristics:
     score: 1000
 
 docker_config:
-  image: ${REGISTRY}ghcr.io/kam193/assemblyline-service-comodo-antivirus:4.5.0.stable$VERSION
+  image: ${REGISTRY}ghcr.io/kam193/assemblyline-service-comodo-antivirus:$SERVICE_TAG
   cpu_cores: 1.0
   ram_mb: 2048
 
@@ -47,7 +47,7 @@ dependencies:
       ram_mb: 1024
       allow_internet_access: true
       command: ["python", "-m", "service.updater"]
-      image: ${REGISTRY}ghcr.io/kam193/assemblyline-service-comodo-antivirus:4.5.0.stable$VERSION
+      image: ${REGISTRY}ghcr.io/kam193/assemblyline-service-comodo-antivirus:$SERVICE_TAG
       ports: ["5003"]
       environment:
         - name: UPDATER_DIR

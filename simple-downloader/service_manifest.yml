@@ -1,5 +1,5 @@
 name: Simple-Downloader
-version: 4.5.0.stable$VERSION
+version: $SERVICE_TAG
 description: Simple download the file given as URL
 enabled: true
 
@@ -36,7 +36,7 @@ submission_params:
 #     score: 0
 
 docker_config:
-  image: ${REGISTRY}ghcr.io/kam193/assemblyline-service-simple-downloader:4.5.0.stable$VERSION
+  image: ${REGISTRY}ghcr.io/kam193/assemblyline-service-simple-downloader:$SERVICE_TAG
   cpu_cores: 0.5
   ram_mb: 512
   allow_internet_access: true
@@ -53,7 +53,7 @@ docker_config:
 #       ram_mb: 3072
 #       allow_internet_access: true
 #       command: ["python", "-m", "service.updater"]
-#       image: ${REGISTRY}ghcr.io/kam193/assemblyline-service-simple-downloader:4.5.0.stable$VERSION
+#       image: ${REGISTRY}ghcr.io/kam193/assemblyline-service-simple-downloader:$SERVICE_TAG
 #       ports: ["5003"]
 #       environment:
 #         - name: UPDATER_DIR

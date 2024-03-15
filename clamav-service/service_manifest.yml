@@ -1,5 +1,5 @@
 name: ClamAV-Service
-version: 4.5.0.stable$VERSION
+version: $SERVICE_TAG
 description: Scans files using ClamAV antivirus
 enabled: true
 
@@ -45,7 +45,7 @@ heuristics:
     score: 400
 
 docker_config:
-  image: ${REGISTRY}ghcr.io/kam193/assemblyline-service-clamav:4.5.0.stable$VERSION
+  image: ${REGISTRY}ghcr.io/kam193/assemblyline-service-clamav:$SERVICE_TAG
   cpu_cores: 1.0
   ram_mb: 3072
 
@@ -84,7 +84,7 @@ dependencies:
       ram_mb: 3072
       allow_internet_access: true
       command: ["python", "-m", "service.updater"]
-      image: ${REGISTRY}ghcr.io/kam193/assemblyline-service-clamav:4.5.0.stable$VERSION
+      image: ${REGISTRY}ghcr.io/kam193/assemblyline-service-clamav:$SERVICE_TAG
       ports: ["5003"]
       environment:
         - name: UPDATER_DIR

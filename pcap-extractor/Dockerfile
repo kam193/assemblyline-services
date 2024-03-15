@@ -22,6 +22,6 @@ COPY . .
 
 USER root
 RUN sed -i "s|\(image: \${REGISTRY}\).*\(kam193/.*\)|\1$MANIFEST_REGISTRY\2|g" service_manifest.yml && \
-    sed -i "s/\$VERSION/$(cat VERSION)/g" service_manifest.yml
+    sed -i "s/\$SERVICE_TAG/$BASE_TAG$(cat VERSION)/g" service_manifest.yml
 
 USER assemblyline

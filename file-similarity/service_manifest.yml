@@ -1,5 +1,5 @@
 name: File-Similarity
-version: 4.5.0.stable$VERSION
+version: $SERVICE_TAG
 description: FIXME
 enabled: true
 
@@ -44,7 +44,7 @@ heuristics:
 
 
 docker_config:
-  image: ${REGISTRY}ghcr.io/kam193/assemblyline-service-file-similarity:4.5.0.stable$VERSION
+  image: ${REGISTRY}ghcr.io/kam193/assemblyline-service-file-similarity:$SERVICE_TAG
   cpu_cores: 0.5
   ram_mb: 512
   allow_internet_access: false
@@ -67,7 +67,7 @@ dependencies:
       ram_mb: 256
       allow_internet_access: true
       command: ["python", "-m", "service.updater"]
-      image: ${REGISTRY}ghcr.io/kam193/assemblyline-service-file-similarity:4.5.0.stable$VERSION
+      image: ${REGISTRY}ghcr.io/kam193/assemblyline-service-file-similarity:$SERVICE_TAG
       ports: ["5003"]
       environment:
         - name: UPDATER_DIR

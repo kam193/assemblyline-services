@@ -1,5 +1,5 @@
 name: Hashlookup
-version: 4.5.0.stable$VERSION
+version: $SERVICE_TAG
 description: Check for hashes in https://www.circl.lu/services/hashlookup/ and https://www.team-cymru.com/mhr using DNS as first step.
 enabled: true
 
@@ -37,7 +37,7 @@ heuristics:
     score: 0
 
 docker_config:
-  image: ${REGISTRY}ghcr.io/kam193/assemblyline-service-hashlookup:4.5.0.stable$VERSION
+  image: ${REGISTRY}ghcr.io/kam193/assemblyline-service-hashlookup:$SERVICE_TAG
   cpu_cores: 0.5
   ram_mb: 256
   allow_internet_access: true
