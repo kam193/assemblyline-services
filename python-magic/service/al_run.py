@@ -2,6 +2,7 @@ import ast
 import os
 import sys
 from contextlib import contextmanager
+from logging import Logger
 
 import pyinstxtractor as pex
 from assemblyline_v4_service.common.base import ServiceBase
@@ -37,34 +38,32 @@ PYINSTALLER_BUILDINS = set(
 )
 
 
-class AssemblylineService(ServiceBase):
-    def __init__(self, config=None):
-        super().__init__(config)
+class PyInstallerExtractor:
+    PEX_VERSION = None
 
-    def _load_pyinstaller_hooks(self):
+    def __init__(
+        self, request: ServiceRequest, unpack_dir: str, logger: Logger, max_extracted: int = 500
+    ):
+        self.request = request
+        self.unpack_dir = unpack_dir
+        self.log = logger
+        self.max_extracted_config = max_extracted
+        self.extract_pyz_content = self.request.get_param("extract_pyz_content")
+        self.filtered_entries = None
+
+    @staticmethod
+    def load_static_config():
         # Load possible PyInstaller runtime hooks
         with open("rthooks.dat") as f:
             rthooks: dict = ast.literal_eval(f.read())
 
-        self.log.debug("rthooks: %s", rthooks)
         PYINSTALLER_BUILDINS.update(v[0][:-3] for v in rthooks.values())
 
-    def _load_config(self):
-        self.max_extracted_config = self.config.get("MAX_EXTRACTED", 500)
-
-        self._load_pyinstaller_hooks()
-
         with open("helpers/VERSION.pyinstxtractor-ng") as f:
-            self.pex_version = f.read().strip()
-
-    def start(self):
-        self.log.info(f"start() from {self.service_attributes.name} service called")
-        self._load_config()
-
-        self.log.info(f"{self.service_attributes.name} service started")
+            PyInstallerExtractor.PEX_VERSION = f.read().strip()
 
     def _filter_out_common_entries(self, toclist: list[pex.CTOCEntry]):
-        should_extract = set()
+        self.filtered_entries = set()
         for entry in toclist:
             if (
                 entry.typeCmprsData
@@ -77,20 +76,19 @@ class AssemblylineService(ServiceBase):
                 ]
                 and entry.name not in PYINSTALLER_BUILDINS
             ):
-                should_extract.add(entry.name)
-        self.log.debug("Expected to extract: %s", should_extract)
-        return should_extract
+                self.filtered_entries.add(entry.name)
+        self.log.debug("Expected to extract: %s", self.filtered_entries)
+        return self.filtered_entries
 
-    @staticmethod
-    def _should_extract(path, extract_only, extract_pyz_content=False):
-        if extract_only is None:
+    def _should_extract(self, path):
+        if self.filtered_entries is None:
             return True
-        if path in extract_only:
+        if path in self.filtered_entries:
             return True
-        if path.endswith(".pyc") and path[:-4] in extract_only:
+        if path.endswith(".pyc") and path[:-4] in self.filtered_entries:
             return True
 
-        if not extract_pyz_content:
+        if not self.extract_pyz_content:
             return False
 
         # handle data extracted from PYZ
@@ -106,8 +104,8 @@ class AssemblylineService(ServiceBase):
 
         return False
 
-    def _extract_pyinstaller(self):
-        extractor = pex.PyInstArchive(self._request.file_path)
+    def extract(self):
+        extractor = pex.PyInstArchive(self.request.file_path)
         if not extractor.open():
             raise RuntimeError("Unable to open file")
 
@@ -135,14 +133,12 @@ class AssemblylineService(ServiceBase):
         structure = ResultTextSection("Archive structure", auto_collapse=True)
         main_section.add_subsection(structure)
 
-        filtered_entries = None
-        extract_pyz_content = self._request.get_param("extract_pyz_content")
-        if not self._request.deep_scan and not self._request.get_param("extract_all"):
-            filtered_entries = self._filter_out_common_entries(extractor.tocList)
+        if not self.request.deep_scan and not self.request.get_param("extract_all"):
+            self._filter_out_common_entries(extractor.tocList)
 
         files_in_arch = []
         extracted = 0
-        max_extracted = min(self.max_extracted_config, self._request.max_extracted)
+        max_extracted = min(self.max_extracted_config, self.request.max_extracted)
         for root, _, files in os.walk(self.unpack_dir):
             for file in files:
                 path = os.path.join(root, file)
@@ -152,10 +148,10 @@ class AssemblylineService(ServiceBase):
                 files_in_arch.append(path_in_archive)
                 if extracted >= max_extracted:
                     continue
-                if not self._should_extract(path_in_archive, filtered_entries, extract_pyz_content):
+                if not self._should_extract(path_in_archive):
                     continue
 
-                self._request.add_extracted(
+                self.request.add_extracted(
                     path, path_in_archive, "Extracted from PyInstaller archive"
                 )
                 extracted += 1
@@ -163,10 +159,25 @@ class AssemblylineService(ServiceBase):
         structure.add_lines(sorted(files_in_arch))
 
         main_section.add_line(
-            f"Extracted {extracted} files using pyinstxtractor-ng {self.pex_version}"
+            f"Extracted {extracted} files using pyinstxtractor-ng {self.PEX_VERSION}"
         )
 
         return main_section
+
+
+class AssemblylineService(ServiceBase):
+    def __init__(self, config=None):
+        super().__init__(config)
+
+    def _load_config(self):
+        self.max_extracted_config = self.config.get("MAX_EXTRACTED", 500)
+
+        PyInstallerExtractor.load_static_config()
+
+    def start(self):
+        self.log.info(f"start() from {self.service_attributes.name} service called")
+        self._load_config()
+        self.log.info(f"{self.service_attributes.name} service started")
 
     def execute(self, request: ServiceRequest) -> None:
         self._request = request
@@ -174,8 +185,12 @@ class AssemblylineService(ServiceBase):
         request.result = result
 
         with self.unpack_dir_cwd():
-            if main_section := self._extract_pyinstaller():
-                result.add_section(main_section)
+            extractor = PyInstallerExtractor(
+                request, self.unpack_dir, self.log, self.max_extracted_config
+            )
+            section = extractor.extract()
+            if section:
+                result.add_section(section)
 
     @contextmanager
     def unpack_dir_cwd(self):
