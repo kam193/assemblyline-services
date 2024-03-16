@@ -5,6 +5,7 @@ from assemblyline_v4_service.common.base import ServiceBase
 from assemblyline_v4_service.common.request import ServiceRequest
 from assemblyline_v4_service.common.result import Result
 
+from .extract.pycdc import PycdcDecompyler
 from .extract.pyinstaller import PyInstallerExtractor
 
 
@@ -13,8 +14,6 @@ class AssemblylineService(ServiceBase):
         super().__init__(config)
 
     def _load_config(self):
-
-
         PyInstallerExtractor.load_static_config()
 
     def start(self):
@@ -27,11 +26,16 @@ class AssemblylineService(ServiceBase):
         result = Result()
         request.result = result
 
-        with self.unpack_dir_cwd():
-            extractor = PyInstallerExtractor(
-                request, self.unpack_dir, self.log, self.config
-            )
-            section = extractor.extract()
+        if request.file_type.startswith("executable/"):
+            with self.unpack_dir_cwd():
+                extractor = PyInstallerExtractor(request, self.unpack_dir, self.log, self.config)
+                section = extractor.extract()
+                if section:
+                    result.add_section(section)
+
+        if request.file_type == "resource/pyc":
+            decompyler = PycdcDecompyler(request, self.unpack_dir, self.log, self.config)
+            section = decompyler.extract()
             if section:
                 result.add_section(section)
 

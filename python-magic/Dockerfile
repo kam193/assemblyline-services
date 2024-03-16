@@ -1,6 +1,13 @@
 ARG REGISTRY=
 ARG MANIFEST_REGISTRY=ghcr.io/
 ARG BASE_IMAGE=cccs/assemblyline-v4-service-base:stable
+FROM debian:bookworm-slim as builder
+
+RUN apt-get update && apt-get upgrade && apt-get install -y git cmake make g++
+
+COPY helpers/ helpers/
+RUN bash helpers/build-pycdc.sh
+
 FROM ${BASE_IMAGE}
 
 ENV SERVICE_PATH service.al_run.AssemblylineService
@@ -19,6 +26,7 @@ RUN PYTHONPATH=/var/lib/assemblyline/.local/lib/python3.11/site-packages pip ins
     bash helpers/install-deps.sh && \
     rm -rf ~/.cache/pip
 
+COPY --from=builder /helpers/pycdc /usr/local/bin/pycdc
 USER assemblyline
 COPY . .
 

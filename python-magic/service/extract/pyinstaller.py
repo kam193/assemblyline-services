@@ -7,6 +7,8 @@ import pyinstxtractor as pex
 from assemblyline_v4_service.common.request import ServiceRequest
 from assemblyline_v4_service.common.result import ResultTextSection
 
+from . import ExtractorBase
+
 # PyInstaller TOC entry types
 # from https://github.com/pyinstaller/pyinstaller/blob/develop/PyInstaller/archive/readers.py
 PKG_ITEM_BINARY = b"b"  # binary
@@ -36,27 +38,11 @@ PYINSTALLER_BUILDINS = set(
 )
 
 
-class PyInstallerExtractor:
+class PyInstallerExtractor(ExtractorBase):
     PEX_VERSION = None
 
     def __init__(self, request: ServiceRequest, unpack_dir: str, logger: Logger, config: dict):
-        self.request = request
-        self.unpack_dir = unpack_dir
-        self.log = logger.getChild("pyinstaller_extractor")
-        self.max_extracted_config = config.get("MAX_EXTRACTED", 500)
-        self.extract_pyz_content = self.request.get_param("extract_pyz_content")
-        self.filtered_entries = None
-
-    @staticmethod
-    def load_static_config():
-        # Load possible PyInstaller runtime hooks
-        with open("rthooks.dat") as f:
-            rthooks: dict = ast.literal_eval(f.read())
-
-        PYINSTALLER_BUILDINS.update(v[0][:-3] for v in rthooks.values())
-
-        with open("helpers/VERSION.pyinstxtractor-ng") as f:
-            PyInstallerExtractor.PEX_VERSION = f.read().strip()
+        super().__init__(request, unpack_dir, logger, config)
 
     def _filter_out_common_entries(self, toclist: list[pex.CTOCEntry]):
         self.filtered_entries = set()
@@ -99,6 +85,17 @@ class PyInstallerExtractor:
             return True
 
         return False
+
+    @staticmethod
+    def load_static_config():
+        # Load possible PyInstaller runtime hooks
+        with open("rthooks.dat") as f:
+            rthooks: dict = ast.literal_eval(f.read())
+
+        PYINSTALLER_BUILDINS.update(v[0][:-3] for v in rthooks.values())
+
+        with open("helpers/VERSION.pyinstxtractor-ng") as f:
+            PyInstallerExtractor.PEX_VERSION = f.read().strip()
 
     def extract(self):
         extractor = pex.PyInstArchive(self.request.file_path)
