@@ -16,7 +16,7 @@ COPY helpers/ helpers/
 # TODO: multi-stage build?
 RUN PYTHONPATH=/var/lib/assemblyline/.local/lib/python3.11/site-packages pip install \
     --no-cache-dir --requirement requirements.txt && \
-    bash helpers/install-pyinstxtractor.sh && \
+    bash helpers/install-deps.sh && \
     rm -rf ~/.cache/pip
 
 USER assemblyline
