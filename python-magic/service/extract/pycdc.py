@@ -1,5 +1,6 @@
 import os
 import re
+import shutil
 import subprocess
 
 from assemblyline_v4_service.common.result import ResultTextSection
@@ -18,6 +19,10 @@ class PycdcDecompyler(ExtractorBase):
     @property
     def decompiled_path(self):
         return f"{self.request._working_directory}/decompiled.py"
+
+    @property
+    def output_path(self):
+        return f"{self.request._working_directory}/output.py"
 
     def extract(self):
         self.log.info("Decompiling .pyc files")
@@ -53,7 +58,7 @@ class PycdcDecompyler(ExtractorBase):
 
         section = ResultTextSection("Decompiling PYC file")
         section.add_line(f"File was built with Python {version}")
-        if pycdc.returncode != 0:
+        if pycdc.returncode != 0 or pycdc.stderr:
             section.add_line(
                 f"Decompilation wasn't successful. File may be broken. Error: \n{pycdc.stderr}"
             )
