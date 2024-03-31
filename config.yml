@@ -31,6 +31,7 @@ filestore:
   #   - file:///home/kamil/Devel/lab-analysing-pkgs/assemblyline/var/cache/assemblyline
 
 logging:
+  log_level: DEBUG
   export_interval: 30
   log_to_console: true
   log_to_file: false
