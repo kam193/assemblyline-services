@@ -3,7 +3,7 @@ ARG MANIFEST_REGISTRY=ghcr.io/
 ARG BASE_IMAGE=cccs/assemblyline-v4-service-base:stable
 FROM debian:bookworm-slim as builder
 
-RUN apt-get update && apt-get upgrade && apt-get install -y git cmake make g++
+RUN apt-get update && apt-get upgrade -y && apt-get install -y git cmake make g++
 
 COPY helpers/ helpers/
 RUN bash helpers/build-pycdc.sh
