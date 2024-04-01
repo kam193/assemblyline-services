@@ -40,6 +40,7 @@ release: bump_version push
 
 COMMAND=
 ARGS=
+ARGS_INT=
 CONTAINER_NAME=${SERVICE_NAME}
 CONTAINER_NETWORK=al_registration
 run: build
@@ -48,20 +49,21 @@ run: build
 	-v "${PWD}/../config.yml:/etc/assemblyline/config.yml" \
 	-e AL_SERVICE_NAME=${AL_SERVICE_NAME} \
 	${ARGS} \
+	${ARGS_INT} \
 	--name ${CONTAINER_NAME} kam193/${SERVICE_NAME}:latest ${COMMAND}
 
 run-with-host: build
-run-with-host: ARGS=--add-host=host.docker.internal:host-gateway
+run-with-host: ARGS_INT=--add-host=host.docker.internal:host-gateway
 run-with-host: run
 
 run-updater: build
 run-updater: COMMAND=python -m service.updater
 run-updater: CONTAINER_NAME=${SERVICE_NAME}_update
 run-updater: CONTAINER_NETWORK=external
-run-updater: ARGS=-e AL_INSTANCE_KEY=changeme
+run-updater: ARGS_INT=-e AL_INSTANCE_KEY=changeme -e UPDATER_DIR=/tmp/updater
 run-updater: run
 
-run-with-updates: ARGS=-e updates_host=${SERVICE_NAME}_update -e updates_port=5003 -e updates_key=changeme
+run-with-updates: ARGS_INT=-e updates_host=${SERVICE_NAME}_update -e updates_port=5003 -e updates_key=changeme
 run-with-updates: CONTAINER_NETWORK=external
 run-with-updates: run
 

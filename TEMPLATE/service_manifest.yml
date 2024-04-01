@@ -7,6 +7,7 @@ accepts: .* # All files
 rejects: empty
 stage: CORE
 category: Static Analysis
+uses_tags: false
 file_required: true
 timeout: 90
 is_external: false

@@ -33,6 +33,12 @@ files. Responses are cached. Currently supported services:
 - [Cymru Malware Hash Registr](https://www.team-cymru.com/mhr): identify well-known malware files. Only
   DNS queries are used. This service does not offer extended details (e.g. no malware name).
 
+### Network Information
+
+Service to get information about IPs and domains. Currently supported:
+
+ - IP data from MMDB files (you have to configure them yourself),
+
 ### PCAP Extractor
 
 This service list flows from a pcap file using Tshark. If supported by Tshark, it can also extract files.
