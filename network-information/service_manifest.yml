@@ -5,7 +5,7 @@ enabled: true
 
 accepts: .* # All files
 rejects: empty
-stage: REVIEW
+stage: POST
 category: Networking
 uses_tags: true
 uses_temp_submission_data: true
@@ -55,7 +55,7 @@ update_config:
 dependencies:
   updates:
     container:
-      ram_mb: 256
+      ram_mb: 512
       allow_internet_access: true
       command: ["python", "-m", "service.updater"]
       image: ${REGISTRY}ghcr.io/kam193/assemblyline-service-network-information:$SERVICE_TAG

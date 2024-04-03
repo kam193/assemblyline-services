@@ -62,11 +62,11 @@ class AssemblylineService(ServiceBase):
         section = ResultTableSection(f"IP: {ip_address}")
         for source_name, data in ip_info.items():
             if data:
-                subsection = ResultTableSection(f"Data from {source_name}")
+                subsection = ResultTableSection(f"[MMDB] Data from {source_name}")
                 for key, value in data.items():
                     subsection.add_row(TableRow({"Information": key.title(), "Value": value}))
                 section.add_subsection(subsection)
-        return section
+        return section if section.subsections else None
 
     def _handle_ips(self, request: ServiceRequest) -> ResultSection | None:
         # TODO: optional static
