@@ -67,7 +67,7 @@ class AssemblylineService(ServiceBase):
             ignore_ips=self.ignore_ips,
         )
         for conv in extractor.process_conversations():
-            protocol = "TCP" if not conv.is_http else "HTTP"
+            protocol = "HTTP" if conv.is_http else conv.protocol.upper()
             source_local = self._is_local_network(conv.src_ip)
             destination_local = self._is_local_network(conv.dst_ip)
             if not source_local:

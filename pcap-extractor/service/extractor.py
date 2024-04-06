@@ -16,6 +16,7 @@ class Conversation:
     dst_ip: ipaddress._IPAddressBase
     dst_port: int
     stream_file: str = None
+    protocol: str = ""
 
     @property
     def is_http(self) -> bool:
@@ -24,6 +25,10 @@ class Conversation:
     @property
     def follow_filter(self) -> str:
         return f"{self.src_ip}:{self.src_port},{self.dst_ip}:{self.dst_port}"
+
+    @property
+    def tshark_filter(self) -> str:
+        return f"ip.addr == {self.src_ip} && ip.addr == {self.dst_ip} && tcp.port == {self.src_port} && tcp.port == {self.dst_port}"
 
     @property
     def description(self) -> str:
@@ -58,7 +63,7 @@ class Extractor:
     def execute(self, command: list[str], out_file: str = None) -> str:
         kwargs = {}
         if out_file:
-            kwargs["stdout"] = open(out_file, "w")
+            kwargs["stdout"] = open(out_file, "a")
         full_command = (
             [self.tshark_path, "-r", self.pcap_path, "-q"] + self._ignored_filter() + command
         )
@@ -100,22 +105,37 @@ class Extractor:
                 int(dst_port),
             )
 
-    def _extract_tcp_stream(self, conv: Conversation):
-        out_file = tempfile.mktemp(prefix="stream_")
-        self.execute(["-z", f"follow,tcp,ascii,{conv.follow_filter}"], out_file=out_file)
-        conv.stream_file = out_file
+    def _extract_stream(self, conv: Conversation):
+        # "http2", "quic" - require the valid stream ID
+        available_to_extract = ["http", "tcp", "udp", "dccp", "tls"]
 
-    def _extract_http_stream(self, conv: Conversation):
-        out_file = tempfile.mktemp(prefix="http_")
-        self.execute(["-z", f"follow,http,ascii,{conv.follow_filter}"], out_file=out_file)
+        proto_stats = self.execute(["-z", f"io,phs,{conv.tshark_filter}"])
+        proto_stats = proto_stats.splitlines()
+        proto_stats = proto_stats[5:-1]
+
+        for line in proto_stats:
+            proto = line.strip().split()[0]
+            if proto in available_to_extract:
+                conv.protocol = proto
+
+        if conv.protocol is None:
+            self.logger.error("No stream protocol found for %s", conv.description)
+            return
+
+        out_file = tempfile.mktemp(prefix=f"{conv.protocol}_")
         conv.stream_file = out_file
+        # if conv.protocol in ["http2", "quic"]:
+        #     # extract just the first two substream
+        #     # TODO: extract all substreams
+        #     self.execute(["-z", f"follow,{conv.protocol},ascii,{conv.follow_filter},0"], out_file=out_file)
+        #     self.execute(["-z", f"follow,{conv.protocol},ascii,{conv.follow_filter},1"], out_file=out_file)
+        # else:
+        self.execute(["-z", f"follow,{conv.protocol},ascii,{conv.follow_filter}"], out_file=out_file)
+
 
     def process_conversations(self) -> Iterable[Conversation]:
         for conv in self.get_tcp_conversations():
-            if conv.is_http:
-                self._extract_http_stream(conv)
-            else:
-                self._extract_tcp_stream(conv)
+            self._extract_stream(conv)
             yield conv
 
     def get_files(self) -> Iterable[str]:
