@@ -35,10 +35,10 @@ heuristics:
     heur_id: 1
     name: External HTTP connection
     score: 300
-  - description: Connection to non-standard port was found in the PCAP. Very suspicious.
+  - description: Connection to non-HTTP port was found in the PCAP. Very suspicious.
     filetype: "*"
     heur_id: 2
-    name: Connection to non-standard port
+    name: Connection to non-HTTP port
     score: 700
 
 docker_config:

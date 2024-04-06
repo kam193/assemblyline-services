@@ -120,6 +120,10 @@ class Extractor:
 
     def get_files(self) -> Iterable[str]:
         out_dir = tempfile.mkdtemp(prefix="extracted_")
-        self.execute(["--export-objects", f"http,{out_dir}"])
+        params = []
+        for proto in ["dicom", "ftp-data", "http", "imf", "smb", "tftp"]:
+            params.append("--export-objects")
+            params.append(f"{proto},{out_dir}")
+        self.execute(params)
         for file in os.listdir(out_dir):
             yield os.path.join(out_dir, file)
