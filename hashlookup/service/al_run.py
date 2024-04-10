@@ -165,7 +165,10 @@ class AssemblylineService(ServiceBase):
 
         self._resolver = dns.resolver.Resolver(configure=False if self.dns_server else True)
         if self.dns_server:
-            self._resolver.nameservers = [self.dns_server]
+            if "," in self.dns_server:
+                self._resolver.nameservers = self.dns_server.split(",")
+            else:
+                self._resolver.nameservers = [self.dns_server]
 
         self._session = create_session(RETRIES, TIMEOUT)
 
