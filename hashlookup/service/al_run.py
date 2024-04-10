@@ -2,6 +2,8 @@ import functools
 import json
 import logging
 import os
+from abc import ABC, abstractmethod
+from datetime import datetime
 
 import dns.exception
 import dns.rdatatype
@@ -19,8 +21,6 @@ from assemblyline_v4_service.common.result import (
 )
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
-from abc import ABC, abstractmethod
-from datetime import datetime
 
 REDIS_SERVER = os.getenv("hashlookup_redis_host", "hashlookup_redis")
 REDIS_TTL = 3600 * 24
@@ -87,7 +87,7 @@ class CachedLookup(ABC):
     def _lookup(self, sha1: str) -> dict:
         raise NotImplementedError
 
-    @retry((redis.RedisError, dns.exception.Timeout))
+    @retry((redis.RedisError, dns.exception.DNSException))
     def lookup_sha1(self, sha1: str):
         response = None
         if cached := self.redis_client.get(self.CACHE_TEMPLATE.format(sha1)):
@@ -194,21 +194,6 @@ class AssemblylineService(ServiceBase):
 
         self.log.info(f"{self.service_attributes.name} service started")
 
-    def execute(self, request: ServiceRequest) -> None:
-        request.result = Result()
-
-        self._is_malicious = False
-
-        if self.use_cymru:
-            cymru_section = self._check_cymru(request)
-            if cymru_section:
-                request.result.add_section(cymru_section)
-
-        if self.use_circl:
-            circl_section = self._check_circl(request)
-            if circl_section:
-                request.result.add_section(circl_section)
-
     def _check_circl(self, request: ServiceRequest):
         info = self.circl_hashlookup.lookup_sha1(request.sha1)
         if not info:
@@ -267,3 +252,18 @@ class AssemblylineService(ServiceBase):
         main_section.set_heuristic(2)
         self._is_malicious = True
         return main_section
+
+    def execute(self, request: ServiceRequest) -> None:
+        request.result = Result()
+
+        self._is_malicious = False
+
+        if self.use_cymru:
+            cymru_section = self._check_cymru(request)
+            if cymru_section:
+                request.result.add_section(cymru_section)
+
+        if self.use_circl:
+            circl_section = self._check_circl(request)
+            if circl_section:
+                request.result.add_section(circl_section)
