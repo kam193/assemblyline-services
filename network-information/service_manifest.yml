@@ -48,9 +48,10 @@ update_config:
   wait_for_update: true
   # Please configure your own data, e.g. from MaxMind or IPInfo.io (offers free tiers)
   # Any file with the .mmdb extension will be loaded
-  sources: []
-    # - name: local_data
-    #   uri: http://host.docker.internal:8118/country_asn.mmdb
+  sources:
+    # https://cra.circl.lu/opendata/geo-open/
+    - name: CIRCL_GeoOpen
+      uri: https://cra.circl.lu/opendata/geo-open/mmdb-country-asn/latest.mmdb
 
 dependencies:
   updates:
