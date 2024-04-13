@@ -3,7 +3,7 @@ version: $SERVICE_TAG
 description: FIXME
 enabled: true
 
-accepts: executable/*|resource/pyc
+accepts: executable/*|resource/pyc|archive/*
 rejects: empty
 stage: EXTRACT
 category: Static Analysis

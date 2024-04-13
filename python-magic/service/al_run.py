@@ -7,6 +7,8 @@ from assemblyline_v4_service.common.result import Result
 
 from .extract.pycdc import PycdcDecompyler
 from .extract.pyinstaller import PyInstallerExtractor
+from .package import identify_python_package
+from .package.analyzer import Analyzer
 
 
 class AssemblylineService(ServiceBase):
@@ -32,12 +34,16 @@ class AssemblylineService(ServiceBase):
                 section = extractor.extract()
                 if section:
                     result.add_section(section)
-
-        if request.file_type == "resource/pyc":
+        elif request.file_type == "resource/pyc":
             decompyler = PycdcDecompyler(request, self.unpack_dir, self.log, self.config)
             section = decompyler.extract()
             if section:
                 result.add_section(section)
+        elif request.file_type.startswith("archive/"):
+            if pkg_type := identify_python_package(request.file_path):
+                section = Analyzer(request.file_path, pkg_type).analyze()
+                if section:
+                    result.add_section(section)
 
     @contextmanager
     def unpack_dir_cwd(self):
