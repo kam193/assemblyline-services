@@ -58,9 +58,7 @@ class Analyzer:
 
             scripts = opener.get_console_scripts()
             if scripts:
-                script_section = ResultTextSection(
-                    "Console scripts", auto_collapse=True
-                )
+                script_section = ResultTextSection("Console scripts", auto_collapse=True)
                 script_section.add_line("This package declares following console scripts:")
                 for script in scripts:
                     script_section.add_line(script)
@@ -68,9 +66,7 @@ class Analyzer:
 
             top_level_modules = opener.get_top_level_modules()
             if top_level_modules:
-                module_section = ResultTextSection(
-                    "Top-level modules", auto_collapse=True
-                )
+                module_section = ResultTextSection("Top-level modules", auto_collapse=True)
                 module_section.add_line("This package declares following top-level modules:")
                 for module in top_level_modules:
                     module_section.add_line(module)

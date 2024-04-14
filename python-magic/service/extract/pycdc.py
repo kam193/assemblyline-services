@@ -1,6 +1,5 @@
 import os
 import re
-import shutil
 import subprocess
 
 from assemblyline_v4_service.common.result import ResultTextSection

@@ -2,6 +2,7 @@ import abc
 import configparser
 import tarfile
 import zipfile
+from contextlib import suppress
 from functools import lru_cache
 from itertools import chain
 
@@ -86,18 +87,23 @@ class PackageOpener(abc.ABC):
 
     def get_console_scripts(self):
         if entry_points := self.get_distribution_file("entry_points.txt"):
-            parser = CaseSensitiveConfigParser()
-            parser.read_string(entry_points)
-            return (k for k, _ in parser.items("console_scripts"))
+            with suppress(configparser.Error):
+                parser = CaseSensitiveConfigParser()
+                parser.read_string(entry_points)
+                return (k for k, _ in parser.items("console_scripts"))
         return []
 
     def get_requirements(self):
         required = set()
-        for req in chain(self.distribution.requires, self.distribution.requires_dist):
+        requires_txt = []
+        if requirements := self.get_distribution_file("requires.txt"):
+            requires_txt = requirements.splitlines()
+        for req in chain(self.distribution.requires, self.distribution.requires_dist, requires_txt):
             if any(op in req for op in ("<", ">", "=", " ")):
                 for op in ("<", ">", "!", "~", "=", " "):
                     req = req.split(op, 1)[0]
-            required.add(req.strip())
+            if req:
+                required.add(req.strip())
         return required
 
     def get_top_level_modules(self):

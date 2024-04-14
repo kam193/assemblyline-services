@@ -70,7 +70,11 @@ run-with-updates: run
 run-with-external: CONTAINER_NETWORK=external
 run-with-external: run
 
+pull-base:
+	docker pull ${BASE_IMAGE}
+
 refresh: CACHE="--no-cache"
+refresh: pull-base
 refresh: build
 
 run-dep: CONTAINER_NETWORK=external
