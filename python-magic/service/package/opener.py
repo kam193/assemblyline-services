@@ -1,6 +1,5 @@
 import abc
 import configparser
-import inspect
 import tarfile
 import zipfile
 from functools import lru_cache
@@ -101,71 +100,9 @@ class PackageOpener(abc.ABC):
             required.add(req.strip())
         return required
 
-    def _retrieve_top_module_from_path(self, path):
-        if "/site-packages/" in path:
-            return None
-
-        extension = path.split(".")[-1]
-        # Do we need all of them? How about native extensions? Can so/dll be a module?
-        if extension not in (
-            "py",
-            "pyc",
-            "pyo",
-            "pyd",
-            "so",
-            "dll",
-            "dylib",
-            "cpp",
-            "c",
-        ):
-            return None
-
-        possible_module = None
-        top, *rest = path.split("/")
-        # special case like "pkg-1.0.0./pkg/__init__.py"
-        if any(digit in top for digit in "0123456789"):
-            top, *rest = rest
-        # special case like "pkg-1.0.0./src/pkg/__init__.py"
-        # FIXME: this can potentially hide packages exposing module "src"
-        if top == "src":
-            top, *rest = rest
-
-        if rest:
-            possible_module = top
-        elif name := inspect.getmodulename(path):
-            possible_module = name
-        else:
-            possible_module = path
-
-        if "." not in possible_module:
-            return possible_module.replace("-", "_") or None
-        return None
-
     def get_top_level_modules(self):
         if top_level := self.get_distribution_file("top_level.txt"):
             return (module.replace("-", "_") for module in filter(None, top_level.splitlines()))
-
-        paths = None
-        # No declaration, retrieve based on record files
-        if record := self.get_distribution_file("RECORD"):
-            paths = (line.split(",", 1)[0] for line in record.splitlines())
-        elif installed_files := self.get_distribution_file("installed-files.txt"):
-            paths = installed_files.splitlines()
-        elif sources := self.get_distribution_file("SOURCES.txt"):
-            paths = sources.splitlines()
-
-        # last resort, use all files
-        if paths is None:
-            paths = [path for path in self.get_file_names() if "site-packages" not in path]
-        return set(
-            filter(
-                None,
-                map(
-                    self._retrieve_top_module_from_path,
-                    paths,
-                ),
-            )
-        )
 
     @abc.abstractmethod
     def get_file_size(self, name):
@@ -242,4 +179,3 @@ OPENER_MAP: dict[str, PackageOpener] = {
     "bdist_wheel": ZipPackageOpener,
     "bdist_egg": ZipPackageOpener,
 }
-
