@@ -29,9 +29,9 @@ class Analyzer:
             section.add_line(f"Package author: {opener.distribution.author}")
             section.add_line(f"Package author email: {opener.distribution.author_email}")
 
-            requirements = list(opener.get_requirements())
+            requirements = opener.get_requirements()
             if requirements:
-                req_section = ResultTextSection(f"Dependencies ({len(requirements)})")
+                req_section = ResultTextSection("Dependencies")
                 req_section.add_line("This package declares following dependencies:")
                 heur_sections = {}
                 for req in requirements:
@@ -56,20 +56,20 @@ class Analyzer:
                     req_section.add_subsection(heur_section)
                 section.add_subsection(req_section)
 
-            scripts = list(opener.get_console_scripts())
+            scripts = opener.get_console_scripts()
             if scripts:
                 script_section = ResultTextSection(
-                    f"Console scripts ({len(scripts)})", auto_collapse=True
+                    "Console scripts", auto_collapse=True
                 )
                 script_section.add_line("This package declares following console scripts:")
                 for script in scripts:
                     script_section.add_line(script)
                 section.add_subsection(script_section)
 
-            top_level_modules = list(opener.get_top_level_modules())
+            top_level_modules = opener.get_top_level_modules()
             if top_level_modules:
                 module_section = ResultTextSection(
-                    f"Top-level modules ({len(top_level_modules)})", auto_collapse=True
+                    "Top-level modules", auto_collapse=True
                 )
                 module_section.add_line("This package declares following top-level modules:")
                 for module in top_level_modules:

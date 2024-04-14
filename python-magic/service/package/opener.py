@@ -89,7 +89,7 @@ class PackageOpener(abc.ABC):
             parser = CaseSensitiveConfigParser()
             parser.read_string(entry_points)
             return (k for k, _ in parser.items("console_scripts"))
-        return None
+        return []
 
     def get_requirements(self):
         required = set()
@@ -103,6 +103,7 @@ class PackageOpener(abc.ABC):
     def get_top_level_modules(self):
         if top_level := self.get_distribution_file("top_level.txt"):
             return (module.replace("-", "_") for module in filter(None, top_level.splitlines()))
+        return []
 
     @abc.abstractmethod
     def get_file_size(self, name):

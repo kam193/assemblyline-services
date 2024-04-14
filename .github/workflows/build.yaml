@@ -79,6 +79,7 @@ jobs:
           name: ${{ matrix.service }}
           path: |
             ${{ matrix.service }}/tag.txt
+            ${{ matrix.service }}/VERSION
   release:
     needs: build-containers
     runs-on: ubuntu-latest
