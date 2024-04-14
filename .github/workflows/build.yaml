@@ -71,3 +71,48 @@ jobs:
         if: steps.check-if-pushed.outputs.manifest
         run: |
           make push
+          echo "ghcr.io/kam193/$(make print):$BASE_TAG$(cat VERSION)" > tag.txt
+      - name: Upload artifact
+        if: steps.check-if-pushed.outputs.manifest
+        uses: actions/upload-artifact@5d5d22a31266ced268874388b861e4b58bb5c2f3
+        with:
+          name: ${{ matrix.service }}
+          path: |
+            ${{ matrix.service }}/tag.txt
+  release:
+    needs: build-containers
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@c850b930e6ba138125429b7e5c93fc707a7f8427
+        with:
+          path: ./artifacts
+      - name: Gain release info
+        run: |
+          for service in $(ls -1 ./artifacts); do
+            output=$(cat ./artifacts/$service/tag.txt)
+            echo "## $service $BASE_TAG$(cat $service/VERSION)" >> release_text.md
+            echo "Uploaded image: \`$output\`" >> release_text.md
+          done
+      - name: Check if anything to release
+        id: check-if-release
+        run: |
+          if [[ -z "release_text.md" ]]; then
+            echo "release=false" >> $GITHUB_OUTPUT
+          else
+            echo "This is an automated release. Following new service versions where uploaded." > release_body.md
+            cat release_text.md >> release_body.md
+            echo "release=true" >> $GITHUB_OUTPUT
+            echo "CURRENT_DATE=$(date +'%Y-%m-%d--%H-%M')" >> $GITHUB_ENV
+          fi
+      - name: Release changes
+        if: steps.check-if-release.outputs.release == 'true'
+        uses: ncipollo/release-action@2c591bcc8ecdcd2db72b97d6147f871fcd833ba5
+        with:
+          name: Release on ${{ env.CURRENT_DATE }}
+          bodyFile: release_body.md
+          makeLatest: true
+          tag: release-${{ env.CURRENT_DATE }}
+          generateReleaseNotes: true
