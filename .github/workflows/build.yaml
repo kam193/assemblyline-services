@@ -101,7 +101,7 @@ jobs:
       - name: Check if anything to release
         id: check-if-release
         run: |
-          if [[ -z "release_text.md" ]]; then
+          if [[ ! -s "release_text.md" ]]; then
             echo "release=false" >> $GITHUB_OUTPUT
           else
             echo "This is an automated release. Following new service versions where uploaded." > release_body.md
