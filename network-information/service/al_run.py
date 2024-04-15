@@ -1,21 +1,23 @@
+import os
+from contextlib import suppress
+
+import maxminddb
 from assemblyline_v4_service.common.base import ServiceBase
 from assemblyline_v4_service.common.request import ServiceRequest
 from assemblyline_v4_service.common.result import (
     Result,
-    ResultTextSection,
-    ResultTableSection,
     ResultSection,
+    ResultTableSection,
+    ResultTextSection,
     TableRow,
 )
-import os
-
-import maxminddb
 
 
 class AssemblylineService(ServiceBase):
     def __init__(self, config=None):
         super().__init__(config)
         self._mmdb_paths = dict()
+        self._mmdb_readers: dict[str, maxminddb.Reader] = dict()
 
     def _load_config(self):
         pass
@@ -29,28 +31,44 @@ class AssemblylineService(ServiceBase):
     def _load_rules(self) -> None:
         if self.rules_directory:
             self._mmdb_paths = dict()
+            new_readers = dict()
             for root, _, files in os.walk(self.rules_directory):
                 for filename in files:
                     if filename.endswith(".mmdb"):
                         source_name = os.path.basename(root)
                         self._mmdb_paths[source_name] = os.path.join(root, filename)
+                        try:
+                            new_readers[source_name] = maxminddb.open_database(
+                                self._mmdb_paths[source_name]
+                            )
+                        except Exception as exc:
+                            self.log.exception(
+                                "Error loading MMDB file %s: %s", self._mmdb_paths[source_name], exc
+                            )
+            if not new_readers:
+                raise RuntimeError("No MMDB files loaded")
+
+            old_readers, self._mmdb_readers = self._mmdb_readers, new_readers
+            for reader in old_readers.values():
+                with suppress(Exception):
+                    reader.close()
+
         self.log.debug("Loaded MMDB paths: %s", self._mmdb_paths)
         self.log.info("Handling updates done.")
 
     def _get_ip_mmdb(self, ip_address: str) -> dict[str, dict[str, str]]:
         results = {}
-        if not self._mmdb_paths:
+        if not self._mmdb_readers:
             self.log.warning("No MMDB files loaded")
             return results
 
-        for source_name, path in self._mmdb_paths.items():
-            with maxminddb.open_database(path) as reader:
-                try:
-                    results.update({source_name: reader.get(ip_address)})
-                    self.log.debug("Source %s: %s", source_name, results[source_name])
-                except ValueError:
-                    self.log.warning("Error reading IP from %s", source_name, exc_info=True)
-                    pass
+        for source_name, reader in self._mmdb_readers.items():
+            try:
+                results.update({source_name: reader.get(ip_address)})
+                self.log.debug("Source %s: %s", source_name, results[source_name])
+            except ValueError:
+                self.log.warning("Error reading IP from %s", source_name, exc_info=True)
+                pass
         self.log.debug("Results: %s", results)
         return results
 
