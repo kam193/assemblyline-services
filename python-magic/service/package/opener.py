@@ -21,9 +21,11 @@ class AnyDistribution(Distribution):
 
     @lru_cache(maxsize=1)
     def read(self):
-        return self.__opener.get_distribution_file(
-            "METADATA"
-        ) or self.__opener.get_distribution_file("PKG-INFO")
+        return (
+            self.__opener.get_distribution_file("METADATA")
+            or self.__opener.get_distribution_file("PKG-INFO")
+            or self.__opener.get_file_relative("PKG-INFO")
+        )  # source tarball may not have a dist-info
 
 
 class PackageOpener(abc.ABC):
