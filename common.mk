@@ -95,3 +95,21 @@ lint:
 
 format:
 	WORK_DIR=$$(pwd) tox -e format -c ../tox.ini
+
+al-service:
+	docker run --rm --env SERVICE_API_HOST=http://al_service_server:5003 --network=${CONTAINER_NETWORK} \
+		-e LOG_LEVEL=DEBUG \
+		-v "${PWD}/../config.yml:/etc/assemblyline/config.yml" \
+		-e AL_SERVICE_NAME=${AL_SERVICE_NAME} \
+		${ARGS} \
+		${ARGS_INT} \
+		--name ${CONTAINER_NAME} ${SERVICE_IMAGE} ${COMMAND}
+
+SERVICE_TAG=4.5.stable
+service-extract: CONTAINER_NAME=al-service-extract
+service-extract: SERVICE_IMAGE=${REGISTRY}/cccs/assemblyline-service-extract:${SERVICE_TAG}
+service-extract: al-service
+
+service-frankenstrings: CONTAINER_NAME=al-service-frankenstrings
+service-frankenstrings: SERVICE_IMAGE=${REGISTRY}/cccs/assemblyline-service-frankenstrings:${SERVICE_TAG}
+service-frankenstrings: al-service
