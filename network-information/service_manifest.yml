@@ -13,15 +13,16 @@ file_required: false
 timeout: 90
 is_external: false
 
-# config:
-#   KEY: "VALUE"
+config:
+  enable_mmdb_lookup: true
+  enable_whois_lookup: false
 
-# submission_params:
-#   - default: "auto"
-#     name: platform
-#     type: list
-#     value: "auto"
-#     list: ["auto", "linux"]
+submission_params:
+  - name: ip_mmdb_lookup
+    default: "dynamic"
+    value: "dynamic"
+    type: list
+    list: ["dynamic", "static", "both", "none"]
 
 # -1000: safe
 # 0 - 299: informative

@@ -1,5 +1,6 @@
 import os
 from contextlib import suppress
+from enum import Enum
 
 import maxminddb
 from assemblyline_v4_service.common.base import ServiceBase
@@ -13,9 +14,18 @@ from assemblyline_v4_service.common.result import (
 )
 
 
+class SelectedTagType(str, Enum):
+    NONE = "none"
+    STATIC = "static"
+    DYNAMIC = "dynamic"
+    BOTH = "both"
+
+
 class AssemblylineService(ServiceBase):
     def __init__(self, config=None):
         super().__init__(config)
+        self._request: ServiceRequest = None
+
         self._mmdb_paths = dict()
         self._mmdb_readers: dict[str, maxminddb.Reader] = dict()
 
@@ -86,17 +96,21 @@ class AssemblylineService(ServiceBase):
                 section.add_subsection(subsection)
         return section if section.subsections else None
 
-    def _handle_ips(self, request: ServiceRequest) -> ResultSection | None:
-        # TODO: optional static
-        # TODO: optional whois
-        dynamic_ips = request.task.tags.get("network.dynamic.ip")
-        self.log.debug("All tags: %s", request.task.tags)
-        self.log.debug("Dynamic IPs: %s", dynamic_ips)
-        if not dynamic_ips:
+    def _get_tag_values(self, tag_template: str, selected_type: SelectedTagType) -> set[str]:
+        selected_tags = set()
+        if selected_type in (SelectedTagType.STATIC, SelectedTagType.BOTH):
+            selected_tags.update(self._request.task.tags.get(tag_template.format("static")) or [])
+        if selected_type in (SelectedTagType.DYNAMIC, SelectedTagType.BOTH):
+            selected_tags.update(self._request.task.tags.get(tag_template.format("dynamic")) or [])
+        return selected_tags
+
+    def _handle_ips(self) -> ResultSection | None:
+        ips = self._get_tag_values("network.{}.ip", self._request.get_param("ip_mmdb_lookup"))
+        if not ips:
             return None
 
         main_section = ResultTextSection("IP Information")
-        for ip in dynamic_ips:
+        for ip in ips:
             ip_section = self._handle_ip(ip)
             if ip_section:
                 main_section.add_subsection(ip_section)
@@ -107,9 +121,10 @@ class AssemblylineService(ServiceBase):
         return None
 
     def execute(self, request: ServiceRequest) -> None:
+        self._request = request
         result = Result()
         request.result = result
 
-        ip_section = self._handle_ips(request)
+        ip_section = self._handle_ips()
         if ip_section:
             result.add_section(ip_section)
