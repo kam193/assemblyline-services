@@ -1,10 +1,12 @@
 import itertools
+import json
 import os
 from contextlib import suppress
 from datetime import datetime, timedelta
 from enum import Enum
 
 import maxminddb
+import redis
 import tldextract
 import whois
 from assemblyline_v4_service.common.base import ServiceBase
@@ -16,6 +18,9 @@ from assemblyline_v4_service.common.result import (
     ResultTextSection,
     TableRow,
 )
+
+REDIS_SERVER = os.getenv("netinfo_cache_host", "netinfo_cache")
+CACHE_TEMPLATE = "domain:{}"
 
 
 class SelectedTagType(str, Enum):
@@ -29,6 +34,7 @@ class AssemblylineService(ServiceBase):
     def __init__(self, config=None):
         super().__init__(config)
         self._request: ServiceRequest = None
+        self._redis = None
 
         self._mmdb_paths = dict()
         self._mmdb_readers: dict[str, maxminddb.Reader] = dict()
@@ -36,6 +42,7 @@ class AssemblylineService(ServiceBase):
     def _load_config(self):
         self._mmdb_enabled = self.config.get("enable_mmdb_lookup", True)
         self._whois_enabled = self.config.get("enable_whois_lookup", True)
+        self._cache_ttl = self.config.get("whois_result_cache_ttl", 604800)
         self._warn_newer_than = self.config.get("warn_domain_newer_than", 31)
         if isinstance(self._warn_newer_than, int):
             self._warn_newer_than = timedelta(days=self._warn_newer_than)
@@ -45,6 +52,15 @@ class AssemblylineService(ServiceBase):
         self._load_config()
 
         self.log.info(f"{self.service_attributes.name} service started")
+
+    @property
+    def redis_client(self):
+        if not self._redis:
+            self._redis = redis.Redis(
+                host=REDIS_SERVER, port=6379, db=1, socket_connect_timeout=5, socket_timeout=5
+            )
+
+        return self._redis
 
     def _load_rules(self) -> None:
         if self.rules_directory:
@@ -131,9 +147,25 @@ class AssemblylineService(ServiceBase):
             return main_section
         return None
 
+    def _call_cached_whois(self, domain: str) -> dict | None:
+        cache_key = CACHE_TEMPLATE.format(domain)
+        if cached := self.redis_client.get(cache_key):
+            return json.loads(cached) or None
+
+        domain_info = whois.whois(domain)
+        if domain_info:
+            for key, value in domain_info.items():
+                if isinstance(value, list):
+                    domain_info[key] = [str(item) for item in value]
+                elif value is not None:
+                    domain_info[key] = str(value)
+
+        self.redis_client.set(cache_key, json.dumps(domain_info or {}), ex=self._cache_ttl)
+        return domain_info or None
+
     def _handle_domain(self, domain: str) -> ResultTableSection:
         try:
-            domain_info = whois.whois(domain)
+            domain_info = self._call_cached_whois(domain)
         except Exception as exc:
             self.log.warning("Error looking up domain %s: %s", domain, exc, exc_info=True)
             return None
@@ -145,15 +177,16 @@ class AssemblylineService(ServiceBase):
         for key, value in domain_info.items():
             if value and key.lower() != "status":
                 if isinstance(value, list):
-                    value = "; ".join(str(item) for item in value)
-                else:
-                    value = str(value)
+                    value = "; ".join(value)
                 section.add_row(TableRow({"Information": key.title(), "Value": value}))
 
         if self._warn_newer_than:
             if created_at := domain_info.get("creation_date"):
                 if isinstance(created_at, list):
-                    created_at = min(created_at)
+                    created_at = min(datetime.fromisoformat(date) for date in created_at)
+                else:
+                    created_at = datetime.fromisoformat(created_at)
+
                 if datetime.now() - created_at < self._warn_newer_than:
                     section.set_heuristic(1)
                     section.auto_collapse = False

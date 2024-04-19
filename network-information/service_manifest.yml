@@ -17,6 +17,7 @@ config:
   enable_mmdb_lookup: true
   enable_whois_lookup: true
   warn_domain_newer_than: 31
+  whois_result_cache_ttl: 604800
 
 submission_params:
   - name: ip_mmdb_lookup
@@ -78,3 +79,20 @@ dependencies:
         - name: UPDATER_DIR
           value: /tmp/networking_db/
     run_as_core: true
+  netinfo_cache:
+    container:
+      ram_mb: 256
+      cpu_cores: 0.5
+      allow_internet_access: false
+      command:
+        [
+          "redis-server",
+          "--maxmemory",
+          "200mb",
+          "--maxmemory-policy",
+          "allkeys-lru",
+        ]
+      image: ${REGISTRY}redis:alpine
+      ports: ["6379"]
+    run_as_core: false
+

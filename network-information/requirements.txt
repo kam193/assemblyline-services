@@ -1,5 +1,6 @@
 assemblyline-v4-service
 maxminddb
+redis
 
 # Whois
 # there are a few libraries available, noting interesting
