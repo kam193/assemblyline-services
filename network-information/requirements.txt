@@ -1,2 +1,13 @@
 assemblyline-v4-service
 maxminddb
+
+# Whois
+# there are a few libraries available, noting interesting
+# https://github.com/richardpenman/whois
+python-whois
+# https://github.com/pogzyb/asyncwhois
+# https://github.com/mboot-github/WhoisDomain
+# https://github.com/kgaughan/uwhoisd/ (and fork from Lookyloo)
+
+# TODO: Update the suffixlist independently
+tldextract

@@ -1,8 +1,12 @@
+import itertools
 import os
 from contextlib import suppress
+from datetime import datetime, timedelta
 from enum import Enum
 
 import maxminddb
+import tldextract
+import whois
 from assemblyline_v4_service.common.base import ServiceBase
 from assemblyline_v4_service.common.request import ServiceRequest
 from assemblyline_v4_service.common.result import (
@@ -30,7 +34,11 @@ class AssemblylineService(ServiceBase):
         self._mmdb_readers: dict[str, maxminddb.Reader] = dict()
 
     def _load_config(self):
-        pass
+        self._mmdb_enabled = self.config.get("enable_mmdb_lookup", True)
+        self._whois_enabled = self.config.get("enable_whois_lookup", True)
+        self._warn_newer_than = self.config.get("warn_domain_newer_than", 31)
+        if isinstance(self._warn_newer_than, int):
+            self._warn_newer_than = timedelta(days=self._warn_newer_than)
 
     def start(self):
         self.log.info(f"start() from {self.service_attributes.name} service called")
@@ -105,6 +113,9 @@ class AssemblylineService(ServiceBase):
         return selected_tags
 
     def _handle_ips(self) -> ResultSection | None:
+        if not self._mmdb_enabled:
+            return None
+
         ips = self._get_tag_values("network.{}.ip", self._request.get_param("ip_mmdb_lookup"))
         if not ips:
             return None
@@ -120,6 +131,65 @@ class AssemblylineService(ServiceBase):
             return main_section
         return None
 
+    def _handle_domain(self, domain: str) -> ResultTableSection:
+        try:
+            domain_info = whois.whois(domain)
+        except Exception as exc:
+            self.log.warning("Error looking up domain %s: %s", domain, exc, exc_info=True)
+            return None
+        if not domain_info:
+            return None
+
+        section = ResultTableSection(f"Domain: {domain}", auto_collapse=True)
+        section.add_tag("network.static.domain", domain)
+        for key, value in domain_info.items():
+            if value and key.lower() != "status":
+                if isinstance(value, list):
+                    value = "; ".join(str(item) for item in value)
+                else:
+                    value = str(value)
+                section.add_row(TableRow({"Information": key.title(), "Value": value}))
+
+        if self._warn_newer_than:
+            if created_at := domain_info.get("creation_date"):
+                if isinstance(created_at, list):
+                    created_at = min(created_at)
+                if datetime.now() - created_at < self._warn_newer_than:
+                    section.set_heuristic(1)
+                    section.auto_collapse = False
+
+        return section
+
+    def _handle_domains(self) -> ResultSection | None:
+        if not self._whois_enabled:
+            return None
+
+        domains = self._get_tag_values(
+            "network.{}.domain", self._request.get_param("domain_whois_lookup")
+        )
+        uris = self._get_tag_values("network.{}.uri", self._request.get_param("uri_whois_lookup"))
+        if not domains and not uris:
+            return None
+
+        top_domains = set()
+        for path in itertools.chain(domains, uris):
+            try:
+                parsed = tldextract.extract(path)
+                top_domains.add(f"{parsed.domain}.{parsed.suffix}")
+            except Exception as exc:
+                self.log.warning("Error parsing URI/Domain %s: %s", path, exc, exc_info=True)
+
+        main_section = ResultTextSection("Domain Information")
+        for domain in top_domains:
+            domain_section = self._handle_domain(domain)
+            if domain_section:
+                main_section.add_subsection(domain_section)
+
+        if main_section.subsections:
+            self.log.debug("Main section: %s", main_section)
+            return main_section
+        return None
+
     def execute(self, request: ServiceRequest) -> None:
         self._request = request
         result = Result()
@@ -128,3 +198,7 @@ class AssemblylineService(ServiceBase):
         ip_section = self._handle_ips()
         if ip_section:
             result.add_section(ip_section)
+
+        domain_section = self._handle_domains()
+        if domain_section:
+            result.add_section(domain_section)

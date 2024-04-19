@@ -15,12 +15,24 @@ is_external: false
 
 config:
   enable_mmdb_lookup: true
-  enable_whois_lookup: false
+  enable_whois_lookup: true
+  warn_domain_newer_than: 31
 
 submission_params:
   - name: ip_mmdb_lookup
     default: "dynamic"
     value: "dynamic"
+    type: list
+    list: ["dynamic", "static", "both", "none"]
+  - name: domain_whois_lookup
+    default: "both"
+    value: "both"
+    type: list
+    list: ["dynamic", "static", "both", "none"]
+  # Extract domains from URIs
+  - name: uri_whois_lookup
+    default: "both"
+    value: "both"
     type: list
     list: ["dynamic", "static", "both", "none"]
 
@@ -30,12 +42,12 @@ submission_params:
 # 700 - 999: highly suspicious
 # >= 1000: malicious
 
-heuristics: []
-#   - description: Some score
-#     filetype: "*"
-#     heur_id: 1
-#     name: Score
-#     score: 0
+heuristics:
+  - description: The domain was recently created
+    filetype: "*"
+    heur_id: 1
+    name: Newly created domain
+    score: 300
 
 docker_config:
   image: ${REGISTRY}ghcr.io/kam193/assemblyline-service-network-information:$SERVICE_TAG
