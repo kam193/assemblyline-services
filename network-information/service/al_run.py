@@ -2,7 +2,7 @@ import itertools
 import json
 import os
 from contextlib import suppress
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from enum import Enum
 
 import maxminddb
@@ -28,6 +28,13 @@ class SelectedTagType(str, Enum):
     STATIC = "static"
     DYNAMIC = "dynamic"
     BOTH = "both"
+
+
+def dt_convert(datestr: str) -> datetime:
+    dt = datetime.fromisoformat(datestr)
+    if not dt.tzinfo:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt
 
 
 class AssemblylineService(ServiceBase):
@@ -143,7 +150,6 @@ class AssemblylineService(ServiceBase):
                 main_section.add_subsection(ip_section)
 
         if main_section.subsections:
-            self.log.debug("Main section: %s", main_section)
             return main_section
         return None
 
@@ -156,9 +162,11 @@ class AssemblylineService(ServiceBase):
         if domain_info:
             for key, value in domain_info.items():
                 if isinstance(value, list):
-                    domain_info[key] = [str(item) for item in value]
+                    domain_info[key] = sorted(set(str(item).lower() for item in value))
                 elif value is not None:
                     domain_info[key] = str(value)
+                    if "redacted" in domain_info[key].lower():
+                        domain_info[key] = None
         else:
             self.log.info("No WHOIS information found for domain %s", domain)
 
@@ -185,11 +193,11 @@ class AssemblylineService(ServiceBase):
         if self._warn_newer_than:
             if created_at := domain_info.get("creation_date"):
                 if isinstance(created_at, list):
-                    created_at = min(datetime.fromisoformat(date) for date in created_at)
+                    created_at = min(dt_convert(date) for date in created_at)
                 else:
-                    created_at = datetime.fromisoformat(created_at)
+                    created_at = dt_convert(created_at)
 
-                if datetime.now() - created_at < self._warn_newer_than:
+                if datetime.now(tz=timezone.utc) - created_at < self._warn_newer_than:
                     section.set_heuristic(1)
                     section.auto_collapse = False
 
@@ -218,13 +226,12 @@ class AssemblylineService(ServiceBase):
                 self.log.warning("Error parsing URI/Domain %s: %s", path, exc, exc_info=True)
 
         main_section = ResultTextSection("Domain Information")
-        for domain in top_domains:
+        for domain in sorted(top_domains):
             domain_section = self._handle_domain(domain)
             if domain_section:
                 main_section.add_subsection(domain_section)
 
         if main_section.subsections:
-            self.log.debug("Main section: %s", main_section)
             return main_section
         return None
 
