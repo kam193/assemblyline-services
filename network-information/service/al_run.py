@@ -159,6 +159,8 @@ class AssemblylineService(ServiceBase):
                     domain_info[key] = [str(item) for item in value]
                 elif value is not None:
                     domain_info[key] = str(value)
+        else:
+            self.log.info("No WHOIS information found for domain %s", domain)
 
         self.redis_client.set(cache_key, json.dumps(domain_info or {}), ex=self._cache_ttl)
         return domain_info or None
@@ -190,6 +192,9 @@ class AssemblylineService(ServiceBase):
                 if datetime.now() - created_at < self._warn_newer_than:
                     section.set_heuristic(1)
                     section.auto_collapse = False
+
+        if not section.section_body._data:
+            return None
 
         return section
 
