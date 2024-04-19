@@ -38,6 +38,7 @@ files. Responses are cached. Currently supported services:
 Service to get information about IPs and domains. Currently supported:
 
  - IP data from MMDB files (you can configure your own, the default one is [GeoOpen](https://cra.circl.lu/opendata/geo-open/)),
+ - WHOIS data for domains, including domains extracted from URIs. Results are cached.
 
 ### PCAP Extractor
 
