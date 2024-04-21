@@ -15,6 +15,7 @@ config:
   local_networks: "172.17.0.0/16"
   ignore_ips: "192.168.0.1"
   command_timeout: 30
+  exfiltration_threshold_mb: 10
 
 # submission_params:
 #   - default: "auto"
@@ -39,6 +40,11 @@ heuristics:
     filetype: "*"
     heur_id: 2
     name: Connection to non-HTTP port
+    score: 700
+  - description: Connection is sending out a lot of data. Possible exfiltrating data.
+    filetype: "*"
+    heur_id: 3
+    name: Possible data exfiltration
     score: 700
 
 docker_config:

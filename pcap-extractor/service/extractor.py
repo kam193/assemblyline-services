@@ -7,16 +7,40 @@ from dataclasses import dataclass
 from typing import Iterable
 
 TSHARK_PATH = "/usr/bin/tshark"
+# Assuming tshark uses proper SI units
+UNITS_TABLE = {
+    "bytes": 1,
+    "byte": 1,
+    "B": 1,
+    "kB": 1000,
+    "MB": 1000**2,
+    "GB": 1000**3,
+    "TB": 1000**4,
+}
+
+
+def bytes_to_human(size: int) -> str:
+    units = ["B", "kB", "MB", "GB", "TB"]
+    selected_unit = "B"
+    for unit in units:
+        if size < 1000:
+            selected_unit = unit
+            break
+        size /= 1000
+
+    return f"{size:.2f} {selected_unit}"
 
 
 @dataclass
 class Conversation:
     src_ip: ipaddress._IPAddressBase
-    src_port: int
     dst_ip: ipaddress._IPAddressBase
-    dst_port: int
+    src_port: int = None
+    dst_port: int = None
     stream_file: str = None
     protocol: str = ""
+    bytes_sent: int = 0
+    bytes_received: int = 0
 
     @property
     def is_http(self) -> bool:
@@ -28,11 +52,19 @@ class Conversation:
 
     @property
     def tshark_filter(self) -> str:
-        return f"ip.addr == {self.src_ip} && ip.addr == {self.dst_ip} && tcp.port == {self.src_port} && tcp.port == {self.dst_port}"
+        return f"ip.addr == {self.src_ip} && ip.addr == {self.dst_ip} && tcp.port == {self.src_port} && tcp.port == {self.dst_port}"  # noqa: E501
 
     @property
     def description(self) -> str:
         return f"{self.src_ip}:{self.src_port} <-> {self.dst_ip}:{self.dst_port}"
+
+    @property
+    def sent_human(self) -> str:
+        return bytes_to_human(self.bytes_sent)
+
+    @property
+    def received_human(self) -> str:
+        return bytes_to_human(self.bytes_received)
 
 
 class Extractor:
@@ -100,8 +132,8 @@ class Extractor:
             dst_ip, dst_port = dst.strip().split(":")
             yield Conversation(
                 ipaddress.ip_address(src_ip),
-                int(src_port),
                 ipaddress.ip_address(dst_ip),
+                int(src_port),
                 int(dst_port),
             )
 
@@ -130,8 +162,9 @@ class Extractor:
         #     self.execute(["-z", f"follow,{conv.protocol},ascii,{conv.follow_filter},0"], out_file=out_file)
         #     self.execute(["-z", f"follow,{conv.protocol},ascii,{conv.follow_filter},1"], out_file=out_file)
         # else:
-        self.execute(["-z", f"follow,{conv.protocol},ascii,{conv.follow_filter}"], out_file=out_file)
-
+        self.execute(
+            ["-z", f"follow,{conv.protocol},ascii,{conv.follow_filter}"], out_file=out_file
+        )
 
     def process_conversations(self) -> Iterable[Conversation]:
         for conv in self.get_tcp_conversations():
@@ -147,3 +180,82 @@ class Extractor:
         self.execute(params)
         for file in os.listdir(out_dir):
             yield os.path.join(out_dir, file)
+
+    def _calculate_bytes(self, size_str: str, unit: str) -> int:
+        try:
+            size = int(size_str)
+        except ValueError:
+            size = float(size_str)
+        if unit not in UNITS_TABLE:
+            self.logger.error("Unknown unit: %s", unit)
+            return -1
+        return int(size * UNITS_TABLE[unit])
+
+    def _get_conv_size(self, line):
+        sent_size_parts = []
+        sent_unit = None
+        received_size_parts = []
+        received_unit = None
+        ignore_frames = True
+        for part in line.split():
+            if not part:
+                continue
+            try:
+                float(part)
+                if ignore_frames:
+                    ignore_frames = False
+                    continue
+                if not sent_unit:
+                    sent_size_parts.append(part)
+                else:
+                    received_size_parts.append(part)
+            except ValueError:
+                if not sent_unit:
+                    sent_unit = part
+                    ignore_frames = True
+                else:
+                    received_unit = part
+
+            if received_unit:
+                break
+
+        sent = self._calculate_bytes("".join(sent_size_parts), sent_unit)
+        received = self._calculate_bytes("".join(received_size_parts), received_unit)
+        self.logger.debug(
+            "Sent %s %s -> %s bytes, Received %s %s -> %s bytes",
+            sent_size_parts,
+            sent_unit,
+            sent,
+            received_size_parts,
+            received_unit,
+            received,
+        )
+        return sent, received
+
+    def get_ip_conversations_stats(self) -> Iterable[Conversation]:
+        result = self.execute(["-z", "conv,ip"])
+        self.logger.debug("IP conversations: %s", result)
+        result = result.splitlines()
+        columns_lengths = [len(col) for col in result[4].split("|")]
+
+        for line in result[5:-1]:
+            self.logger.debug("IP conversation line: %s", line)
+            first_col = line[: columns_lengths[0]]
+
+            sent, received = self._get_conv_size(line[columns_lengths[0] :])
+
+            src, dst = first_col.split("<->")
+            yield Conversation(
+                ipaddress.ip_address(src.strip()),
+                ipaddress.ip_address(dst.strip()),
+                bytes_sent=sent,
+                bytes_received=received,
+            )
+
+    @staticmethod
+    @property
+    def tshark_version() -> str:
+        result = subprocess.run([TSHARK_PATH, "-v"], capture_output=True, text=True)
+        result = result.stdout.splitlines()
+        fields = result[0].split()
+        return fields[2]

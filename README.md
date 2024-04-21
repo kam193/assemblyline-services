@@ -40,9 +40,16 @@ Service to get information about IPs and domains. Currently supported:
  - IP data from MMDB files (you can configure your own, the default one is [GeoOpen](https://cra.circl.lu/opendata/geo-open/)),
  - WHOIS data for domains, including domains extracted from URIs. Results are cached.
 
+Supported heuristics:
+  - newly created domains (based on WHOIS data).
+
 ### PCAP Extractor
 
 This service list flows from a pcap file using Tshark. If supported by Tshark, it can also extract files.
+
+Supported heuristics:
+ - external HTTP/non-HTTP connections,
+ - data exfiltration threshold (based on total data sent out).
 
 ### Python Magic
 

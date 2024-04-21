@@ -9,7 +9,7 @@ from assemblyline_v4_service.common.result import (
     ResultTextSection,
 )
 
-from .extractor import Extractor
+from .extractor import Extractor, bytes_to_human
 
 
 class AssemblylineService(ServiceBase):
@@ -33,6 +33,7 @@ class AssemblylineService(ServiceBase):
                 self.ignore_ips.append(ipaddress.ip_address(ip))
 
         self.command_timeout = int(self.config.get("command_timeout", 30))
+        self.exfiltration_threshold = int(self.config.get("exfiltration_threshold_mb", 10)) * 10**4
 
     def start(self):
         self.log.info(f"start() from {self.service_attributes.name} service called")
@@ -96,3 +97,19 @@ class AssemblylineService(ServiceBase):
 
         for file in extractor.get_files():
             request.add_extracted(file, os.path.basename(file), "File extracted from PCAP")
+
+        stats_section = ResultTextSection("IP statistics")
+        main_section.add_subsection(stats_section)
+
+        total_sent = 0
+        for conv in extractor.get_ip_conversations_stats():
+            stats_section.add_line(
+                f"Remote {conv.dst_ip}: sent: {conv.sent_human}, received: {conv.received_human}"
+            )
+            total_sent += conv.bytes_sent
+
+        if self.exfiltration_threshold and total_sent > self.exfiltration_threshold:
+            stats_section.set_heuristic(3)
+            stats_section.add_line(
+                f"Total data sent: {bytes_to_human(total_sent)} exceeded the exfiltration warning threshold."
+            )
