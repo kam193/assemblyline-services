@@ -104,7 +104,7 @@ jobs:
           if [[ ! -s "release_text.md" ]]; then
             echo "release=false" >> $GITHUB_OUTPUT
           else
-            echo "This is an automated release. Following new service versions where uploaded." > release_body.md
+            echo "This is an automated release. Following new service versions were uploaded." > release_body.md
             cat release_text.md >> release_body.md
             echo "release=true" >> $GITHUB_OUTPUT
             echo "CURRENT_DATE=$(date +'%Y-%m-%d--%H-%M')" >> $GITHUB_ENV
