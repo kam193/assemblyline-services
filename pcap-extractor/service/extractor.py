@@ -205,18 +205,18 @@ class Extractor:
                 if ignore_frames:
                     ignore_frames = False
                     continue
-                if not sent_unit:
-                    sent_size_parts.append(part)
-                else:
+                if not received_unit:
                     received_size_parts.append(part)
+                else:
+                    sent_unit.append(part)
             except ValueError:
-                if not sent_unit:
-                    sent_unit = part
+                if not received_unit:
+                    received_unit = part
                     ignore_frames = True
                 else:
-                    received_unit = part
+                    sent_unit = part
 
-            if received_unit:
+            if sent_unit:
                 break
 
         sent = self._calculate_bytes("".join(sent_size_parts), sent_unit)
