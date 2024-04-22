@@ -33,7 +33,7 @@ class AssemblylineService(ServiceBase):
                 self.ignore_ips.append(ipaddress.ip_address(ip))
 
         self.command_timeout = int(self.config.get("command_timeout", 30))
-        self.exfiltration_threshold = int(self.config.get("exfiltration_threshold_mb", 10)) * 10**4
+        self.exfiltration_threshold = int(self.config.get("exfiltration_threshold_mb", 10)) * 10**6
 
     def start(self):
         self.log.info(f"start() from {self.service_attributes.name} service called")
