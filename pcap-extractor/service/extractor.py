@@ -208,7 +208,7 @@ class Extractor:
                 if not received_unit:
                     received_size_parts.append(part)
                 else:
-                    sent_unit.append(part)
+                    sent_size_parts.append(part)
             except ValueError:
                 if not received_unit:
                     received_unit = part
