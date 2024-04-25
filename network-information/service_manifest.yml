@@ -57,7 +57,7 @@ docker_config:
   allow_internet_access: true
 
 update_config:
-  update_interval_seconds: 7200 # 2 hours
+  update_interval_seconds: 86400 # 1 day
   generates_signatures: false
   wait_for_update: true
   # Please configure your own data, e.g. from MaxMind or IPInfo.io (offers free tiers)

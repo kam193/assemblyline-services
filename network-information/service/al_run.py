@@ -158,7 +158,11 @@ class AssemblylineService(ServiceBase):
         if cached := self.redis_client.get(cache_key):
             return json.loads(cached) or None
 
-        domain_info = whois.whois(domain)
+        domain_info = None
+        # PywhoisError is raised when the domain is not found
+        with suppress(whois.parser.PywhoisError):
+            domain_info = whois.whois(domain)
+
         if domain_info:
             for key, value in domain_info.items():
                 if isinstance(value, list):
