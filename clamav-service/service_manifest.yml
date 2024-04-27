@@ -48,6 +48,7 @@ docker_config:
   image: ${REGISTRY}ghcr.io/kam193/assemblyline-service-clamav:$SERVICE_TAG
   cpu_cores: 1.0
   ram_mb: 3072
+  ram_mb_min: 1536
 
 update_config:
   update_interval_seconds: 7200 # 2 hours
@@ -82,6 +83,7 @@ dependencies:
   updates:
     container:
       ram_mb: 3072
+      ram_mb_min: 1024
       allow_internet_access: true
       command: ["python", "-m", "service.updater"]
       image: ${REGISTRY}ghcr.io/kam193/assemblyline-service-clamav:$SERVICE_TAG

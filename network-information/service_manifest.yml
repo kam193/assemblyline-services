@@ -82,6 +82,7 @@ dependencies:
   netinfo_cache:
     container:
       ram_mb: 256
+      ram_mb_min: 32
       cpu_cores: 0.5
       allow_internet_access: false
       command:

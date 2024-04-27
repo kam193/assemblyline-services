@@ -39,6 +39,7 @@ docker_config:
   image: ${REGISTRY}ghcr.io/kam193/assemblyline-service-template:$SERVICE_TAG
   cpu_cores: 1.0
   ram_mb: 512
+  ram_mb_min: 256
   allow_internet_access: true
 
 # update_config:
@@ -51,6 +52,7 @@ docker_config:
 #   updates:
 #     container:
 #       ram_mb: 3072
+#       ram_mb_min: 256
 #       allow_internet_access: true
 #       command: ["python", "-m", "service.updater"]
 #       image: ${REGISTRY}ghcr.io/kam193/assemblyline-service-template:$SERVICE_TAG
