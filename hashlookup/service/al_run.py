@@ -27,8 +27,8 @@ REDIS_TTL = 3600 * 24
 
 
 NX_SENTINEL = "NX"
-RETRIES = 3
-TIMEOUT = 10
+RETRIES = 2
+TIMEOUT = 3
 
 TRUST_SAFE_LEVEL = 80
 TRUST_UNSAFE_LEVEL = 20
@@ -163,7 +163,9 @@ class AssemblylineService(ServiceBase):
         self.safe_level = self.config.get("safe_level", TRUST_SAFE_LEVEL)
         self.unsafe_level = self.config.get("unsafe_level", TRUST_UNSAFE_LEVEL)
 
-        self._resolver = dns.resolver.Resolver(configure=False if self.dns_server else True)
+        self._resolver = dns.resolver.Resolver(
+            configure=False if self.dns_server else True, lifetime=TIMEOUT
+        )
         if self.dns_server:
             if "," in self.dns_server:
                 self._resolver.nameservers = self.dns_server.split(",")
