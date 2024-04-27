@@ -124,7 +124,9 @@ class CIRCLHashlookup(CachedLookup):
         return data
 
     def _lookup(self, sha1: str):
-        dns_answer = self._resolver.resolve(f"{sha1.lower()}.{self.HASHLOOKUP_SERVER}", "TXT")
+        dns_answer = self._resolver.resolve(
+            f"{sha1.lower()}.{self.HASHLOOKUP_SERVER}", "TXT", lifetime=TIMEOUT
+        )
         dns_answer = dns_answer[0]
         self.log.debug("lookup_sha1(%s) = %s", sha1, dns_answer)
         data = self._get_details(sha1)
@@ -136,7 +138,9 @@ class CymruMalwareHash(CachedLookup):
     CACHE_TEMPLATE = "cymru:{}"
 
     def _lookup(self, sha1: str):
-        dns_answer = self._resolver.resolve(f"{sha1.lower()}.{self.HASHLOOKUP_SERVER}", "TXT")
+        dns_answer = self._resolver.resolve(
+            f"{sha1.lower()}.{self.HASHLOOKUP_SERVER}", "TXT", lifetime=TIMEOUT
+        )
         dns_answer = dns_answer[0].to_text().replace('"', "")
         self.log.debug("lookup_sha1(%s) = %s", sha1, dns_answer)
         timestamp, detection_rate = dns_answer.split(" ")
@@ -163,9 +167,7 @@ class AssemblylineService(ServiceBase):
         self.safe_level = self.config.get("safe_level", TRUST_SAFE_LEVEL)
         self.unsafe_level = self.config.get("unsafe_level", TRUST_UNSAFE_LEVEL)
 
-        self._resolver = dns.resolver.Resolver(
-            configure=False if self.dns_server else True, lifetime=TIMEOUT
-        )
+        self._resolver = dns.resolver.Resolver(configure=False if self.dns_server else True)
         if self.dns_server:
             if "," in self.dns_server:
                 self._resolver.nameservers = self.dns_server.split(",")
