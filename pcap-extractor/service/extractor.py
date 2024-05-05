@@ -41,6 +41,7 @@ class Conversation:
     protocol: str = ""
     bytes_sent: int = 0
     bytes_received: int = 0
+    stream_id: int = None
 
     @property
     def is_http(self) -> bool:
@@ -92,13 +93,14 @@ class Extractor:
             f"ip.addr not in {{{','.join([str(ip) for ip in self.ignore_ips])}}}",
         ]
 
-    def execute(self, command: list[str], out_file: str = None) -> str:
+    def execute(self, command: list[str], out_file: str = None, add_filter: bool = True) -> str:
         kwargs = {}
         if out_file:
             kwargs["stdout"] = open(out_file, "a")
-        full_command = (
-            [self.tshark_path, "-r", self.pcap_path, "-q"] + self._ignored_filter() + command
-        )
+        full_command = [self.tshark_path, "-r", self.pcap_path, "-q"]
+        if add_filter:
+            full_command += self._ignored_filter()
+        full_command += command
         result = subprocess.run(
             full_command,
             capture_output=True if not out_file else False,
@@ -117,11 +119,11 @@ class Extractor:
         return result.stdout if not out_file else out_file
 
     def get_tcp_conversations(self) -> Iterable[Conversation]:
-        result = self.execute(["-z", "conv,tcp"])
+        result = self.execute(["-z", "conv,tcp"], add_filter=False)
         result = result.splitlines()
         first_column_len = len(result[4].split("|")[0])
         result = result[5:-1]
-        for line in result:
+        for idx, line in enumerate(result):
             line = line[:first_column_len]
             sides = line.split("<->")
             if len(sides) != 2:
@@ -130,16 +132,33 @@ class Extractor:
             src, dst = sides
             src_ip, src_port = src.strip().split(":")
             dst_ip, dst_port = dst.strip().split(":")
+
+            src_ip = ipaddress.ip_address(src_ip)
+            dst_ip = ipaddress.ip_address(dst_ip)
+            if src_ip in self.ignore_ips or dst_ip in self.ignore_ips:
+                continue
             yield Conversation(
-                ipaddress.ip_address(src_ip),
-                ipaddress.ip_address(dst_ip),
+                src_ip,
+                dst_ip,
                 int(src_port),
                 int(dst_port),
+                stream_id=idx,
             )
+
+    def _is_streaming_finished(self, stream_file: str) -> bool:
+        try:
+            with open(stream_file, "rb") as f:
+                f.seek(-100, os.SEEK_END)
+                last_bytes = f.read().decode("utf-8")
+            end_mark = "Node 0: :0\nNode 1: :0\n==================================================================="
+            return end_mark in last_bytes
+        except Exception as e:
+            self.logger.warning("Error checking if streaming is finished: %s", e)
+            return False
 
     def _extract_stream(self, conv: Conversation):
         # "http2", "quic" - require the valid stream ID
-        available_to_extract = ["http", "tcp", "udp", "dccp", "tls"]
+        available_to_extract = ["http", "tcp", "udp", "dccp", "tls", "http2", "quic"]
 
         proto_stats = self.execute(["-z", f"io,phs,{conv.tshark_filter}"])
         proto_stats = proto_stats.splitlines()
@@ -156,15 +175,24 @@ class Extractor:
 
         out_file = tempfile.mktemp(prefix=f"{conv.protocol}_")
         conv.stream_file = out_file
-        # if conv.protocol in ["http2", "quic"]:
-        #     # extract just the first two substream
-        #     # TODO: extract all substreams
-        #     self.execute(["-z", f"follow,{conv.protocol},ascii,{conv.follow_filter},0"], out_file=out_file)
-        #     self.execute(["-z", f"follow,{conv.protocol},ascii,{conv.follow_filter},1"], out_file=out_file)
-        # else:
-        self.execute(
-            ["-z", f"follow,{conv.protocol},ascii,{conv.follow_filter}"], out_file=out_file
-        )
+        if conv.protocol in ["http2", "quic"]:
+            substream = 0
+            # TODO: configurable limit
+            while substream < 10:
+                self.execute(
+                    [
+                        "-z",
+                        f"follow,{conv.protocol},ascii,{conv.stream_id},{substream}",
+                    ],
+                    out_file=out_file,
+                )
+                substream += 1
+                if self._is_streaming_finished(out_file):
+                    break
+        else:
+            self.execute(
+                ["-z", f"follow,{conv.protocol},ascii,{conv.follow_filter}"], out_file=out_file
+            )
 
     def process_conversations(self) -> Iterable[Conversation]:
         for conv in self.get_tcp_conversations():
