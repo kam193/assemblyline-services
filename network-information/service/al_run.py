@@ -30,8 +30,11 @@ class SelectedTagType(str, Enum):
     BOTH = "both"
 
 
-def dt_convert(datestr: str) -> datetime:
-    dt = datetime.fromisoformat(datestr)
+def dt_convert(datestr: str) -> datetime | None:
+    try:
+        dt = datetime.fromisoformat(datestr)
+    except ValueError:
+        return None
     if not dt.tzinfo:
         dt = dt.replace(tzinfo=timezone.utc)
     return dt
@@ -197,11 +200,17 @@ class AssemblylineService(ServiceBase):
         if self._warn_newer_than:
             if created_at := domain_info.get("creation_date"):
                 if isinstance(created_at, list):
-                    created_at = min(dt_convert(date) for date in created_at)
+                    try:
+                        created_at = min(filter(None, (dt_convert(date) for date in created_at)))
+                    except ValueError:
+                        created_at = None
                 else:
                     created_at = dt_convert(created_at)
 
-                if datetime.now(tz=timezone.utc) - created_at < self._warn_newer_than:
+                if (
+                    created_at
+                    and datetime.now(tz=timezone.utc) - created_at < self._warn_newer_than
+                ):
                     section.set_heuristic(1)
                     section.auto_collapse = False
 
