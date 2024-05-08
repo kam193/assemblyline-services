@@ -1,10 +1,13 @@
 import ipaddress
+import json
 import logging
 import os
 import subprocess
 import tempfile
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Iterable
+
+logger = logging.getLogger("assemblyline.service.pcap-extractor.conv")
 
 TSHARK_PATH = "/usr/bin/tshark"
 # Assuming tshark uses proper SI units
@@ -17,6 +20,28 @@ UNITS_TABLE = {
     "GB": 1000**3,
     "TB": 1000**4,
 }
+
+IMPORTANT_PROTOCOLS = ("http2", "http", "tls", "tcp", "udp")
+
+_FIELDS_TO_EXTRACT = [
+    "tcp.stream",
+    "frame.protocols",
+    "ip.src",
+    "tcp.srcport",
+    "ip.dst",
+    "tcp.dstport",
+    "http.host",
+    "http.request.uri",
+    "http2.streamid",
+    "http2.header.name",
+    "http2.header.value",
+]
+TSHARK_ANALYSIS_COMMAND = [
+    "-T",
+    "ek",
+]
+for f in _FIELDS_TO_EXTRACT:
+    TSHARK_ANALYSIS_COMMAND += ["-e", f]
 
 
 def bytes_to_human(size: int) -> str:
@@ -32,6 +57,23 @@ def bytes_to_human(size: int) -> str:
 
 
 @dataclass
+class ConversationStat:
+    src_ip: ipaddress._IPAddressBase
+    dst_ip: ipaddress._IPAddressBase
+
+    bytes_sent: int = 0
+    bytes_received: int = 0
+
+    @property
+    def sent_human(self) -> str:
+        return bytes_to_human(self.bytes_sent)
+
+    @property
+    def received_human(self) -> str:
+        return bytes_to_human(self.bytes_received)
+
+
+@dataclass
 class Conversation:
     src_ip: ipaddress._IPAddressBase
     dst_ip: ipaddress._IPAddressBase
@@ -42,6 +84,10 @@ class Conversation:
     bytes_sent: int = 0
     bytes_received: int = 0
     stream_id: int = None
+
+    host: list[str] = field(default_factory=list)
+    path: list[str] = field(default_factory=list)
+    http2_substreams: int = 0
 
     @property
     def is_http(self) -> bool:
@@ -67,6 +113,65 @@ class Conversation:
     def received_human(self) -> str:
         return bytes_to_human(self.bytes_received)
 
+    @classmethod
+    def from_dict(cls, data: dict):
+        if "layers" in data:
+            data = data["layers"]
+        tcp_stream = data.get("tcp_stream", [])[0]
+        protocol = data.get("frame_protocols", [""])[0].split(":")[-1]
+
+        conv = cls(
+            ipaddress.ip_address(data.get("ip_src", [""])[0]),
+            ipaddress.ip_address(data.get("ip_dst", [""])[0]),
+            int(data.get("tcp_srcport", [0])[0]),
+            int(data.get("tcp_dstport", [0])[0]),
+            stream_id=int(tcp_stream),
+            protocol=protocol,
+        )
+
+        if protocol == "http2":
+            headers = data.get("http2_header_name", [])
+            values = data.get("http2_header_value", [])
+            try:
+                conv.host = [values[headers.index(":authority")]]
+                conv.path = [values[headers.index(":path")]]
+            except (ValueError, IndexError):
+                pass
+
+        elif protocol == "http":
+            conv.host = [data.get("http_host", [""])[0]]
+            conv.path = [data.get("http_request_uri", [""])[0]]
+
+        return conv
+
+    def update(self, data: dict):
+        if "layers" in data:
+            data = data["layers"]
+        protocol = data.get("frame_protocols", [""])[0].split(":")[-1]
+        old_protocol = self.protocol
+        if protocol in IMPORTANT_PROTOCOLS and IMPORTANT_PROTOCOLS.index(
+            protocol
+        ) < IMPORTANT_PROTOCOLS.index(self.protocol):
+            self.protocol = protocol
+        logger.debug("%s -> %s (%s)", old_protocol, self.protocol, protocol)
+
+        if protocol == "http2":
+            headers = data.get("http2_header_name", [])
+            values = data.get("http2_header_value", [])
+            try:
+                self.host.append(values[headers.index(":authority")])
+                self.path.append(values[headers.index(":path")])
+            except (ValueError, IndexError):
+                pass
+
+            substream_id = data.get("http2_streamid", [0])[0]
+            self.http2_substreams = max(self.http2_substreams, int(substream_id))
+
+        elif protocol == "http":
+            if "http_host" in data:
+                self.host.append(data.get("http_host", [""])[0])
+                self.path.append(data.get("http_request_uri", [""])[0])
+
 
 class Extractor:
     def __init__(
@@ -75,6 +180,7 @@ class Extractor:
         base_logger: logging.Logger = None,
         timeout: int = 20,
         ignore_ips: list[ipaddress._IPAddressBase] = None,
+        max_packets: int = 100_000,
     ) -> None:
         self.pcap_path = pcap_path
         self.tshark_path = TSHARK_PATH
@@ -83,24 +189,36 @@ class Extractor:
         )
         self.timeout = timeout
         self.ignore_ips = ignore_ips or []
+        self.max_packets = max_packets
+        self._conversations = {}
 
     def _ignored_filter(self) -> list[str]:
         if not self.ignore_ips:
-            return []
-        return [
-            "-2",
-            "-R",
-            f"ip.addr not in {{{','.join([str(ip) for ip in self.ignore_ips])}}}",
-        ]
+            return ""
+        return f"ip.addr not in {{{','.join([str(ip) for ip in self.ignore_ips])}}}"
 
-    def execute(self, command: list[str], out_file: str = None, add_filter: bool = True) -> str:
+    def execute(
+        self,
+        command: list[str],
+        out_file: str = None,
+        add_read_filter: bool = True,
+        no_packets_output=True,
+    ) -> str:
         kwargs = {}
         if out_file:
             kwargs["stdout"] = open(out_file, "a")
-        full_command = [self.tshark_path, "-r", self.pcap_path, "-q"]
-        if add_filter:
-            full_command += self._ignored_filter()
+        full_command = [
+            self.tshark_path,
+            "-r",
+            self.pcap_path,
+        ]  #  "-c", str(self.max_packets)
+        if no_packets_output:
+            full_command.append("-q")
+        # Read filter is required for filtering summaries like -z conv,tcp
+        if add_read_filter and self.ignore_ips:
+            full_command += ["-2", "-R", self._ignored_filter()]
         full_command += command
+        self.logger.debug("Executing tshark command: %s", full_command)
         result = subprocess.run(
             full_command,
             capture_output=True if not out_file else False,
@@ -118,32 +236,68 @@ class Extractor:
             )
         return result.stdout if not out_file else out_file
 
-    def get_tcp_conversations(self) -> Iterable[Conversation]:
-        result = self.execute(["-z", "conv,tcp"], add_filter=False)
-        result = result.splitlines()
-        first_column_len = len(result[4].split("|")[0])
-        result = result[5:-1]
-        for idx, line in enumerate(result):
-            line = line[:first_column_len]
-            sides = line.split("<->")
-            if len(sides) != 2:
-                self.logger.error("Error parsing conversation line: %s", line)
-                continue
-            src, dst = sides
-            src_ip, src_port = src.strip().split(":")
-            dst_ip, dst_port = dst.strip().split(":")
+    def _parse_conversation_line(self, line: str):
+        data = json.loads(line)
+        tcp_stream = data.get("layers", {}).get("tcp_stream", [])
+        # TODO: support for multiple HTTP requests & count HTTP2 substreams
+        if not tcp_stream:
+            return
+        conv_id = int(tcp_stream[0])
+        if ("tcp", conv_id) in self._conversations:
+            self._conversations[("tcp", conv_id)].update(data)
+            return
+        conv = Conversation.from_dict(data)
+        self._conversations[("tcp", conv.stream_id)] = conv
 
-            src_ip = ipaddress.ip_address(src_ip)
-            dst_ip = ipaddress.ip_address(dst_ip)
-            if src_ip in self.ignore_ips or dst_ip in self.ignore_ips:
+    def get_tcp_conversations(self) -> Iterable[Conversation]:
+        result = self.execute(
+            TSHARK_ANALYSIS_COMMAND
+            + [
+                "-Y",
+                f"tcp and {self._ignored_filter()}",
+                "-z",
+                f"conv,tcp,{self._ignored_filter()}",
+            ],
+            add_read_filter=False,
+            no_packets_output=False,
+        )
+        result = result.splitlines()
+        result_iter = iter(result)
+        for line in result_iter:
+            if line.startswith("="):
+                break
+            if line.startswith('{"index":'):
                 continue
-            yield Conversation(
-                src_ip,
-                dst_ip,
-                int(src_port),
-                int(dst_port),
-                stream_id=idx,
-            )
+            # self.logger.debug("Conversation line: %s", line)
+            self._parse_conversation_line(line)
+
+        for conv in self._conversations.values():
+            yield conv
+
+        # TODO: implement parsing
+        # first_column_len = len(result[4].split("|")[0])
+        # result = result[5:-1]
+        # for idx, line in enumerate(result):
+        #     line = line[:first_column_len]
+        #     sides = line.split("<->")
+        #     if len(sides) != 2:
+        #         self.logger.error("Error parsing conversation line: %s", line)
+        #         continue
+        #     src, dst = sides
+        #     src_ip, src_port = src.strip().split(":")
+        #     dst_ip, dst_port = dst.strip().split(":")
+
+        #     src_ip = ipaddress.ip_address(src_ip)
+        #     dst_ip = ipaddress.ip_address(dst_ip)
+        #     if src_ip in self.ignore_ips or dst_ip in self.ignore_ips:
+        #         continue
+        #     yield Conversation(
+        #         src_ip,
+        #         dst_ip,
+        #         int(src_port),
+        #         int(dst_port),
+        #         stream_id=idx,
+        #     )
 
     def _is_streaming_finished(self, stream_file: str) -> bool:
         try:
@@ -158,44 +312,46 @@ class Extractor:
 
     def _extract_stream(self, conv: Conversation):
         # "http2", "quic" - require the valid stream ID
-        available_to_extract = ["http", "tcp", "udp", "dccp", "tls", "http2", "quic"]
 
-        proto_stats = self.execute(["-z", f"io,phs,{conv.tshark_filter}"])
-        proto_stats = proto_stats.splitlines()
-        proto_stats = proto_stats[5:-1]
+        # proto_stats = self.execute(["-z", f"io,phs,{conv.tshark_filter}"], add_read_filter=False)
+        # proto_stats = proto_stats.splitlines()
+        # proto_stats = proto_stats[5:-1]
 
-        for line in proto_stats:
-            proto = line.strip().split()[0]
-            if proto in available_to_extract:
-                conv.protocol = proto
+        # for line in proto_stats:
+        #     proto = line.strip().split()[0]
+        #     if proto in available_to_extract:
+        #         conv.protocol = proto
 
-        if conv.protocol is None:
+        if not conv.protocol:
             self.logger.error("No stream protocol found for %s", conv.description)
             return
 
         out_file = tempfile.mktemp(prefix=f"{conv.protocol}_")
         conv.stream_file = out_file
-        if conv.protocol in ["http2", "quic"]:
+        if conv.protocol in ["http2"]:
             substream = 0
             # TODO: configurable limit
-            while substream < 10:
+            while substream <= min(10, conv.http2_substreams):
                 self.execute(
                     [
                         "-z",
                         f"follow,{conv.protocol},ascii,{conv.stream_id},{substream}",
                     ],
                     out_file=out_file,
+                    add_read_filter=False,
                 )
                 substream += 1
                 if self._is_streaming_finished(out_file):
                     break
         else:
             self.execute(
-                ["-z", f"follow,{conv.protocol},ascii,{conv.follow_filter}"], out_file=out_file
+                ["-z", f"follow,{conv.protocol},ascii,{conv.follow_filter}"],
+                out_file=out_file,
+                add_read_filter=False,
             )
 
     def process_conversations(self) -> Iterable[Conversation]:
-        for conv in self.get_tcp_conversations():
+        for idx, conv in enumerate(self.get_tcp_conversations()):
             self._extract_stream(conv)
             yield conv
 
@@ -260,8 +416,11 @@ class Extractor:
         )
         return sent, received
 
+    def _parse_conversation_stats(self):
+        pass
+
     def get_ip_conversations_stats(self) -> Iterable[Conversation]:
-        result = self.execute(["-z", "conv,ip"])
+        result = self.execute(["-z", f"conv,ip,{self._ignored_filter()}"])
         self.logger.debug("IP conversations: %s", result)
         result = result.splitlines()
         columns_lengths = [len(col) for col in result[4].split("|")]
