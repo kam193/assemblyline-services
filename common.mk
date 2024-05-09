@@ -43,11 +43,13 @@ ARGS=
 ARGS_INT=
 CONTAINER_NAME=${SERVICE_NAME}
 CONTAINER_NETWORK=al_registration
+PRIVILEGED=false
 run: build
 	docker run --rm --env SERVICE_API_HOST=http://al_service_server:5003 --network=${CONTAINER_NETWORK} \
 	-e LOG_LEVEL=DEBUG \
 	-v "${PWD}/../config.yml:/etc/assemblyline/config.yml" \
 	-e AL_SERVICE_NAME=${AL_SERVICE_NAME} \
+	-e PRIVILEGED=${PRIVILEGED} \
 	${ARGS} \
 	${ARGS_INT} \
 	--name ${CONTAINER_NAME} kam193/${SERVICE_NAME}:latest ${COMMAND}

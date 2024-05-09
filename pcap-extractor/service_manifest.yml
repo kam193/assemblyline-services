@@ -10,6 +10,7 @@ category: Static Analysis
 file_required: true
 timeout: 210
 is_external: false
+privileged: true
 
 config:
   local_networks: "172.17.0.0/16"

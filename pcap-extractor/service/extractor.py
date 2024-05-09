@@ -102,7 +102,7 @@ class Conversation:
         if self.protocol in ["http", "http2"]:
             for host, path in zip(self.hosts, self.paths):
                 yield f"{self.schema}://{host}{path}"
-        raise StopIteration()
+        return []
 
     @property
     def description(self) -> str:
@@ -243,73 +243,6 @@ class Extractor:
         conv = Conversation.from_dict(data)
         self._conversations[("tcp", conv.stream_id)] = conv
 
-    def extract(self):
-        result = self.execute(
-            TSHARK_ANALYSIS_COMMAND
-            + [
-                "-Y",
-                f"tcp and {self._ignored_filter()}",
-                "-z",
-                f"conv,ip,{self._ignored_filter()}",
-            ],
-            no_packets_output=False,
-        )
-        result = result.splitlines()
-        result_iter = iter(result)
-        for line in result_iter:
-            if line.startswith("="):
-                break
-            if line.startswith('{"index":'):
-                continue
-            self._parse_conversation_line(line)
-
-        self._parse_conversation_stats(result_iter)
-
-    def extract_stream(self, conv: Conversation) -> str:
-        if not conv.protocol:
-            self.logger.error("No stream protocol found for %s", conv.description)
-            return None
-
-        out_file = tempfile.mktemp(prefix=f"{conv.protocol}_")
-        conv.stream_file = out_file
-        if conv.protocol in ["http2"]:
-            substream = 0
-            # TODO: configurable limit
-            while substream <= min(10, conv.http2_substreams):
-                self.execute(
-                    [
-                        "-z",
-                        f"follow,{conv.protocol},ascii,{conv.stream_id},{substream}",
-                    ],
-                    out_file=out_file,
-                )
-                substream += 1
-        else:
-            self.execute(
-                ["-z", f"follow,{conv.protocol},ascii,{conv.follow_filter}"],
-                out_file=out_file,
-            )
-
-        return out_file
-
-    @property
-    def conversations(self) -> Iterable[Conversation]:
-        return self._conversations.values()
-
-    @property
-    def stats(self) -> Iterable[ConversationStat]:
-        return self._stats
-
-    def get_files(self) -> Iterable[str]:
-        out_dir = tempfile.mkdtemp(prefix="extracted_")
-        params = ["-Y", self._ignored_filter()]
-        for proto in ["dicom", "ftp-data", "http", "imf", "smb", "tftp"]:
-            params.append("--export-objects")
-            params.append(f"{proto},{out_dir}")
-        self.execute(params)
-        for file in os.listdir(out_dir):
-            yield os.path.join(out_dir, file)
-
     def _calculate_bytes(self, size_str: str, unit: str) -> int:
         try:
             size = int(size_str)
@@ -382,6 +315,88 @@ class Extractor:
                     received,
                 )
             )
+
+    def extract(self):
+        result = self.execute(
+            TSHARK_ANALYSIS_COMMAND
+            + [
+                "-Y",
+                f"tcp and {self._ignored_filter()}",
+                "-z",
+                f"conv,ip,{self._ignored_filter()}",
+            ],
+            no_packets_output=False,
+        )
+        result = result.splitlines()
+        result_iter = iter(result)
+        for line in result_iter:
+            if line.startswith("="):
+                break
+            if line.startswith('{"index":'):
+                continue
+            self._parse_conversation_line(line)
+
+        self._parse_conversation_stats(result_iter)
+
+    def extract_stream(self, conv: Conversation) -> str:
+        if not conv.protocol:
+            self.logger.error("No stream protocol found for %s", conv.description)
+            return None
+
+        out_file = tempfile.mktemp(prefix=f"{conv.protocol}_")
+        conv.stream_file = out_file
+        if conv.protocol in ["http2"]:
+            substream = 0
+            # TODO: configurable limit
+            while substream <= min(10, conv.http2_substreams):
+                self.execute(
+                    [
+                        "-z",
+                        f"follow,{conv.protocol},ascii,{conv.stream_id},{substream}",
+                    ],
+                    out_file=out_file,
+                )
+                substream += 1
+        else:
+            self.execute(
+                ["-z", f"follow,{conv.protocol},ascii,{conv.follow_filter}"],
+                out_file=out_file,
+            )
+
+        return out_file
+
+    @property
+    def conversations(self) -> Iterable[Conversation]:
+        return self._conversations.values()
+
+    @property
+    def stats(self) -> Iterable[ConversationStat]:
+        return self._stats
+
+    def get_files(self, skip_streams: list = None) -> Iterable[str]:
+        out_dir = tempfile.mkdtemp(prefix="extracted_")
+
+        stream_filter = ""
+        if skip_streams:
+            stream_filter = f" and tcp.stream not in {{{','.join([str(s) for s in skip_streams])}}}"
+
+        params = ["-2", "-R", f"{self._ignored_filter()}{stream_filter}"]
+        for proto in ["dicom", "ftp-data", "http", "imf", "smb", "tftp"]:
+            params.append("--export-objects")
+            params.append(f"{proto},{out_dir}")
+        self.execute(params)
+        for file in os.listdir(out_dir):
+            yield os.path.join(out_dir, file)
+
+    def get_iocs(self) -> tuple[set[str], set[str], set[str]]:
+        ips, domains, uris = set(), set(), set()
+        for conv in self.conversations:
+            # ips.add(str(conv.src_ip))
+            ips.add(str(conv.dst_ip))
+            if conv.hosts:
+                domains.update(conv.hosts)
+                uris.update(conv.uris)
+        return ips, domains, uris
 
     @staticmethod
     @property

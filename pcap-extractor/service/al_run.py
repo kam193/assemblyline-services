@@ -1,6 +1,9 @@
+import hashlib
 import ipaddress
 import os
+from collections import defaultdict
 
+from assemblyline.common.chunk import chunk
 from assemblyline_v4_service.common.base import ServiceBase
 from assemblyline_v4_service.common.request import ServiceRequest
 from assemblyline_v4_service.common.result import (
@@ -10,6 +13,8 @@ from assemblyline_v4_service.common.result import (
 )
 
 from .extractor import Extractor, bytes_to_human
+
+CHUNK_SIZE = 1000
 
 
 class AssemblylineService(ServiceBase):
@@ -51,6 +56,29 @@ class AssemblylineService(ServiceBase):
         with open(stream_file, "r") as f:
             return f.read(5000)
 
+    def _exist_safelisted_tags(self, tag_map: dict) -> dict:
+        # Based on the badlist implementation from assemblyline-common
+        safelist_ds = self.api_interface.safelist_client.datastore.safelist
+
+        lookup_keys = []
+        for tag_type, tag_values in tag_map.items():
+            for tag_value in tag_values:
+                lookup_keys.append(
+                    hashlib.sha256(f"{tag_type}: {tag_value}".encode("utf8")).hexdigest()
+                )
+
+        # Elasticsearch's result window can't be more than 10000 rows
+        # we will query for matches in chunks
+        results = defaultdict(list)
+        for key_chunk in chunk(lookup_keys, CHUNK_SIZE):
+            result_chunk = safelist_ds.search(
+                "*", fl="*", rows=CHUNK_SIZE, as_obj=False, key_space=key_chunk
+            )["items"]
+            for item in result_chunk:
+                results[item["tag"]["type"]].append(item["tag"]["value"])
+
+        return results
+
     def execute(self, request: ServiceRequest) -> None:
         result = Result()
         request.result = result
@@ -74,12 +102,28 @@ class AssemblylineService(ServiceBase):
         )
         extractor.extract()
 
+        ips, domains, uris = extractor.get_iocs()
+        safelisted_tags = self._exist_safelisted_tags(
+            {
+                "network.dynamic.domain": domains,
+                "network.dynamic.ip": ips,
+                "network.dynamic.uri": uris,
+            }
+        )
+        safelisted_tcp_streams = []
+
         tcp_section.add_line(f"Found {len(extractor.conversations)} TCP conversations")
         for conv in extractor.conversations:
+            is_safelisted = False
+
             protocol = conv.protocol.upper()
             conversation_section = ResultTextSection(
                 f"{protocol} {conv.description}", auto_collapse=True, zeroize_on_tag_safe=True
             )
+            conversation_section.add_line(
+                f"{conv.src_ip}:{conv.src_port} -> {conv.dst_ip}:{conv.dst_port}"
+            )
+            conversation_section.add_line(f"TCP stream ID: {conv.stream_id}")
 
             source_local = self._is_local_network(conv.src_ip)
             destination_local = self._is_local_network(conv.dst_ip)
@@ -87,36 +131,52 @@ class AssemblylineService(ServiceBase):
                 conversation_section.add_tag("network.dynamic.ip", conv.src_ip)
             if not destination_local:
                 conversation_section.add_tag("network.dynamic.ip", conv.dst_ip)
+                if str(conv.dst_ip) in safelisted_tags["network.dynamic.ip"]:
+                    is_safelisted = True
 
             if conv.hosts:
+                if not is_safelisted and all(
+                    host in safelisted_tags["network.dynamic.domain"] for host in conv.hosts
+                ):
+                    is_safelisted = True
+                if not is_safelisted and all(
+                    uri in safelisted_tags["network.dynamic.uri"] for uri in conv.uris
+                ):
+                    is_safelisted = True
                 for host, path in zip(conv.hosts, conv.uris):
                     conversation_section.add_tag("network.dynamic.domain", host)
                     conversation_section.add_tag("network.dynamic.uri", path)
 
-            if not conv.is_http:
-                conversation_section.set_heuristic(2)
-            elif not source_local or not destination_local:
-                conversation_section.set_heuristic(1)
+            if not is_safelisted:
+                if not conv.is_http:
+                    conversation_section.set_heuristic(2)
+                elif not source_local or not destination_local:
+                    conversation_section.set_heuristic(1)
 
-            if extract_streams:
-                if stream_file := extractor.extract_stream(conv):
-                    flow_section = ResultMemoryDumpSection("Data flow sample")
-                    flow_section.add_line(self._read_stream_sample(stream_file))
-                    conversation_section.add_subsection(flow_section)
-                    request.add_supplementary(
-                        stream_file,
-                        os.path.basename(stream_file),
-                        f"Data flow for {conv.description}",
-                    )
-                else:
-                    conversation_section.add_line(
-                        "No data flow sample available, try increase limits"
-                    )
+                if extract_streams:
+                    if stream_file := extractor.extract_stream(conv):
+                        flow_section = ResultMemoryDumpSection("Data flow sample")
+                        flow_section.add_line(self._read_stream_sample(stream_file))
+                        conversation_section.add_subsection(flow_section)
+                        request.add_supplementary(
+                            stream_file,
+                            os.path.basename(stream_file),
+                            f"Data flow for {conv.description}",
+                        )
+                    else:
+                        conversation_section.add_line(
+                            "No data flow sample available, try increase limits"
+                        )
+            else:
+                conversation_section.add_line(
+                    "Skipping data extractions for safelisted conversation"
+                )
+                safelisted_tcp_streams.append(conv.stream_id)
 
             tcp_section.add_subsection(conversation_section)
 
         if extract_files:
-            for file in extractor.get_files():
+            for file in extractor.get_files(safelisted_tcp_streams):
                 request.add_extracted(file, os.path.basename(file), "File extracted from PCAP")
 
         stats_section = ResultTextSection("IP statistics")
