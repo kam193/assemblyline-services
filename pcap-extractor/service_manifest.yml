@@ -8,7 +8,7 @@ rejects: empty
 stage: CORE
 category: Static Analysis
 file_required: true
-timeout: 120
+timeout: 210
 is_external: false
 
 config:
@@ -17,12 +17,19 @@ config:
   command_timeout: 30
   exfiltration_threshold_mb: 10
 
-# submission_params:
-#   - default: "auto"
-#     name: platform
-#     type: list
-#     value: "auto"
-#     list: ["auto", "linux"]
+submission_params:
+  - default: 0
+    name: max_packets_analyzed
+    type: int
+    value: 0
+  - default: true
+    name: extract_files
+    type: bool
+    value: true
+  - default: true
+    name: extract_streams
+    type: bool
+    value: true
 
 # -1000: safe
 # 0 - 299: informative

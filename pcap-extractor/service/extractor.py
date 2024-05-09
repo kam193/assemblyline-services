@@ -7,8 +7,6 @@ import tempfile
 from dataclasses import dataclass, field
 from typing import Iterable
 
-logger = logging.getLogger("assemblyline.service.pcap-extractor.conv")
-
 TSHARK_PATH = "/usr/bin/tshark"
 # Assuming tshark uses proper SI units
 UNITS_TABLE = {
@@ -81,12 +79,10 @@ class Conversation:
     dst_port: int = None
     stream_file: str = None
     protocol: str = ""
-    bytes_sent: int = 0
-    bytes_received: int = 0
     stream_id: int = None
 
-    host: list[str] = field(default_factory=list)
-    path: list[str] = field(default_factory=list)
+    hosts: list[str] = field(default_factory=list)
+    paths: list[str] = field(default_factory=list)
     http2_substreams: int = 0
 
     @property
@@ -98,20 +94,22 @@ class Conversation:
         return f"{self.src_ip}:{self.src_port},{self.dst_ip}:{self.dst_port}"
 
     @property
-    def tshark_filter(self) -> str:
-        return f"ip.addr == {self.src_ip} && ip.addr == {self.dst_ip} && tcp.port == {self.src_port} && tcp.port == {self.dst_port}"  # noqa: E501
+    def schema(self) -> str:
+        return "https" if self.dst_port == 443 else "http"
+
+    @property
+    def uris(self) -> Iterable[str]:
+        if self.protocol in ["http", "http2"]:
+            for host, path in zip(self.hosts, self.paths):
+                yield f"{self.schema}://{host}{path}"
+        raise StopIteration()
 
     @property
     def description(self) -> str:
-        return f"{self.src_ip}:{self.src_port} <-> {self.dst_ip}:{self.dst_port}"
-
-    @property
-    def sent_human(self) -> str:
-        return bytes_to_human(self.bytes_sent)
-
-    @property
-    def received_human(self) -> str:
-        return bytes_to_human(self.bytes_received)
+        base = f"-> {self.dst_ip}:{self.dst_port}"
+        if self.protocol in ["http", "http2"] and self.hosts:
+            return f"{base} {self.hosts[0]}{self.paths[0][:10]}..."
+        return base
 
     @classmethod
     def from_dict(cls, data: dict):
@@ -133,14 +131,14 @@ class Conversation:
             headers = data.get("http2_header_name", [])
             values = data.get("http2_header_value", [])
             try:
-                conv.host = [values[headers.index(":authority")]]
-                conv.path = [values[headers.index(":path")]]
+                conv.hosts = [values[headers.index(":authority")]]
+                conv.paths = [values[headers.index(":path")]]
             except (ValueError, IndexError):
                 pass
 
         elif protocol == "http":
-            conv.host = [data.get("http_host", [""])[0]]
-            conv.path = [data.get("http_request_uri", [""])[0]]
+            conv.hosts = [data.get("http_host", [""])[0]]
+            conv.paths = [data.get("http_request_uri", [""])[0]]
 
         return conv
 
@@ -148,19 +146,17 @@ class Conversation:
         if "layers" in data:
             data = data["layers"]
         protocol = data.get("frame_protocols", [""])[0].split(":")[-1]
-        old_protocol = self.protocol
         if protocol in IMPORTANT_PROTOCOLS and IMPORTANT_PROTOCOLS.index(
             protocol
         ) < IMPORTANT_PROTOCOLS.index(self.protocol):
             self.protocol = protocol
-        logger.debug("%s -> %s (%s)", old_protocol, self.protocol, protocol)
 
         if protocol == "http2":
             headers = data.get("http2_header_name", [])
             values = data.get("http2_header_value", [])
             try:
-                self.host.append(values[headers.index(":authority")])
-                self.path.append(values[headers.index(":path")])
+                self.hosts.append(values[headers.index(":authority")])
+                self.paths.append(values[headers.index(":path")])
             except (ValueError, IndexError):
                 pass
 
@@ -169,8 +165,8 @@ class Conversation:
 
         elif protocol == "http":
             if "http_host" in data:
-                self.host.append(data.get("http_host", [""])[0])
-                self.path.append(data.get("http_request_uri", [""])[0])
+                self.hosts.append(data.get("http_host", [""])[0])
+                self.paths.append(data.get("http_request_uri", [""])[0])
 
 
 class Extractor:
@@ -180,7 +176,7 @@ class Extractor:
         base_logger: logging.Logger = None,
         timeout: int = 20,
         ignore_ips: list[ipaddress._IPAddressBase] = None,
-        max_packets: int = 100_000,
+        max_packets: int = 0,  # 0 means no limit
     ) -> None:
         self.pcap_path = pcap_path
         self.tshark_path = TSHARK_PATH
@@ -191,6 +187,7 @@ class Extractor:
         self.ignore_ips = ignore_ips or []
         self.max_packets = max_packets
         self._conversations = {}
+        self._stats: list[ConversationStat] = []
 
     def _ignored_filter(self) -> list[str]:
         if not self.ignore_ips:
@@ -201,7 +198,6 @@ class Extractor:
         self,
         command: list[str],
         out_file: str = None,
-        add_read_filter: bool = True,
         no_packets_output=True,
     ) -> str:
         kwargs = {}
@@ -211,12 +207,11 @@ class Extractor:
             self.tshark_path,
             "-r",
             self.pcap_path,
-        ]  #  "-c", str(self.max_packets)
+        ]
+        if self.max_packets:
+            full_command += ["-c", str(self.max_packets)]
         if no_packets_output:
             full_command.append("-q")
-        # Read filter is required for filtering summaries like -z conv,tcp
-        if add_read_filter and self.ignore_ips:
-            full_command += ["-2", "-R", self._ignored_filter()]
         full_command += command
         self.logger.debug("Executing tshark command: %s", full_command)
         result = subprocess.run(
@@ -239,7 +234,6 @@ class Extractor:
     def _parse_conversation_line(self, line: str):
         data = json.loads(line)
         tcp_stream = data.get("layers", {}).get("tcp_stream", [])
-        # TODO: support for multiple HTTP requests & count HTTP2 substreams
         if not tcp_stream:
             return
         conv_id = int(tcp_stream[0])
@@ -249,16 +243,15 @@ class Extractor:
         conv = Conversation.from_dict(data)
         self._conversations[("tcp", conv.stream_id)] = conv
 
-    def get_tcp_conversations(self) -> Iterable[Conversation]:
+    def extract(self):
         result = self.execute(
             TSHARK_ANALYSIS_COMMAND
             + [
                 "-Y",
                 f"tcp and {self._ignored_filter()}",
                 "-z",
-                f"conv,tcp,{self._ignored_filter()}",
+                f"conv,ip,{self._ignored_filter()}",
             ],
-            add_read_filter=False,
             no_packets_output=False,
         )
         result = result.splitlines()
@@ -268,63 +261,14 @@ class Extractor:
                 break
             if line.startswith('{"index":'):
                 continue
-            # self.logger.debug("Conversation line: %s", line)
             self._parse_conversation_line(line)
 
-        for conv in self._conversations.values():
-            yield conv
+        self._parse_conversation_stats(result_iter)
 
-        # TODO: implement parsing
-        # first_column_len = len(result[4].split("|")[0])
-        # result = result[5:-1]
-        # for idx, line in enumerate(result):
-        #     line = line[:first_column_len]
-        #     sides = line.split("<->")
-        #     if len(sides) != 2:
-        #         self.logger.error("Error parsing conversation line: %s", line)
-        #         continue
-        #     src, dst = sides
-        #     src_ip, src_port = src.strip().split(":")
-        #     dst_ip, dst_port = dst.strip().split(":")
-
-        #     src_ip = ipaddress.ip_address(src_ip)
-        #     dst_ip = ipaddress.ip_address(dst_ip)
-        #     if src_ip in self.ignore_ips or dst_ip in self.ignore_ips:
-        #         continue
-        #     yield Conversation(
-        #         src_ip,
-        #         dst_ip,
-        #         int(src_port),
-        #         int(dst_port),
-        #         stream_id=idx,
-        #     )
-
-    def _is_streaming_finished(self, stream_file: str) -> bool:
-        try:
-            with open(stream_file, "rb") as f:
-                f.seek(-100, os.SEEK_END)
-                last_bytes = f.read().decode("utf-8")
-            end_mark = "Node 0: :0\nNode 1: :0\n==================================================================="
-            return end_mark in last_bytes
-        except Exception as e:
-            self.logger.warning("Error checking if streaming is finished: %s", e)
-            return False
-
-    def _extract_stream(self, conv: Conversation):
-        # "http2", "quic" - require the valid stream ID
-
-        # proto_stats = self.execute(["-z", f"io,phs,{conv.tshark_filter}"], add_read_filter=False)
-        # proto_stats = proto_stats.splitlines()
-        # proto_stats = proto_stats[5:-1]
-
-        # for line in proto_stats:
-        #     proto = line.strip().split()[0]
-        #     if proto in available_to_extract:
-        #         conv.protocol = proto
-
+    def extract_stream(self, conv: Conversation) -> str:
         if not conv.protocol:
             self.logger.error("No stream protocol found for %s", conv.description)
-            return
+            return None
 
         out_file = tempfile.mktemp(prefix=f"{conv.protocol}_")
         conv.stream_file = out_file
@@ -338,26 +282,27 @@ class Extractor:
                         f"follow,{conv.protocol},ascii,{conv.stream_id},{substream}",
                     ],
                     out_file=out_file,
-                    add_read_filter=False,
                 )
                 substream += 1
-                if self._is_streaming_finished(out_file):
-                    break
         else:
             self.execute(
                 ["-z", f"follow,{conv.protocol},ascii,{conv.follow_filter}"],
                 out_file=out_file,
-                add_read_filter=False,
             )
 
-    def process_conversations(self) -> Iterable[Conversation]:
-        for idx, conv in enumerate(self.get_tcp_conversations()):
-            self._extract_stream(conv)
-            yield conv
+        return out_file
+
+    @property
+    def conversations(self) -> Iterable[Conversation]:
+        return self._conversations.values()
+
+    @property
+    def stats(self) -> Iterable[ConversationStat]:
+        return self._stats
 
     def get_files(self) -> Iterable[str]:
         out_dir = tempfile.mkdtemp(prefix="extracted_")
-        params = []
+        params = ["-Y", self._ignored_filter()]
         for proto in ["dicom", "ftp-data", "http", "imf", "smb", "tftp"]:
             params.append("--export-objects")
             params.append(f"{proto},{out_dir}")
@@ -416,27 +361,26 @@ class Extractor:
         )
         return sent, received
 
-    def _parse_conversation_stats(self):
-        pass
+    def _parse_conversation_stats(self, line_iter: Iterable[str]):
+        for _ in range(3):
+            next(line_iter)
+        columns_lengths = [len(col) for col in next(line_iter).split("|")]
 
-    def get_ip_conversations_stats(self) -> Iterable[Conversation]:
-        result = self.execute(["-z", f"conv,ip,{self._ignored_filter()}"])
-        self.logger.debug("IP conversations: %s", result)
-        result = result.splitlines()
-        columns_lengths = [len(col) for col in result[4].split("|")]
-
-        for line in result[5:-1]:
-            self.logger.debug("IP conversation line: %s", line)
+        for line in line_iter:
+            if line.startswith("="):
+                break
+            self.logger.debug("Conversation line: %s", line)
             first_col = line[: columns_lengths[0]]
-
             sent, received = self._get_conv_size(line[columns_lengths[0] :])
 
             src, dst = first_col.split("<->")
-            yield Conversation(
-                ipaddress.ip_address(src.strip()),
-                ipaddress.ip_address(dst.strip()),
-                bytes_sent=sent,
-                bytes_received=received,
+            self._stats.append(
+                ConversationStat(
+                    ipaddress.ip_address(src.strip()),
+                    ipaddress.ip_address(dst.strip()),
+                    sent,
+                    received,
+                )
             )
 
     @staticmethod
