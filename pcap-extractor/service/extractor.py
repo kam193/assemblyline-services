@@ -5,6 +5,7 @@ import os
 import subprocess
 import tempfile
 from dataclasses import dataclass, field
+from functools import lru_cache
 from typing import Iterable
 
 TSHARK_PATH = "/usr/bin/tshark"
@@ -77,7 +78,6 @@ class Conversation:
     dst_ip: ipaddress._IPAddressBase
     src_port: int = None
     dst_port: int = None
-    stream_file: str = None
     protocol: str = ""
     stream_id: int = None
 
@@ -283,15 +283,6 @@ class Extractor:
 
         sent = self._calculate_bytes("".join(sent_size_parts), sent_unit)
         received = self._calculate_bytes("".join(received_size_parts), received_unit)
-        self.logger.debug(
-            "Sent %s %s -> %s bytes, Received %s %s -> %s bytes",
-            sent_size_parts,
-            sent_unit,
-            sent,
-            received_size_parts,
-            received_unit,
-            received,
-        )
         return sent, received
 
     def _parse_conversation_stats(self, line_iter: Iterable[str]):
@@ -302,7 +293,6 @@ class Extractor:
         for line in line_iter:
             if line.startswith("="):
                 break
-            self.logger.debug("Conversation line: %s", line)
             first_col = line[: columns_lengths[0]]
             sent, received = self._get_conv_size(line[columns_lengths[0] :])
 
@@ -317,6 +307,7 @@ class Extractor:
             )
 
     def extract(self):
+        # TODO: stream lines from tshark?
         result = self.execute(
             TSHARK_ANALYSIS_COMMAND
             + [
@@ -344,7 +335,6 @@ class Extractor:
             return None
 
         out_file = tempfile.mktemp(prefix=f"{conv.protocol}_")
-        conv.stream_file = out_file
         if conv.protocol in ["http2"]:
             substream = 0
             # TODO: configurable limit
@@ -391,15 +381,14 @@ class Extractor:
     def get_iocs(self) -> tuple[set[str], set[str], set[str]]:
         ips, domains, uris = set(), set(), set()
         for conv in self.conversations:
-            # ips.add(str(conv.src_ip))
             ips.add(str(conv.dst_ip))
             if conv.hosts:
                 domains.update(conv.hosts)
                 uris.update(conv.uris)
         return ips, domains, uris
 
+    @lru_cache(maxsize=1)
     @staticmethod
-    @property
     def tshark_version() -> str:
         result = subprocess.run([TSHARK_PATH, "-v"], capture_output=True, text=True)
         result = result.stdout.splitlines()

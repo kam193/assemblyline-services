@@ -45,7 +45,8 @@ Supported heuristics:
 
 ### PCAP Extractor
 
-This service list flows from a pcap file using Tshark. If supported by Tshark, it can also extract files.
+This service list TCP flows from a pcap file using Tshark. If supported by Tshark, it can also extract files.
+It tries to set as much as possible tags, and respect safelisting to avoid unnecessary operations.
 
 Supported heuristics:
  - external HTTP/non-HTTP connections,

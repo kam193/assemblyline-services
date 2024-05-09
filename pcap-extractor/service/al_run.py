@@ -67,8 +67,6 @@ class AssemblylineService(ServiceBase):
                     hashlib.sha256(f"{tag_type}: {tag_value}".encode("utf8")).hexdigest()
                 )
 
-        # Elasticsearch's result window can't be more than 10000 rows
-        # we will query for matches in chunks
         results = defaultdict(list)
         for key_chunk in chunk(lookup_keys, CHUNK_SIZE):
             result_chunk = safelist_ds.search(
@@ -82,6 +80,7 @@ class AssemblylineService(ServiceBase):
     def execute(self, request: ServiceRequest) -> None:
         result = Result()
         request.result = result
+        request.set_service_context(self.get_tool_version())
 
         main_section = ResultTextSection("Extracting network communication")
         result.add_section(main_section)
@@ -102,6 +101,11 @@ class AssemblylineService(ServiceBase):
         )
         extractor.extract()
 
+        # Treat stream as safelisted if:
+        # 1) all IPs are safelisted, or
+        # 2) all domains are safelisted, or
+        # 3) all URIs are safelisted.
+        # Check in the service to avoid unnecessary data extraction fro PCAP.
         ips, domains, uris = extractor.get_iocs()
         safelisted_tags = self._exist_safelisted_tags(
             {
@@ -161,7 +165,7 @@ class AssemblylineService(ServiceBase):
                         request.add_supplementary(
                             stream_file,
                             os.path.basename(stream_file),
-                            f"Data flow for {conv.description}",
+                            f"Data flow with {conv.description}",
                         )
                     else:
                         conversation_section.add_line(
@@ -169,7 +173,7 @@ class AssemblylineService(ServiceBase):
                         )
             else:
                 conversation_section.add_line(
-                    "Skipping data extractions for safelisted conversation"
+                    "Skipping data extractions for the safelisted conversation"
                 )
                 safelisted_tcp_streams.append(conv.stream_id)
 
@@ -180,10 +184,15 @@ class AssemblylineService(ServiceBase):
                 request.add_extracted(file, os.path.basename(file), "File extracted from PCAP")
 
         stats_section = ResultTextSection("IP statistics")
+        stats_section.add_line(
+            "Summarizing all IP conversations, excluding safelisted destination IPs"
+        )
         main_section.add_subsection(stats_section)
 
         total_sent = 0
         for conv in extractor.stats:
+            if str(conv.dst_ip) in safelisted_tags["network.dynamic.ip"]:
+                continue
             stats_section.add_line(
                 f"Remote {conv.dst_ip}: sent: {conv.sent_human}, received: {conv.received_human}"
             )
@@ -194,3 +203,6 @@ class AssemblylineService(ServiceBase):
             stats_section.add_line(
                 f"Total data sent: {bytes_to_human(total_sent)} exceeded the exfiltration warning threshold."
             )
+
+    def get_tool_version(self) -> str | None:
+        return f"tshark: {Extractor.tshark_version()}"
