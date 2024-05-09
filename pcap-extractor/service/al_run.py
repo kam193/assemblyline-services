@@ -83,10 +83,7 @@ class AssemblylineService(ServiceBase):
         request.set_service_context(self.get_tool_version())
 
         main_section = ResultTextSection("Extracting network communication")
-        result.add_section(main_section)
-
         tcp_section = ResultTextSection("TCP conversations")
-        main_section.add_subsection(tcp_section)
 
         max_packets = int(request.get_param("max_packets_analyzed") or 0)
         extract_files = bool(request.get_param("extract_files"))
@@ -183,11 +180,7 @@ class AssemblylineService(ServiceBase):
             for file in extractor.get_files(safelisted_tcp_streams):
                 request.add_extracted(file, os.path.basename(file), "File extracted from PCAP")
 
-        stats_section = ResultTextSection("IP statistics")
-        stats_section.add_line(
-            "Summarizing all IP conversations, excluding safelisted destination IPs"
-        )
-        main_section.add_subsection(stats_section)
+        stats_section = ResultTextSection("IP statistics (excl. safelisted)")
 
         total_sent = 0
         for conv in extractor.stats:
@@ -203,6 +196,13 @@ class AssemblylineService(ServiceBase):
             stats_section.add_line(
                 f"Total data sent: {bytes_to_human(total_sent)} exceeded the exfiltration warning threshold."
             )
+
+        if tcp_section.subsections:
+            main_section.add_subsection(tcp_section)
+        if stats_section.body:
+            main_section.add_subsection(stats_section)
+        if main_section.subsections:
+            result.add_section(main_section)
 
     def get_tool_version(self) -> str | None:
         return f"tshark: {Extractor.tshark_version()}"
