@@ -1,0 +1,7 @@
+rules:
+  - id: exec-call
+    pattern: exec(...)
+    message: Executing code dynamically
+    severity: WARNING
+    languages:
+      - python

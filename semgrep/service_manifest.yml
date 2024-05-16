@@ -1,0 +1,77 @@
+name: Semgrep
+version: $SERVICE_TAG
+description: FIXME
+enabled: true
+
+accepts: code/*
+rejects: empty
+stage: CORE
+category: Static Analysis
+uses_tags: false
+file_required: true
+timeout: 90
+is_external: false
+
+config:
+  SEMGREP_RAM_LIMIT_MB: "400"
+  SEMGREP_RULE_TIMEOUT: "10"
+  SEMGREP_CLI_TIMEOUT: 60
+
+# submission_params:
+#   - default: "auto"
+#     name: platform
+#     type: list
+#     value: "auto"
+#     list: ["auto", "linux"]
+
+# -1000: safe
+# 0 - 299: informative
+# 300 - 699: suspicious
+# 700 - 999: highly suspicious
+# >= 1000: malicious
+
+heuristics:
+  - description: Suspicious code pattern
+    filetype: "*"
+    heur_id: 1
+    name: Score
+    score: 300
+    max_score: 500
+  - description: Malicious code pattern
+    filetype: "*"
+    heur_id: 2
+    name: Score
+    score: 1000
+    max_score: 2000
+  - description: Informative code pattern
+    filetype: "*"
+    heur_id: 3
+    name: Score
+    score: 10
+    max_score: 50
+
+docker_config:
+  image: ${REGISTRY}ghcr.io/kam193/assemblyline-service-semgrep:$SERVICE_TAG
+  cpu_cores: 1.0
+  ram_mb: 512
+  ram_mb_min: 256
+  allow_internet_access: false
+
+update_config:
+  update_interval_seconds: 86400 # 1 day
+  generates_signatures: true
+  wait_for_update: true
+  sources:
+    - uri: https://gist.githubusercontent.com/kam193/474547be4a37bb7990caa4e26ee542e4/raw/a0d3783f38e156cfda5df63f426bfa8d36cc4027/example_rule.yaml
+      name: example_rules
+
+dependencies:
+  updates:
+    container:
+      ram_mb: 512
+      ram_mb_min: 128
+      allow_internet_access: true
+      command: ["python", "-m", "service.updater"]
+      image: ${REGISTRY}ghcr.io/kam193/assemblyline-service-semgrep:$SERVICE_TAG
+      ports: ["5003"]
+    run_as_core: True
