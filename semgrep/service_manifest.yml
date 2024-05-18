@@ -60,6 +60,8 @@ docker_config:
 update_config:
   update_interval_seconds: 86400 # 1 day
   generates_signatures: true
+  signature_delimiter: custom
+  custom_delimiter: "\n#SIGNATURE-DELIMITER#\n\n"
   wait_for_update: true
   sources:
     - uri: https://gist.githubusercontent.com/kam193/474547be4a37bb7990caa4e26ee542e4/raw/a0d3783f38e156cfda5df63f426bfa8d36cc4027/example_rule.yaml
@@ -74,4 +76,4 @@ dependencies:
       command: ["python", "-m", "service.updater"]
       image: ${REGISTRY}ghcr.io/kam193/assemblyline-service-semgrep:$SERVICE_TAG
       ports: ["5003"]
-    run_as_core: True
+    run_as_core: true

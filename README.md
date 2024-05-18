@@ -27,6 +27,7 @@ number of badlisted files, it's just a linear comparison.
 
 It performs hash lookups to identify well-known good and bad files. It be used to avoid analyzing well-known
 files. Responses are cached. Currently supported services:
+
 - [CIRCL Hashlookup](https://www.circl.lu/services/hashlookup/): identify well-known files and return trust
   score. DNS queries are used to check for the hash, and then REST API to get more details. It could be an
   online alternative to loading NIST NSRL database (and more) into Safelist service.
@@ -37,11 +38,12 @@ files. Responses are cached. Currently supported services:
 
 Service to get information about IPs and domains. Currently supported:
 
- - IP data from MMDB files (you can configure your own, the default one is [GeoOpen](https://cra.circl.lu/opendata/geo-open/)),
- - WHOIS data for domains, including domains extracted from URIs. Results are cached.
+- IP data from MMDB files (you can configure your own, the default one is [GeoOpen](https://cra.circl.lu/opendata/geo-open/)),
+- WHOIS data for domains, including domains extracted from URIs. Results are cached.
 
 Supported heuristics:
-  - newly created domains (based on WHOIS data).
+
+- newly created domains (based on WHOIS data).
 
 ### PCAP Extractor
 
@@ -49,15 +51,21 @@ This service list TCP flows from a pcap file using Tshark. If supported by Tshar
 It tries to set as much as possible tags, and respect safelisting to avoid unnecessary operations.
 
 Supported heuristics:
- - external HTTP/non-HTTP connections,
- - data exfiltration threshold (based on total data sent out).
+
+- external HTTP/non-HTTP connections,
+- data exfiltration threshold (based on total data sent out).
 
 ### Python Magic
 
 Designed to help with analysis of Python artifacts. Currently supported:
+
 - unpacking PyInstaller executables (using [pyinstxtractor-ng](https://github.com/pyinstxtractor/pyinstxtractor-ng)),
 - decompyling Python bytecode (.pyc) (using [Decompyle++](https://github.com/zrax/pycdc)),
 - extracting declared dependencies and matching them against configurable lists of suspicious and malicious packages,
+
+### Semgrep
+
+Service using [Semgrep](https://semgrep.dev) OSS to analyze code for malicious activity. Currently in the alpha stage.
 
 ### Simple Downloader
 
