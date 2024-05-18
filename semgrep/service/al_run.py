@@ -8,7 +8,7 @@ from threading import RLock
 from typing import Iterable
 
 import yaml
-from assemblyline_v4_service.common.base import ServiceBase
+from assemblyline_v4_service.common.base import UPDATES_DIR, ServiceBase
 from assemblyline_v4_service.common.request import ServiceRequest
 from assemblyline_v4_service.common.result import (
     Result,
@@ -62,7 +62,7 @@ class AssemblylineService(ServiceBase):
 
     def _load_rules(self) -> None:
         # signature client doesn't support joining to a yaml, so we need to recreate it using our delimiter
-        new_rules_dir = tempfile.TemporaryDirectory(prefix="semgrep_rules_")
+        new_rules_dir = tempfile.TemporaryDirectory(prefix="semgrep_rules_", dir=UPDATES_DIR)
         files = []
         for source_file in self.rules_list:
             rules = []
@@ -117,8 +117,8 @@ class AssemblylineService(ServiceBase):
         elif result.returncode == 0:
             return {}, None
         else:
-            self.log.error("Error running semgrep (%d) %s", result.returncode, result.stderr)
-            raise RuntimeError(f"Error {result.returncode} running semgrep: {result.stderr[:250]}")
+            self.log.error("Error running semgrep (%d) %s", result.returncode, result.stdout)
+            raise RuntimeError(f"Error {result.returncode} running semgrep: {result.stdout[:250]}")
             return {}
 
     def _get_code_hash(self, code: str):

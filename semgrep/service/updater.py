@@ -30,7 +30,9 @@ class AssemblylineServiceUpdater(ServiceUpdater):
             text=True,
         )
         if result.returncode != 0:
-            self.log.error("Error validating semgrep rule file: %s", result.stderr)
+            self.log.error(
+                "Error validating semgrep rule file: %s /// %s", result.stdout, result.stderr
+            )
             return False
         return True
 
