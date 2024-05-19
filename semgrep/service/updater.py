@@ -7,6 +7,9 @@ from assemblyline.odm.models.signature import Signature
 from assemblyline_v4_service.updater.updater import ServiceUpdater
 
 from .al_run import BASE_CONFIG
+from .helpers import configure_yaml
+
+configure_yaml()
 
 
 class AssemblylineServiceUpdater(ServiceUpdater):
@@ -24,6 +27,7 @@ class AssemblylineServiceUpdater(ServiceUpdater):
         # semgrep --validate calls their registry to get linting rules
         # as per https://github.com/semgrep/semgrep/blob/73b6cf90c5ac71e001711f98adb72ca4ba8b2f8f/src/metachecking/Check_rule.ml#L44
         # they are necessary to validate the rule file
+        self.log.info("Validating semgrep rule file: %s", file_path)
         result = subprocess.run(
             ["semgrep"] + BASE_CONFIG + ["--config", file_path, "--validate"],
             capture_output=True,
@@ -53,7 +57,7 @@ class AssemblylineServiceUpdater(ServiceUpdater):
                 signature = Signature(
                     dict(
                         classification=default_classification,
-                        data=yaml.dump(rule, indent=2),
+                        data=yaml.safe_dump(rule),
                         name=rule["id"],
                         source=source,
                         status="DEPLOYED",

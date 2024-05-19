@@ -64,8 +64,12 @@ update_config:
   custom_delimiter: "\n#SIGNATURE-DELIMITER#\n\n"
   wait_for_update: true
   sources:
-    - uri: https://gist.githubusercontent.com/kam193/474547be4a37bb7990caa4e26ee542e4/raw/a0d3783f38e156cfda5df63f426bfa8d36cc4027/example_rule.yaml
-      name: example_rules
+    # GuardDog from DataDog has rules to detect malicious code in Python & npm packages
+    - uri: https://github.com/DataDog/guarddog.git
+      name: GuardDog
+      pattern: ".*/guarddog/analyzer/.*\\.yml"
+      git_branch: main
+      sync: true
 
 dependencies:
   updates:

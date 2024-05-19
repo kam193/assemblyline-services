@@ -17,6 +17,10 @@ from assemblyline_v4_service.common.result import (
     ResultTextSection,
 )
 
+from .helpers import configure_yaml
+
+configure_yaml()
+
 RULES = "sample_rules/exec-rule.yaml"
 
 BASE_CONFIG = [
@@ -38,6 +42,11 @@ SEVERITY_TO_HEURISTIC = {
 }
 
 RULES_LOCK = RLock()
+
+# Open questions:
+# - Use LSP to avoid reloading rules on every request?
+# - Force language based on AL recognition?
+# - Use ruamel.yaml to preserve comments?
 
 
 class AssemblylineService(ServiceBase):
@@ -70,7 +79,7 @@ class AssemblylineService(ServiceBase):
                 tmp_data = []
                 for line in f:
                     if "#SIGNATURE-DELIMITER" in line:
-                        rules.append(yaml.safe_load("\n".join(tmp_data)))
+                        rules.append(yaml.safe_load("".join(tmp_data)))
                         tmp_data = []
                     else:
                         tmp_data.append(line)
@@ -80,7 +89,7 @@ class AssemblylineService(ServiceBase):
             new_file = os.path.join(new_rules_dir.name, source_name, "rules.yaml")
             os.makedirs(os.path.dirname(new_file), exist_ok=True)
             with open(new_file, "w") as f:
-                yaml.dump({"rules": rules}, f, indent=2)
+                yaml.safe_dump({"rules": rules}, f)
             files.append(new_file)
 
         self.log.debug(self.rules_list)
@@ -119,7 +128,7 @@ class AssemblylineService(ServiceBase):
         else:
             self.log.error("Error running semgrep (%d) %s", result.returncode, result.stdout)
             raise RuntimeError(f"Error {result.returncode} running semgrep: {result.stdout[:250]}")
-            return {}
+            # return {}
 
     def _get_code_hash(self, code: str):
         code = code or ""
@@ -139,7 +148,7 @@ class AssemblylineService(ServiceBase):
         for rule_id, matches in result_by_rule.items():
             rule_id = rule_id[len(rule_prefix) :]
             extra = matches[0].get("extra", {})
-            message = extra.get("message", "")
+            message = extra.get("message", "").replace("\n\n", "\n")
             severity = extra.get("severity", "INFO")
             heuristic = SEVERITY_TO_HEURISTIC.get(severity.upper(), 0)
             metadata = extra.get("metadata", {})

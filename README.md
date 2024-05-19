@@ -66,6 +66,7 @@ Designed to help with analysis of Python artifacts. Currently supported:
 ### Semgrep
 
 Service using [Semgrep](https://semgrep.dev) OSS to analyze code for malicious activity. Currently in the alpha stage.
+By default configured to use rules from [GuardDog](https://github.com/DataDog/guarddog) project.
 
 ### Simple Downloader
 
