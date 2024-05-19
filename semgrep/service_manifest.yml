@@ -34,19 +34,19 @@ heuristics:
   - description: Suspicious code pattern
     filetype: "*"
     heur_id: 1
-    name: Score
+    name: Suspicious code pattern
     score: 300
     max_score: 500
   - description: Malicious code pattern
     filetype: "*"
     heur_id: 2
-    name: Score
+    name: Malicious code pattern
     score: 1000
     max_score: 2000
   - description: Informative code pattern
     filetype: "*"
     heur_id: 3
-    name: Score
+    name: Informative code pattern
     score: 10
     max_score: 50
 
