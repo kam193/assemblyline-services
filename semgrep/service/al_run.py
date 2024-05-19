@@ -184,6 +184,7 @@ class AssemblylineService(ServiceBase):
             for result_section in self._process_results(res_list, rule_prefix):
                 result.add_section(result_section)
 
-        with tempfile.NamedTemporaryFile("w", delete=False) as f:
-            json.dump(results, f, indent=2)
-        request.add_supplementary(f.name, "semgrep_results.json", "Semgrep™ OSS Results")
+        if results:
+            with tempfile.NamedTemporaryFile("w", delete=False) as f:
+                json.dump(results, f, indent=2)
+            request.add_supplementary(f.name, "semgrep_results.json", "Semgrep™ OSS Results")
