@@ -6,8 +6,7 @@ import yaml
 from assemblyline.odm.models.signature import Signature
 from assemblyline_v4_service.updater.updater import ServiceUpdater
 
-from .al_run import BASE_CONFIG
-from .helpers import configure_yaml
+from .helpers import BASE_CONFIG, configure_yaml
 
 configure_yaml()
 
