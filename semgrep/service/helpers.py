@@ -8,7 +8,6 @@ BASE_CONFIG = [
     "--error",
     "--no-autofix",
     "--no-git-ignore",
-    # "--scan-unknown-extensions",
     "--disable-version-check",
     "--disable-nosem",
     "--json",

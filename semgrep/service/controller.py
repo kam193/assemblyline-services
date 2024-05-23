@@ -18,11 +18,6 @@ from .helpers import BASE_CONFIG, configure_yaml
 
 configure_yaml()
 
-# Open questions:
-# - Use LSP to avoid reloading rules on every request?
-# - Force language based on AL recognition?
-# - Use ruamel.yaml to preserve comments?
-
 # Based on https://semgrep.dev/docs/writing-rules/rule-syntax#language-extensions-and-languages-key-values
 # and AL language recognition from https://github.com/CybercentreCanada/assemblyline-base/tree/master/assemblyline/common
 # The default mapping misses some supported languages, so we need to add them manually
@@ -61,7 +56,7 @@ class UnsupportedLanguageError(ValueError):
     pass
 
 
-class SimpleSemgrepController:
+class SemgrepScanController:
     def __init__(self, logger: logging.Logger = None, rules_dir: str = None):
         self._active_rules = []
         self._active_rules_prefix = ""
@@ -154,6 +149,7 @@ class SimpleSemgrepController:
         if self._working_file:
             with suppress(Exception):
                 os.remove(self._working_file)
+            self._working_file = ""
 
     def stop(self):
         pass
@@ -176,7 +172,7 @@ class LSPSemgrepClient(pylspclient.LspClient):
         self.lsp_endpoint.send_notification("semgrep/refreshRules")
 
 
-class LSPSemgrepController(SimpleSemgrepController):
+class SemgrepLSPController(SemgrepScanController):
     def __init__(self, logger: logging.Logger = None, rules_dir: str = None):
         super().__init__(logger, rules_dir)
         self._is_initialized = False
@@ -251,9 +247,9 @@ class LSPSemgrepController(SimpleSemgrepController):
                     "jobs": 1,
                     "exclude": [],
                     "include": [],
-                    "maxMemory": self._semgrep_config.get("max-memory", 500),
-                    "maxTargetBytes": 100000000,  # TODO: check
-                    "timeout": self._semgrep_config.get("timeout", 10),
+                    "maxMemory": int(self._semgrep_config.get("max-memory")),
+                    "maxTargetBytes": int(self._semgrep_config.get("max-target-bytes")),
+                    "timeout": int(self._semgrep_config.get("timeout")),
                     "timeoutThreshold": 3,
                     "onlyGitDirty": False,
                     "pro_intrafile": False,
