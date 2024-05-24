@@ -4,14 +4,13 @@ import os
 import subprocess
 import tempfile
 import threading
-import time
 from contextlib import suppress
 from threading import RLock
-from time import sleep
 from typing import Iterable
 
 import pylspclient
 import pylspclient.lsp_pydantic_strcuts
+from assemblyline.common.exceptions import RecoverableError
 from assemblyline.common.identify_defaults import type_to_extension
 
 from .helpers import BASE_CONFIG, configure_yaml
@@ -86,6 +85,8 @@ class SemgrepScanController:
     def _prepare_file_with_extension(self, file_path: str, file_type: str) -> str:
         ext = LANGUAGE_TO_EXT.get(file_type, None)
         if not ext:
+            # yeah, with languages we have an extension for we would just try;
+            # without it doesn't make sense at all
             raise UnsupportedLanguageError(f"Language {file_type} not supported by semgrep")
 
         # AL likes to clear the whole tmp directory
@@ -179,25 +180,22 @@ class SemgrepLSPController(SemgrepScanController):
         self.last_results = []
         self._current_uri = ""
 
-        self._diagnostic_cond = threading.Condition()
-        self._refresh_rules_cond = threading.Condition()
+        self._diagnostic_cond = threading.Condition(self._lock)
+        self._refresh_rules_cond = threading.Condition(self._lock)
 
     def _set_rules_refreshed(self, *_, **__):
-        self._refresh_rules_cond.acquire()
-        self._ready = True
-        self.log.info("Semgrep rules refreshed")
-        self._refresh_rules_cond.notify()
-        self._refresh_rules_cond.release()
+        with self._refresh_rules_cond:
+            self._ready = True
+            self.log.info("Semgrep rules refreshed")
+            self._refresh_rules_cond.notify_all()
 
     def _add_results(self, params):
-        self._diagnostic_cond.acquire()
-        self.log.debug("Got results: %s", params)
-        if self._current_uri != params["uri"]:
-            self._diagnostic_cond.release()
-            return
-        self.last_results.extend(params["diagnostics"])
-        self._diagnostic_cond.notify()
-        self._diagnostic_cond.release()
+        with self._diagnostic_cond:
+            self.log.debug("Got results: %s", params)
+            if self._current_uri != params["uri"]:
+                return
+            self.last_results.extend(params["diagnostics"])
+            self._diagnostic_cond.notify()
 
     def _initialize(self):
         os.makedirs(f"{os.environ['HOME']}/.semgrep/cache", exist_ok=True)
@@ -283,7 +281,7 @@ class SemgrepLSPController(SemgrepScanController):
         self.version = server_init_data["serverInfo"]["version"]
 
     def load_rules(self, _: list[str], __: str):
-        with self._lock:
+        with self._refresh_rules_cond:
             if not self._is_initialized:
                 try:
                     self._initialize()
@@ -298,25 +296,23 @@ class SemgrepLSPController(SemgrepScanController):
                     )
                     raise
 
-            self._refresh_rules_cond.acquire()
             self._ready = False
             self.client.refreshRules()
             if not self._refresh_rules_cond.wait(self.cli_timeout):
-                raise TimeoutError("Semgrep LSP did not respond in time")
-            self._refresh_rules_cond.release()
+                raise TimeoutError("Semgrep LSP did not refreshed rules on time")
 
     def wait_for_ready(self):
-        start = time.time()
-        while not self._ready:
-            if time.time() - start > self.cli_timeout:
-                raise TimeoutError("Semgrep LSP wasn't ready in time")
-            sleep(0.1)
+        with self._refresh_rules_cond:
+            if not self._ready and not self._refresh_rules_cond.wait(self.cli_timeout):
+                raise TimeoutError("Semgrep LSP wasn't ready on time")
 
     def process_file(self, file_path: str, file_type: str) -> Iterable[dict]:
         self.wait_for_ready()
 
-        with self._lock:
-            self._diagnostic_cond.acquire()
+        with self._diagnostic_cond:
+            if not self._ready:
+                raise RecoverableError("Refreshing rules interrupted the scan")
+
             self.last_results = []
             self._prepare_file_with_extension(file_path, file_type)
             self._current_uri = f"file://{self._working_file}"
@@ -333,7 +329,6 @@ class SemgrepLSPController(SemgrepScanController):
 
             if not self._diagnostic_cond.wait(self.cli_timeout):
                 raise TimeoutError("Semgrep LSP did not respond in time")
-            self._diagnostic_cond.release()
 
             self.client.didClose(self._current_uri)
 
@@ -359,3 +354,7 @@ class SemgrepLSPController(SemgrepScanController):
             self._server_process.stderr.read(),
         )
         self.log.info("Semgrep server stopped")
+
+    def cleanup(self):
+        super().cleanup()
+        self._current_uri = ""
