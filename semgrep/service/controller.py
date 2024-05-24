@@ -180,9 +180,17 @@ class SemgrepLSPController(SemgrepScanController):
         self.last_results = []
         self._current_uri = ""
         self.client = None
+        self._was_timeout = False
 
         self._diagnostic_cond = threading.Condition(self._lock)
         self._refresh_rules_cond = threading.Condition(self._lock)
+
+    def _self_diagnosis(self):
+        self.log.info(f"Rules ready: {self._ready}, initialized: {self._is_initialized}")
+        server_running = self._server_process.poll()
+        self.log.info(f"Server process: {'True' if server_running is None else server_running}")
+        self.log.info(f"Current URI: {self._current_uri}")
+        self.log.info(f"LSP endpoint running: {self.endpoint.is_alive()}")
 
     def _set_rules_refreshed(self, *_, **__):
         with self._refresh_rules_cond:
@@ -329,6 +337,8 @@ class SemgrepLSPController(SemgrepScanController):
             )
 
             if not self._diagnostic_cond.wait(self.cli_timeout):
+                self._self_diagnosis()
+                self._was_timeout = True
                 raise TimeoutError("Semgrep LSP did not respond in time")
 
             self.client.didClose(self._current_uri)
@@ -350,11 +360,12 @@ class SemgrepLSPController(SemgrepScanController):
             self.client.shutdown()
             self._server_process.terminate()
             self._server_process.wait()
-            self.log.debug(
-                "stdout: %s, stderr: %s",
-                self._server_process.stdout.read(),
-                self._server_process.stderr.read(),
-            )
+            if self._was_timeout:
+                self.log.info(
+                    "Server stdout: %s, stderr: %s",
+                    self._server_process.stdout.read(),
+                    self._server_process.stderr.read(),
+                )
             self.log.info("Semgrep server stopped")
 
     def cleanup(self):
