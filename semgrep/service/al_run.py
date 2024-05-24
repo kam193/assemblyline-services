@@ -189,13 +189,12 @@ class AssemblylineService(ServiceBase):
 
         try:
             results = self._semgrep.process_file(request.file_path, request.file_type)
+            request.set_service_context(f"Semgrep™ OSS {self._semgrep.version}")
+            for result_section in self._process_results(results):
+                result.add_section(result_section)
         except UnsupportedLanguageError:
             self.log.warning(f"Unsupported language: {request.file_type}")
             return
-
-        request.set_service_context(f"Semgrep™ OSS {self._semgrep.version}")
-        for result_section in self._process_results(results):
-            result.add_section(result_section)
 
         if self._semgrep.last_results:
             with tempfile.NamedTemporaryFile("w", delete=False) as f:
