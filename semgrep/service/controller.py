@@ -355,7 +355,9 @@ class SemgrepLSPController(SemgrepScanController):
                 }
 
     def stop(self):
-        if self.client:
+        if not self.client:
+            pass
+        with suppress(Exception):
             self.client.exit()
             self.client.shutdown()
             self._server_process.terminate()
@@ -371,3 +373,16 @@ class SemgrepLSPController(SemgrepScanController):
     def cleanup(self):
         super().cleanup()
         self._current_uri = ""
+
+        server_running = self._server_process.poll() is None
+        if not server_running:
+            self.log.error("Semgrep server is not running any more, restarting")
+            self.log.warning(
+                "Server stdout: %s, stderr: %s",
+                self._server_process.stdout.read(),
+                self._server_process.stderr.read(),
+            )
+            self.endpoint.stop()
+            self._is_initialized = False
+            self._ready = False
+            self.load_rules([], "")
