@@ -179,6 +179,7 @@ class SemgrepLSPController(SemgrepScanController):
         self._is_initialized = False
         self.last_results = []
         self._current_uri = ""
+        self.client = None
 
         self._diagnostic_cond = threading.Condition(self._lock)
         self._refresh_rules_cond = threading.Condition(self._lock)
@@ -344,16 +345,17 @@ class SemgrepLSPController(SemgrepScanController):
                 }
 
     def stop(self):
-        self.client.exit()
-        self.client.shutdown()
-        self._server_process.terminate()
-        self._server_process.wait()
-        self.log.debug(
-            "stdout: %s, stderr: %s",
-            self._server_process.stdout.read(),
-            self._server_process.stderr.read(),
-        )
-        self.log.info("Semgrep server stopped")
+        if self.client:
+            self.client.exit()
+            self.client.shutdown()
+            self._server_process.terminate()
+            self._server_process.wait()
+            self.log.debug(
+                "stdout: %s, stderr: %s",
+                self._server_process.stdout.read(),
+                self._server_process.stderr.read(),
+            )
+            self.log.info("Semgrep server stopped")
 
     def cleanup(self):
         super().cleanup()
