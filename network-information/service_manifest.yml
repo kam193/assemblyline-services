@@ -36,6 +36,11 @@ submission_params:
     value: "both"
     type: list
     list: ["dynamic", "static", "both", "none"]
+  - name: warn_new_domain
+    default: "both"
+    value: "both"
+    type: list
+    list: ["dynamic", "static", "both", "none"]
 
 # -1000: safe
 # 0 - 299: informative
@@ -81,7 +86,7 @@ dependencies:
     run_as_core: true
   netinfo_cache:
     container:
-      ram_mb: 256
+      ram_mb: 64
       ram_mb_min: 32
       cpu_cores: 0.5
       allow_internet_access: false
