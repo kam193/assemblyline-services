@@ -94,7 +94,7 @@ dependencies:
         [
           "redis-server",
           "--maxmemory",
-          "200mb",
+          "50mb",
           "--maxmemory-policy",
           "allkeys-lru",
         ]
