@@ -41,7 +41,7 @@ SEVERITY_TO_HEURISTIC = {
 
 RULES_LOCK = RLock()
 USE_LSP = True
-MAX_LINE_SIZE = 500
+MAX_LINE_SIZE = 5000
 
 
 class AssemblylineService(ServiceBase):
@@ -115,32 +115,44 @@ class AssemblylineService(ServiceBase):
 
     def _get_code_hash(self, code: str):
         code = code or ""
-        code = code.strip()
+        # re-arrange code in one line to increase hash consistency
+        code = "".join(line.strip() for line in code.split("\n"))
         if not code:
             return ""
         code_hash = hashlib.sha256(code.encode()).hexdigest()
         return f"code.{code_hash}"
 
-    def _read_lines(self, lines_no: set[int]):
-        lines = {}
+    def _read_lines(self, lines_no: set[tuple[int, int]]):
+        lines = defaultdict(list)
+        slices_by_start = defaultdict(list)
+        for start, end in lines_no:
+            slices_by_start[start].append(end)
+
+        open_slices = list()
         with open(self._request.file_path, "r") as f:
             for i, line in enumerate(f):
-                if i in lines_no:
-                    lines[i] = line[:MAX_LINE_SIZE]
-                    if len(lines) == len(lines_no):
-                        break
-        return lines
+                if i in slices_by_start:
+                    for end in slices_by_start[i]:
+                        open_slices.append((i, end))
+                for slice_ in open_slices:
+                    self.log.debug(f"Reading line {i} for slice {slice_}, {type(slice_)}")
+                    lines[slice_].append(line)
+                    if i == slice_[1]:
+                        open_slices.remove(slice_)
+                if not open_slices and len(lines) == len(lines_no):
+                    break
+        return {k: "".join(v) for k, v in lines.items()}
 
     def _process_results(self, results: list[dict]) -> Iterable[ResultMultiSection]:
         result_by_rule = defaultdict(list)
         lines_by_rule = defaultdict(set)
         line_no = set()
         for result in results:
-            line = result["start"]["line"]
-            if line not in lines_by_rule[result["check_id"]]:
-                line_no.add(line)
+            line_start, line_end = result["start"]["line"], result["end"]["line"]
+            if (line_start, line_end) not in lines_by_rule[result["check_id"]]:
+                line_no.add((line_start, line_end))
                 result_by_rule[result["check_id"]].append(result)
-                lines_by_rule[result["check_id"]].add(line)
+                lines_by_rule[result["check_id"]].add((line_start, line_end))
 
         lines = dict()
         if self.use_lsp and line_no:
@@ -164,12 +176,15 @@ class AssemblylineService(ServiceBase):
             section.add_line(message)
             section.set_heuristic(heuristic, signature=rule_id, attack_id=attack_id)
             for match in matches:
-                line_start = match["start"]["line"]
-                line = match["extra"].get("lines", lines.get(line_start, ""))
+                line_start, line_end = match["start"]["line"], match["end"]["line"]
+                line = match["extra"].get("lines", lines.get((line_start, line_end), ""))
                 code_hash = self._get_code_hash(line)
+                title = f"Match at lines {line_start} - {line_end}"
+                if line_start == line_end:
+                    title = f"Match at line {line_start}"
                 ResultMemoryDumpSection(
-                    f"Match at line {line_start}",
-                    body=line,
+                    title,
+                    body=line[:MAX_LINE_SIZE],
                     parent=section,
                     zeroize_on_tag_safe=True,
                     tags={"file.rule.semgrep": [code_hash, rule_id]},

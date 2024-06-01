@@ -61,7 +61,7 @@ class AssemblylineServiceUpdater(ServiceUpdater):
                         source=source,
                         status="DEPLOYED",
                         type=self.updater_type,
-                        revision=1,
+                        revision=rule.get("metadata", {}).get("revision", 1),
                         signature_id=rule["id"],
                     )
                 )
