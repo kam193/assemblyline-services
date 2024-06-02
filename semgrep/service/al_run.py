@@ -3,6 +3,7 @@ import json
 import os
 import tempfile
 from collections import defaultdict
+from copy import copy
 from threading import RLock
 from typing import Iterable
 
@@ -134,7 +135,7 @@ class AssemblylineService(ServiceBase):
                 if i in slices_by_start:
                     for end in slices_by_start[i]:
                         open_slices.append((i, end))
-                for slice_ in open_slices:
+                for slice_ in copy(open_slices):
                     self.log.debug(f"Reading line {i} for slice {slice_}, {type(slice_)}")
                     lines[slice_].append(line)
                     if i == slice_[1]:
