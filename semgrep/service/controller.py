@@ -96,6 +96,8 @@ class SemgrepScanController:
         # semgrep scan can use extension or the language command line option
         # so creating a link with the correct extension
         # note: symlinks are ignored by semgrep LSP
+        if os.path.exists(self._working_file):
+            os.remove(self._working_file)
         self._working_file = f"{self.workspace.name}/{os.path.basename(file_path)}{ext}"
         os.link(file_path, self._working_file)
 
@@ -313,44 +315,6 @@ class SemgrepLSPController(SemgrepScanController):
             if not self._ready and not self._refresh_rules_cond.wait(self.cli_timeout):
                 raise TimeoutError("Semgrep LSP wasn't ready on time")
 
-    def process_file(self, file_path: str, file_type: str) -> Iterable[dict]:
-        self.wait_for_ready()
-
-        with self._diagnostic_cond:
-            if not self._ready:
-                raise RecoverableError("Refreshing rules interrupted the scan")
-
-            self.last_results = []
-            self._prepare_file_with_extension(file_path, file_type)
-            self._current_uri = f"file://{self._working_file}"
-
-            self.client.didCreateFiles(self._current_uri)
-            self.client.didOpen(
-                pylspclient.lsp_pydantic_strcuts.TextDocumentItem(
-                    uri=self._current_uri,
-                    languageId="c",  # ignored by semgrep LSP
-                    version=1,
-                    text="",
-                )
-            )
-
-            if not self._diagnostic_cond.wait(self.cli_timeout):
-                self._was_timeout = True
-                raise TimeoutError("Semgrep LSP did not respond in time")
-
-            self.client.didClose(self._current_uri)
-
-            for result in self.last_results:
-                yield {
-                    "check_id": result["code"],
-                    "start": result["range"]["start"],
-                    "end": result["range"]["end"],
-                    "extra": {
-                        "severity": result["severity"],
-                        "message": result["message"],
-                    },
-                }
-
     def _shutdown(self):
         self.log.info("Shutting down semgrep lsp server")
         with suppress(Exception):
@@ -358,6 +322,71 @@ class SemgrepLSPController(SemgrepScanController):
             self.client.shutdown()
             self._server_process.terminate()
             self._server_process.wait()
+
+    def _reload_server(self):
+        if self._server_process.poll() is None:
+            self._shutdown()
+
+        if self.log.isEnabledFor(logging.DEBUG):
+            self.log.debug(
+                "Server stdout: %s, stderr: %s",
+                self._server_process.stdout.read(),
+                self._server_process.stderr.read(),
+            )
+        self.log.info("Resetting state for semgrep lsp server")
+        if self.endpoint.is_alive():
+            self.endpoint.stop()
+
+        self._startup_values()
+        self.load_rules([], "")
+
+    def process_file(self, file_path: str, file_type: str, retry: bool = True) -> Iterable[dict]:
+        self.wait_for_ready()
+
+        try:
+            with self._diagnostic_cond:
+                if not self._ready:
+                    raise RecoverableError("Refreshing rules interrupted the scan")
+
+                self.last_results = []
+                self._prepare_file_with_extension(file_path, file_type)
+                self._current_uri = f"file://{self._working_file}"
+
+                self.client.didCreateFiles(self._current_uri)
+                self.client.didOpen(
+                    pylspclient.lsp_pydantic_strcuts.TextDocumentItem(
+                        uri=self._current_uri,
+                        languageId="c",  # ignored by semgrep LSP
+                        version=1,
+                        text="",
+                    )
+                )
+
+                if not self._diagnostic_cond.wait(self.cli_timeout):
+                    self._was_timeout = True
+                    raise TimeoutError("Semgrep LSP did not respond in time")
+
+                self.client.didClose(self._current_uri)
+
+                for result in self.last_results:
+                    yield {
+                        "check_id": result["code"],
+                        "start": result["range"]["start"],
+                        "end": result["range"]["end"],
+                        "extra": {
+                            "severity": result["severity"],
+                            "message": result["message"],
+                        },
+                    }
+        except TimeoutError:
+            if retry:
+                # It looks like Semgrep LSP has regular timeouts,
+                # and a single retry usually helps
+                self.log.warning("Single timeout of the LSP server, retrying")
+                self._reload_server()
+                yield from self.process_file(file_path, file_type, False)
+            else:
+                raise
 
     def stop(self):
         if not self.client:
@@ -371,22 +400,6 @@ class SemgrepLSPController(SemgrepScanController):
                     self._server_process.stderr.read(),
                 )
             self.log.info("Semgrep server stopped")
-
-    def _reload_server(self):
-        if self._server_process.poll() is None:
-            self._shutdown()
-
-        self.log.info(
-            "Server stdout: %s, stderr: %s",
-            self._server_process.stdout.read(),
-            self._server_process.stderr.read(),
-        )
-        self.log.info("Resetting state for semgrep lsp server")
-        if self.endpoint.is_alive():
-            self.endpoint.stop()
-
-        self._startup_values()
-        self.load_rules([], "")
 
     def cleanup(self):
         super().cleanup()
