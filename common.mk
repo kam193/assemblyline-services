@@ -115,3 +115,17 @@ service-extract: al-service
 service-frankenstrings: CONTAINER_NAME=al-service-frankenstrings
 service-frankenstrings: SERVICE_IMAGE=${REGISTRY}/cccs/assemblyline-service-frankenstrings:${SERVICE_TAG}
 service-frankenstrings: al-service
+
+service-yara-updater: CONTAINER_NAME=al-service-yara-updater
+service-yara-updater: COMMAND=python -m yara_.update_server
+service-yara-updater: AL_SERVICE_NAME=YARA
+service-yara-updater: SERVICE_IMAGE=${REGISTRY}/cccs/assemblyline-service-yara:${SERVICE_TAG}
+service-yara-updater: CONTAINER_NETWORK=external
+service-yara-updater: ARGS_INT=-e AL_INSTANCE_KEY=changeme -e UPDATER_DIR=/tmp/updater -e SERVICE_PATH=yara_.yara_.Yara -e LOG_LEVEL=DEBUG
+service-yara-updater: al-service
+
+service-yara: CONTAINER_NAME=al-service-yara
+service-yara: SERVICE_IMAGE=${REGISTRY}/cccs/assemblyline-service-yara:${SERVICE_TAG}
+service-yara: ARGS_INT=-e updates_host=al-service-yara-updater -e updates_port=5003 -e updates_key=changeme
+service-yara: CONTAINER_NETWORK=external
+service-yara: al-service

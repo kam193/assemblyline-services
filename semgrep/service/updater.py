@@ -69,6 +69,11 @@ class AssemblylineServiceUpdater(ServiceUpdater):
 
         self.client.signature.add_update_many(source, self.updater_type, signatures)
 
+    def _inventory_check(self) -> bool:
+        result = super()._inventory_check()
+        self.log.info("Inventory check result: %s", result)
+        return result
+
 
 if __name__ == "__main__":
     with AssemblylineServiceUpdater(default_pattern=".*") as server:
