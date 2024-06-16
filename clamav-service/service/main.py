@@ -96,7 +96,8 @@ class ClamAVService(ServiceBase):
         if not isinstance(clamav_results, list):
             clamav_results = [clamav_results]
 
-        # TODO: Extract ClamAV DB version and signatures, and set it to the set_service_context
+        version = self.clamd.version()
+        request.set_service_context(version)
 
         result = Result()
 
