@@ -1,4 +1,21 @@
 rules:
+  # - id: example-autofix
+  #   pattern: |
+  #     $X = $X + 1
+  #   message: |
+  #     This rule is an example of an autofix rule
+  #   severity: INFO
+  #   languages:
+  #     - python
+  #   fix: |
+  #     $X += 1
+  #   metadata:
+  #     autofix: true
+  #     deobfuscation-trigger: true
+  #     description: |
+  #       This rule is an example of an autofix rule
+
+  # !important: source: GuardDog repository
   - id: exec-call
     pattern: exec(...)
     message: |
@@ -25,4 +42,5 @@ rules:
         metavariable: $COMMAND
         regex: install|develop|egg_info
     severity: WARNING
+
 

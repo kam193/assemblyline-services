@@ -1,23 +1,24 @@
 ARG REGISTRY=
-ARG BASE_IMAGE=cccs/assemblyline-v4-service-base:stable
 ARG MANIFEST_REGISTRY=ghcr.io/
+ARG BASE_IMAGE=cccs/assemblyline-v4-service-base:stable
 FROM ${BASE_IMAGE}
 
 ENV SERVICE_PATH service.al_run.AssemblylineService
 
 USER root
 RUN --mount=type=secret,id=apt,target=/etc/apt/apt.conf.d/00cfg \
-    echo "wireshark-common wireshark-common/install-setuid boolean false" | debconf-set-selections \
-        && apt-get update \
-        && apt-get upgrade -y \
-        && apt-get install -y tshark \
-        && rm -rf /var/lib/apt/lists/*
+    apt-get update && apt-get upgrade -y && apt-get install -y curl \
+    && curl -fsSL https://deb.nodesource.com/setup_20.x -o nodesource_setup.sh \
+    && bash nodesource_setup.sh \
+    && apt-get install -y nodejs \
+    && npm install -g @electron/asar
 
 USER assemblyline
 COPY requirements.txt requirements.txt
 
 RUN --mount=type=secret,id=pypi,target=/etc/pip.conf,mode=0444 \
-    pip install --no-cache-dir --user --requirement requirements.txt && rm -rf ~/.cache/pip
+    pip install --no-cache-dir --user --requirement requirements.txt && rm -rf ~/.cache/pip \
+    && npm install @electron/asar
 
 WORKDIR /opt/al_service
 COPY . .

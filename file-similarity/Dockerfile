@@ -6,12 +6,14 @@ FROM ${BASE_IMAGE}
 ENV SERVICE_PATH service.al_run.AssemblylineService
 
 USER root
-RUN apt-get update && apt-get install -y g++ && apt-get upgrade -y
+RUN --mount=type=secret,id=apt,target=/etc/apt/apt.conf.d/00cfg \
+    apt-get update && apt-get install -y g++ && apt-get upgrade -y
 
 USER assemblyline
 COPY requirements.txt requirements.txt
 
-RUN pip install --no-cache-dir --user --requirement requirements.txt && rm -rf ~/.cache/pip
+RUN --mount=type=secret,id=pypi,target=/etc/pip.conf,mode=0444 \
+    pip install --no-cache-dir --user --requirement requirements.txt && rm -rf ~/.cache/pip
 
 WORKDIR /opt/al_service
 COPY . .

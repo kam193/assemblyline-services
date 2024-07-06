@@ -56,6 +56,12 @@ heuristics:
     name: Informative code pattern
     score: 10
     max_score: 50
+  - description: Code was obfuscated
+    filetype: "*"
+    heur_id: 4
+    name: Code was obfuscated
+    score: 500
+    # max_score: 500
 
 docker_config:
   image: ${REGISTRY}ghcr.io/kam193/assemblyline-service-semgrep:$SERVICE_TAG

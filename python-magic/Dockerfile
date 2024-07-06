@@ -3,7 +3,8 @@ ARG MANIFEST_REGISTRY=ghcr.io/
 ARG BASE_IMAGE=cccs/assemblyline-v4-service-base:stable
 FROM debian:bookworm-slim as builder
 
-RUN apt-get update && apt-get upgrade -y && apt-get install -y git cmake make g++
+RUN --mount=type=secret,id=apt,target=/etc/apt/apt.conf.d/00cfg \
+    apt-get update && apt-get upgrade -y && apt-get install -y git cmake make g++
 
 COPY helpers/ helpers/
 RUN bash helpers/build-pycdc.sh
@@ -13,7 +14,8 @@ FROM ${BASE_IMAGE}
 ENV SERVICE_PATH service.al_run.AssemblylineService
 
 USER root
-RUN apt-get update && apt-get install -y curl && apt-get upgrade -y
+RUN --mount=type=secret,id=apt,target=/etc/apt/apt.conf.d/00cfg \
+    apt-get update && apt-get install -y curl && apt-get upgrade -y
 
 WORKDIR /opt/al_service
 
@@ -21,7 +23,8 @@ COPY requirements.txt requirements.txt
 COPY helpers/ helpers/
 
 # TODO: multi-stage build?
-RUN PYTHONPATH=/var/lib/assemblyline/.local/lib/python3.11/site-packages pip install \
+RUN --mount=type=secret,id=pypi,target=/etc/pip.conf,mode=0444 \
+    PYTHONPATH=/var/lib/assemblyline/.local/lib/python3.11/site-packages pip install \
     --no-cache-dir --requirement requirements.txt && \
     bash helpers/install-deps.sh && \
     rm -rf ~/.cache/pip

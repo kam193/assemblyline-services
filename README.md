@@ -6,6 +6,12 @@ version of AssemblyLine 4.
 
 ## Services
 
+### ASAR Extractor
+
+Simple service extracting [ASAR Archives](https://www.electronjs.org/docs/latest/tutorial/asar-archives)
+using official [asar tool](https://www.npmjs.com/package/@electron/asar) from Electron. By default, node modules
+are omitted from the extracted files, but it can be configured using submission parameters.
+
 ### ClamAV
 
 This service uses the ClamAV antivirus engine to scan files for viruses. It leverages the daemon mode to keep db

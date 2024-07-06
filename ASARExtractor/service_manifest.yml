@@ -1,0 +1,67 @@
+name: ASARExtractor
+version: $SERVICE_TAG
+description: FIXME
+enabled: true
+
+accepts: archive/asar
+rejects: empty
+stage: EXTRACT
+category: Extraction
+uses_tags: false
+file_required: true
+timeout: 90
+is_external: false
+
+# config:
+#   KEY: "VALUE"
+
+submission_params:
+  - default: false
+    name: extract_node_modules
+    type: bool
+    value: false
+
+# -1000: safe
+# 0 - 299: informative
+# 300 - 699: suspicious
+# 700 - 999: highly suspicious
+# >= 1000: malicious
+
+# heuristics:
+#   - description: Some score
+#     filetype: "*"
+#     heur_id: 1
+#     name: Score
+#     score: 0
+
+docker_config:
+  image: ${REGISTRY}ghcr.io/kam193/assemblyline-service-asarextractor:$SERVICE_TAG
+  cpu_cores: 1.0
+  ram_mb: 512
+  ram_mb_min: 256
+  allow_internet_access: false
+
+# update_config:
+#   update_interval_seconds: 7200 # 2 hours
+#   generates_signatures: false
+#   wait_for_update: true
+#   sources:
+
+# dependencies:
+#   updates:
+#     container:
+#       ram_mb: 3072
+#       ram_mb_min: 256
+#       allow_internet_access: true
+#       command: ["python", "-m", "service.updater"]
+#       image: ${REGISTRY}ghcr.io/kam193/assemblyline-service-asarextractor:$SERVICE_TAG
+#       ports: ["5003"]
+#       environment:
+#         - name: UPDATER_DIR
+#           value: /opt/clamav_db/
+#     volumes:
+#       updates:
+#         mount_path: /opt/clamav_db/
+#         capacity: 2147483648 # 2 GB
+#         storage_class: default
+#     run_as_core: True

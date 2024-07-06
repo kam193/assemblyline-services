@@ -4,6 +4,8 @@ BASE_IMAGE?=${REGISTRY}/cccs/assemblyline-v4-service-base:4.5.stable
 AL_SERVICE_NAME=Template
 SERVICE_NAME=assemblyline-service-$(shell echo ${AL_SERVICE_NAME} | tr '[:upper:]' '[:lower:]')
 BASE_TAG?=4.5.0.stable
+APT_CFG_MOUNT?=../empty
+PYPI_CFG?=../empty
 
 MANIFEST_REGISTRY?=
 
@@ -22,6 +24,8 @@ build: manifest
 		--build-arg BASE_IMAGE=${BASE_IMAGE} \
 		--build-arg MANIFEST_REGISTRY=${MANIFEST_REGISTRY} \
 		--build-arg BASE_TAG=${BASE_TAG} \
+		--secret id=apt,src=${APT_CFG_MOUNT} \
+		--secret id=pypi,src=${PYPI_CFG} \
 		${CACHE} .
 
 TAG=$(shell cat VERSION)

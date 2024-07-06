@@ -6,7 +6,7 @@ import tempfile
 import threading
 from contextlib import suppress
 from threading import RLock
-from typing import Iterable
+from typing import Iterable, Optional
 
 import pylspclient
 import pylspclient.lsp_pydantic_strcuts
@@ -67,6 +67,7 @@ class SemgrepScanController:
         self.cli_timeout = 60
         self._rules_dir = rules_dir
         self._working_file = ""
+        self._cli_config = BASE_CONFIG
 
         self.workspace = tempfile.TemporaryDirectory("semgrep_workspace")
 
@@ -112,7 +113,7 @@ class SemgrepScanController:
             self._ready = True
 
     def _execute_semgrep(self, file_path: str) -> dict:
-        cmd = ["semgrep"] + BASE_CONFIG
+        cmd = ["semgrep"] + self._cli_config
         for option, value in self._semgrep_config.items():
             cmd.append(f"--{option}")
             cmd.append(value)
@@ -254,12 +255,13 @@ class SemgrepLSPController(SemgrepScanController):
                     "jobs": 1,
                     "exclude": [],
                     "include": [],
-                    "maxMemory": int(self._semgrep_config.get("max-memory")),
-                    "maxTargetBytes": int(self._semgrep_config.get("max-target-bytes")),
+                    "maxMemory": 50, # int(self._semgrep_config.get("max-memory")),
+                    "maxTargetBytes": 10000000,# int(self._semgrep_config.get("max-target-bytes")),
                     "timeout": int(self._semgrep_config.get("timeout")),
                     "timeoutThreshold": 3,
                     "onlyGitDirty": False,
                     "pro_intrafile": False,
+                    "ci": False,
                 },
                 "doHover": False,
                 "metrics": {"enabled": False},
@@ -411,3 +413,29 @@ class SemgrepLSPController(SemgrepScanController):
             self._reload_server()
         elif self._was_timeout:
             self._reload_server()
+
+
+class SemgrepDeobfuscationController(SemgrepScanController):
+    def __init__(self, logger: logging.Logger = None, rules_dir: str = None):
+        super().__init__(logger, rules_dir)
+        self._cli_config.remove("--no-autofix")
+        self._cli_config.append("--autofix")
+
+    def deobfuscate_file(self, file_path: str, file_type: str) -> Optional[str]:
+        self._prepare_file_with_extension(file_path, file_type)
+        iterations = 0
+        changed = False
+        while iterations < 10:
+            results, rule_prefix = self._execute_semgrep(self._working_file)
+            self.last_results = results
+            self.version = results.get("version", "")
+            if res_list := results.get("results", []):
+                # TODO: transform deobfuscation rules
+                changed = True
+            else:
+                break
+            iterations += 1
+
+        if changed:
+            return self._working_file
+        return None
