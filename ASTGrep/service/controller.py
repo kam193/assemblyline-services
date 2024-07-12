@@ -1,19 +1,21 @@
 import json
 import logging
 import os
+import shutil
 import subprocess
 import tempfile
 import threading
 from contextlib import suppress
 from threading import RLock
-from typing import Iterable, Optional
+from typing import Iterable
 
 import pylspclient
 import pylspclient.lsp_pydantic_strcuts
-from assemblyline.common.exceptions import RecoverableError
+import yaml
 from assemblyline.common.identify_defaults import type_to_extension
 
-from .helpers import BASE_CONFIG, configure_yaml
+from . import transformations
+from .helpers import configure_yaml
 
 configure_yaml()
 
@@ -53,6 +55,17 @@ class UnsupportedLanguageError(ValueError):
     pass
 
 
+def get_language_id(file_format: str) -> str:
+    language = file_format.split("/")[1].lower()
+    if language == "jscript":
+        language = "javascript"
+    try:
+        language = pylspclient.lsp_pydantic_strcuts.LanguageIdentifier(language).value
+    except ValueError:
+        raise UnsupportedLanguageError(f"Unsupported language: {language}")
+    return language
+
+
 class ASTGrepScanController:
     def __init__(self, logger: logging.Logger = None, rules_dir: str = None):
         self._active_rules = []
@@ -61,11 +74,11 @@ class ASTGrepScanController:
         self._lock = RLock()
         self._ready = False
         self.last_results = {}
-        self.version = ""
+        self.version = "ast-grep"
         self.cli_timeout = 60
         self._rules_dir = rules_dir
         self._working_file = ""
-        self._cli_config = BASE_CONFIG
+        self._cli_config = []
 
         self.workspace = tempfile.TemporaryDirectory("sg_workspace")
 
@@ -81,7 +94,7 @@ class ASTGrepScanController:
     def set_config(self, key: str, value: str):
         self._sg_config[key] = value
 
-    def _prepare_file_with_extension(self, file_path: str, file_type: str) -> str:
+    def _prepare_file_with_extension(self, file_path: str, file_type: str, copy=False) -> str:
         ext = LANGUAGE_TO_EXT.get(file_type, None)
         if not ext:
             # yeah, with languages we have an extension for we would just try;
@@ -97,7 +110,11 @@ class ASTGrepScanController:
         if os.path.exists(self._working_file):
             os.remove(self._working_file)
         self._working_file = f"{self.workspace.name}/{os.path.basename(file_path)}{ext}"
-        os.link(file_path, self._working_file)
+
+        if copy:
+            shutil.copyfile(file_path, self._working_file)
+        else:
+            os.symlink(file_path, self._working_file)
 
     def load_rules(self, rule_paths: list[str], rule_id_prefix: str):
         new_rules = []
@@ -110,40 +127,43 @@ class ASTGrepScanController:
             self._ready = True
 
     def _execute_sg(self, file_path: str) -> dict:
-        cmd = ["sg"] + self._cli_config
+        cmd = ["sg", "scan", "--json"] + self._cli_config
         for option, value in self._sg_config.items():
             cmd.append(f"--{option}")
             cmd.append(value)
 
+        active_config = ["-c", "./rules/sgconfig.yml"]
+
         with self._lock:
             result = subprocess.run(
-                cmd + self._active_rules + [file_path],
+                cmd + active_config + [file_path],
                 capture_output=True,
                 text=True,
                 timeout=self.cli_timeout,
             )
-            rules_prefix = self._active_rules_prefix
 
-        self.log.debug("AST-Grep result: %s", result.stdout)
+        # self.log.debug("AST-Grep result: %s", result.stdout)
 
         # Something was found
         if result.returncode == 1:
-            return json.loads(result.stdout), rules_prefix
+            return json.loads(result.stdout)
         elif result.returncode == 0:
             return {}, None
         else:
-            self.log.error("Error running sg (%d) %s", result.returncode, result.stdout)
-            raise RuntimeError(f"Error {result.returncode} running sg: {result.stdout[:250]}")
+            self.log.error(
+                "Error running sg (%d) %s, %s", result.returncode, result.stdout, result.stderr
+            )
+            raise RuntimeError(
+                f"Error {result.returncode} running sg: {result.stdout[:250]}, {result.stderr[:250]}"
+            )
             # return {}
 
     def process_file(self, file_path: str, file_type: str) -> Iterable[dict]:
         self._prepare_file_with_extension(file_path, file_type)
-        results, rule_prefix = self._execute_sg(self._working_file)
+        results = self._execute_sg(self._working_file)
         self.last_results = results
-        self.version = results.get("version", "")
-        if res_list := results.get("results", []):
-            for result in res_list:
-                result["check_id"] = result["check_id"][len(rule_prefix) :]
+        if results:
+            for result in results:
                 yield result
 
     def cleanup(self):
@@ -182,15 +202,6 @@ class ASTGrepLSPController(ASTGrepScanController):
         self._diagnostic_cond = threading.Condition(self._lock)
         self._refresh_rules_cond = threading.Condition(self._lock)
         self.cli_timeout = 15
-
-    def __init__(self, logger: logging.Logger = None, rules_dir: str = None):
-        super().__init__(logger=logger, rules_dir=rules_dir)
-        self.client = None
-        self.log = logger or logging.getLogger(__name__)
-        # logging.basicConfig(level=logging.DEBUG)
-        self._startup_values()
-
-        self._initialize()
 
     def _add_results(self, params):
         with self._diagnostic_cond:
@@ -270,6 +281,15 @@ class ASTGrepLSPController(ASTGrepScanController):
         self._ready = True
         self._is_initialized = True
 
+    def __init__(self, logger: logging.Logger = None, rules_dir: str = None):
+        super().__init__(logger=logger, rules_dir=rules_dir)
+        self.client = None
+        self.log = logger or logging.getLogger(__name__)
+        # logging.basicConfig(level=logging.DEBUG)
+        self._startup_values()
+
+        self._initialize()
+
     def _shutdown(self):
         self.log.info("Shutting down sg lsp server")
         with suppress(Exception):
@@ -305,7 +325,7 @@ class ASTGrepLSPController(ASTGrepScanController):
             self.client.didOpen(
                 pylspclient.lsp_pydantic_strcuts.TextDocumentItem(
                     uri=self._current_uri,
-                    languageId=file_type.split("/")[1],
+                    languageId=get_language_id(file_type),  # file_type.split("/")[1],
                     version=1,
                     text=open(file_path, "r").read(),
                 )
@@ -358,26 +378,78 @@ class ASTGrepLSPController(ASTGrepScanController):
 
 
 class ASTGrepDeobfuscationController(ASTGrepScanController):
+    # def __init__(self, logger: logging.Logger = None, rules_dir: str = None):
+    #     super().__init__(logger, rules_dir)
+    #     self._cli_config.remove("--no-autofix")
+    #     self._cli_config.append("--autofix")
+
     def __init__(self, logger: logging.Logger = None, rules_dir: str = None):
         super().__init__(logger, rules_dir)
-        self._cli_config.remove("--no-autofix")
-        self._cli_config.append("--autofix")
+        self._rules_transformations = {}
+        self.read_rules(rules_dir)
 
-    def deobfuscate_file(self, file_path: str, file_type: str) -> Optional[str]:
-        self._prepare_file_with_extension(file_path, file_type)
-        iterations = 0
-        changed = False
-        while iterations < 10:
-            results, rule_prefix = self._execute_sg(self._working_file)
-            self.last_results = results
-            self.version = results.get("version", "")
-            if res_list := results.get("results", []):
-                # TODO: transform deobfuscation rules
-                changed = True
-            else:
-                break
-            iterations += 1
+    def read_rules(self, rule_paths: list[str]):
+        for rule_path in rule_paths:
+            for root, _, files in os.walk(rule_path):
+                for file in files:
+                    if file.endswith(".yml") or file.endswith(".yaml"):
+                        with open(os.path.join(root, file), "r") as f:
+                            data = yaml.safe_load(f)
+                        if transformation := data.get("metadata", {}).get("deobfuscate", ""):
+                            self._rules_transformations[data.get("id")] = json.loads(transformation)
 
-        if changed:
-            return self._working_file
-        return None
+    def deobfuscate_file(self, file_path: str, file_type: str):
+        self._prepare_file_with_extension(file_path, file_type, copy=True)
+
+        for result in self._execute_sg(self._working_file):
+            yield self.transform(result)
+
+    def _build_context(self, result: dict) -> dict:
+        context = {}
+        single_metavars = result.get("metaVariables", {}).get("single", {})
+        for name, data in single_metavars.items():
+            context[name] = data.get("text")
+
+        return context
+
+        # TODO: deobfuscation through fix instructions
+
+        # iterations = 0
+        # changed = False
+        # while iterations < 10:
+        #     results, rule_prefix = self._execute_sg(self._working_file)
+        #     self.last_results = results
+        #     self.version = results.get("version", "")
+        #     if res_list := results.get("results", []):
+        #         # TODO: transform deobfuscation rules
+        #         changed = True
+        #     else:
+        #         break
+        #     iterations += 1
+
+        # if changed:
+        #     return self._working_file
+        # return None
+
+    def transform(self, result: dict) -> str:
+        rule_id = result.get("ruleId")
+        if rule_id not in self._rules_transformations:
+            return
+
+        transformation = self._rules_transformations[rule_id]
+        transformation.get("type", "extract")
+        context = self._build_context(result)
+
+        output = ""
+        for step in transformation.get("steps", []):
+            step: dict
+            func = step.get("func")
+            if func.startswith("_"):
+                raise RuntimeError("Not implemented")
+            output_field = step.get("output")
+            func = getattr(transformations, func)
+            output = func(step, context)
+            if output_field:
+                context[output_field] = output
+
+        return output

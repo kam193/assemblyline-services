@@ -1,15 +1,34 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/main/schemas/rule.json
 
-id: obfuscation-fernet
-message: Executing code dynamically $CODE
+id: obfuscation-python-fernet
+message: Contains code obfuscated with Fernet encryption
 severity: error # error, warning, info, hint
 language: Python
 rule:
-  pattern: Fernet($PASS).decrypta($DATA)
+  any:
+    - pattern:
+        context: Fernet("$FERNET_KEY").decrypt("$FERNET_SOURCE")
+        strictness: signature
+    - pattern:
+        context: $X.decrypt("$FERNET_SOURCE")
+        selector: expression_statement
+        strictness: signature
+      follows:
+        stopBy: end
+        pattern:
+          context: $X = Fernet("$FERNET_KEY")
+          selector: expression_statement
+          strictness: signature
+    # TODO: other variations
 metadata:
   some: metadata
   extended-obfuscation: yes
-note: test
-
-# utils: Extract repeated rule as local utility here.
-# note: Add detailed explanation for the rule.
+  deobfuscate: |
+    {
+      "type": "extract",
+      "steps": [
+        {"func": "encode", "source": "FERNET_KEY", "encoding": "utf-8"},
+        {"func": "encode", "source": "FERNET_SOURCE", "encoding": "utf-8"},
+        {"func": "fernet"}
+      ]
+    }

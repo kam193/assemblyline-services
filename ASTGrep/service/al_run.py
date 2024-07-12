@@ -9,7 +9,7 @@ from typing import Iterable
 
 import yaml
 from assemblyline.common.exceptions import RecoverableError
-from assemblyline_v4_service.common.base import UPDATES_DIR, ServiceBase
+from assemblyline_v4_service.common.base import ServiceBase
 from assemblyline_v4_service.common.request import ServiceRequest
 from assemblyline_v4_service.common.result import (
     Result,
@@ -19,6 +19,8 @@ from assemblyline_v4_service.common.result import (
 )
 
 from .controller import (
+    LANGUAGE_TO_EXT,
+    ASTGrepDeobfuscationController,
     ASTGrepLSPController,
     ASTGrepScanController,
     UnsupportedLanguageError,
@@ -27,7 +29,7 @@ from .helpers import configure_yaml
 
 configure_yaml()
 
-RULES_DIR = os.path.join(UPDATES_DIR, "sg_rules")
+# RULES_DIR = os.path.join(UPDATES_DIR, "sg_rules")
 
 SEVERITY_TO_HEURISTIC = {
     "INFO": 3,
@@ -48,8 +50,22 @@ RULES_LOCK = RLock()
 USE_LSP = True
 MAX_LINE_SIZE = 5000
 
+RULES_DIR = [
+    "./rules/extended",
+    # "./rules/detection",
+]
+
 
 class AssemblylineService(ServiceBase):
+    def _read_rules(self):
+        for rule_path in RULES_DIR:
+            for root, _, files in os.walk(rule_path):
+                for file in files:
+                    if file.endswith(".yml") or file.endswith(".yaml"):
+                        with open(os.path.join(root, file), "r") as f:
+                            data = yaml.safe_load(f)
+                        metadata = data.get("metadata", {})
+                        self.metadata_cache[data.get("id")] = metadata
 
     def __init__(self, config=None):
         super().__init__(config)
@@ -62,6 +78,8 @@ class AssemblylineService(ServiceBase):
             self._astgrep = ASTGrepLSPController(self.log, RULES_DIR)
         else:
             self._astgrep = ASTGrepScanController(self.log, RULES_DIR)
+        self._deobfuscator = ASTGrepDeobfuscationController(self.log, RULES_DIR)
+        self._read_rules()
 
     def start(self):
         self.log.info(f"{self.service_attributes.name} service started")
@@ -72,9 +90,7 @@ class AssemblylineService(ServiceBase):
         # signature client doesn't support joining to a yaml, so we need to recreate it using our delimiter
         os.makedirs(RULES_DIR, exist_ok=True)
         new_rules_dir = tempfile.TemporaryDirectory(prefix="sg_rules_", dir=RULES_DIR)
-        new_deobfuscation_rules_dir = tempfile.TemporaryDirectory(
-            prefix="sg_rules_", dir=RULES_DIR
-        )
+        new_deobfuscation_rules_dir = tempfile.TemporaryDirectory(prefix="sg_rules_", dir=RULES_DIR)
         deobfuscation_files = []
         metadata = {}
         files = []
@@ -199,11 +215,12 @@ class AssemblylineService(ServiceBase):
             heuristic = SEVERITY_TO_HEURISTIC.get(str(severity).upper(), 0)
 
             # TODO: Support for attribution
-            metadata = {} # self.metadata_cache.get(rule_id, {})
+            metadata = self.metadata_cache.get(rule_id, {})
             title = metadata.get("title", metadata.get("name", message[:100]))
             attack_id = metadata.get("attack_id")
 
-            is_deobfuscation = metadata.get("deobfuscation-trigger", False)
+            is_deobfuscation = metadata.get("extended-obfuscation", False)
+            self.log.debug("Is deobfuscation: %s", is_deobfuscation)
             self._should_deobfuscate = self._should_deobfuscate or is_deobfuscation
 
             section = ResultTextSection(
@@ -253,7 +270,26 @@ class AssemblylineService(ServiceBase):
                 json.dump(self._astgrep.last_results, f, indent=2)
             request.add_supplementary(f.name, "astgrep_raw_results.json", "AST-Grep Results")
 
-        # if self._should_deobfuscate:
+        if self._should_deobfuscate:
+            result_no = 1
+            for deobf_result in self._deobfuscator.deobfuscate_file(
+                request.file_path, request.file_type
+            ):
+                path = f"{self.working_directory}/_deobfuscated_code_{result_no}.{LANGUAGE_TO_EXT[request.file_type]}"
+                with open(path, "w+") as f:
+                    f.write(deobf_result)
+                request.add_extracted(
+                    path,
+                    f"_deobfuscated_code_{result_no}.{LANGUAGE_TO_EXT[request.file_type]}",
+                    "Deobfuscated file",
+                )
+            deobf_section = ResultTextSection("Obfuscation found")
+            deobf_section.add_line(
+                "Obfuscation was detected in the file. Extracted deobfuscated code."
+            )
+            deobf_section.set_heuristic(4)
+            result.add_section(deobf_section)
+
         #     deobfuscated_path = self._deobfuscator.deobfuscate_file(
         #         request.file_path, request.file_type
         #     )

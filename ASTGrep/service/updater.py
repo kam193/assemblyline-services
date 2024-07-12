@@ -12,6 +12,7 @@ configure_yaml()
 
 # TODO: Support updating SG rules
 
+
 class AssemblylineServiceUpdater(ServiceUpdater):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

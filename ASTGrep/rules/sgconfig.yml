@@ -1,6 +1,6 @@
 ruleDirs:
 - ./extended
-- ./detection
+# - ./detection
 # testConfigs:
 # - testDir: ./rule-tests
 # utilDirs:

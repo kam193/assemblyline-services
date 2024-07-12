@@ -1,10 +1,27 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/main/schemas/rule.json
-id: obfuscation-encrypted-js
+id: obfuscation-encrypted-js-aes
 language: JavaScript
 message: The code was obfuscated using AES encryption
+severity: error
+metadata:
+  category: obfuscation
+  extended-obfuscation: yes
+  deobfuscate: |
+    {
+      "type": "extract",
+      "steps": [
+        {"func": "encode", "source": "IV", "encoding": "hex"},
+        {"func": "encode", "source": "SALT", "encoding": "hex"},
+        {"func": "encode", "source": "AUTH_TAG", "encoding": "hex"},
+        {"func": "encode", "source": "DATA", "encoding": "hex"},
+        {"func": "scrypt", "output": "KEY"},
+        {"func": "slice", "source": "KEY", "output": "KEY"},
+        {"func": "aes", "source": "DATA"}
+      ]
+    }
 rule:
   pattern:
-    context: const $DECR = $DECRYPT('$DATA', '$AUTH', '$SALT', '$IV', "$MASTER")
+    context: const $DECR = $DECRYPT('$DATA', '$AUTH_TAG', '$SALT', '$IV', "$MASTER_KEY")
     strictness: signature
   # kind: lexical_declaration
 
@@ -12,19 +29,19 @@ rule:
     stopBy: end
     kind: function_declaration
     pattern:
-      context: function $DECRYPT(encdata, $AUTH_TAG_PARAM, $SALT_PARAM, $IV_PARAM, $MASTER_KEY) { $$$ }
+      context: function $DECRYPT(encdata, $AUTH_TAG_PARAM, $SALT_PARAM, $IV_PARAM, $MASTER_PARAM) { $$$ }
       strictness: signature
     has:
       stopBy: end
       all:
         - pattern:
-            context: "const $KEY_2 = crypto.scryptSync($MASTER_KEY, Buffer.from($SALT_PARAM, 'hex'), 64, { N: 16384, r: 8, p: 1 }).slice(0, 32)"
+            context: "const $KEY_2 = crypto.scryptSync($MASTER_PARAM, Buffer.from($SALT_PARAM, 'hex'), $KEY_LENGTH, { N: $OPT_N, r: $OPT_R, p: $OPT_P }).slice($SLICE_START, $SLICE_END)"
             strictness: signature
             # selector: lexical_declaration
             stopBy: end
             preceeds:
               pattern:
-                context: const $DECIPHER = crypto.createDecipheriv('aes-256-gcm', $KEY, Buffer.from($IV_PARAM, 'hex'));
+                context: const $DECIPHER = crypto.createDecipheriv('$AES_MODE', $KEY, Buffer.from($IV_PARAM, 'hex'));
                 strictness: signature
                 stopBy: end
                 preceeds:
