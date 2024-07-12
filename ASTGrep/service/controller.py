@@ -145,10 +145,8 @@ class ASTGrepScanController:
         # self.log.debug("AST-Grep result: %s", result.stdout)
 
         # Something was found
-        if result.returncode == 1:
+        if result.returncode <= 1:
             return json.loads(result.stdout)
-        elif result.returncode == 0:
-            return {}
         else:
             self.log.error(
                 "Error running sg (%d) %s, %s", result.returncode, result.stdout, result.stderr
