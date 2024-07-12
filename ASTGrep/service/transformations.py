@@ -45,7 +45,7 @@ def aes(config: dict, context: dict):
 
 
 def encode(config: dict, context: dict):
-    source = config.get("source", "ENCODE_SOURCE")
+    source = config.get("source", "DATA")
     encoding = config.get("encoding", "utf-8")
     if encoding in context:
         encoding = context[encoding]
@@ -56,12 +56,69 @@ def encode(config: dict, context: dict):
         data = bytes.fromhex(context[source])
     elif encoding == "utf-8":
         data = bytes(context[source], "utf-8")
+    elif encoding == "bytes-decode":
+        data = bytes(context[source]).decode()
+    elif encoding == "bytes":
+        data = bytes(context[source])
 
     if "output" not in config:
         context[source] = data
+    return data
 
 
 def fernet(config: dict, context: dict):
     source = config.get("source", "FERNET_SOURCE")
     cipher = cryptography.fernet.Fernet(context.get("FERNET_KEY"))
     return cipher.decrypt(context[source]).decode("utf-8")
+
+
+def encode_list(config: dict, context: dict):
+    encoding = config.get("encoding", "int")
+    separators = config.get("separators", ",")
+    source = config.get("source", "DATA")
+
+    data = []
+    for item in context[source]:
+        if item in separators:
+            continue
+        if encoding == "int":
+            data.append(int(item))
+        elif encoding == "str":
+            data.append(str(item))
+        elif encoding == "base64":
+            data.append(base64.b64encode(bytes(item, "utf-8")).decode("utf-8"))
+        elif encoding == "hex":
+            data.append(bytes.fromhex(item))
+        elif encoding == "utf-8":
+            data.append(bytes(item, "utf-8"))
+
+    return data
+
+
+def reverse(config: dict, context: dict):
+    source = config.get("source", "DATA")
+    return context[source][::-1]
+
+
+def quote(config: dict, context: dict):
+    source = config.get("source", "DATA")
+    style = config.get("style", "double")
+    if style == "single":
+        return "'" + context[source] + "'"
+    elif style == "double":
+        return '"' + context[source] + '"'
+    elif style == "py-byte":
+        return "b'" + context[source] + "'"
+
+
+def output(config: dict, context: dict):
+    source = config.get("source", "DATA")
+    return context[source]
+
+def concat(config: dict, context: dict):
+    sources = config.get("sources", ["DATA"])
+    separator = config.get("separator", ".")
+    return separator.join(context[source] for source in sources)
+
+
+# def fix_simple_replace(config: dict, context: dict):

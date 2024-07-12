@@ -148,7 +148,7 @@ class ASTGrepScanController:
         if result.returncode == 1:
             return json.loads(result.stdout)
         elif result.returncode == 0:
-            return {}, None
+            return {}
         else:
             self.log.error(
                 "Error running sg (%d) %s, %s", result.returncode, result.stdout, result.stderr
@@ -313,7 +313,8 @@ class ASTGrepLSPController(ASTGrepScanController):
             self.endpoint.stop()
 
         self._startup_values()
-        self.load_rules([], "")
+        self._initialize()
+        # self.load_rules([], "")
 
     def process_file(self, file_path: str, file_type: str, retry: bool = True) -> Iterable[dict]:
         with self._diagnostic_cond:

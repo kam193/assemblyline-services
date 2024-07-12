@@ -1,0 +1,20 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/main/schemas/rule.json
+
+id: python-builtin-getattr
+message: Reverse inline bytes decode
+language: Python
+rule:
+  any:
+    - pattern:
+        context: getattr(__import__("builtins"), "$DATA")
+        strictness: signature
+
+metadata:
+  extended-obfuscation: yes
+  deobfuscate: |
+    {
+      "type": "fix-generate",
+      "steps": [
+        {"func": "output", "source": "DATA"}
+      ]
+    }

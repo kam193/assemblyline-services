@@ -1,0 +1,21 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/main/schemas/rule.json
+
+id: python-reverse-inline-bytes-decode
+message: Reverse inline bytes decode
+language: Python
+rule:
+  any:
+    - pattern: bytes([$$$DATA][::-1])
+
+metadata:
+  extended-obfuscation: yes
+  deobfuscate: |
+    {
+      "type": "fix-generate",
+      "steps": [
+        {"func": "reverse", "source": "DATA"},
+        {"func": "encode_list", "source": "DATA", "encoding": "int"},
+        {"func": "encode", "source": "DATA", "encoding": "bytes-decode"},
+        {"func": "quote", "source": "DATA"}
+      ]
+    }
