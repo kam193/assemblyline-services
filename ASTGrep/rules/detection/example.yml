@@ -1,0 +1,15 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/main/schemas/rule.json
+
+id: example
+message: Executing code dynamically $CODE
+severity: error # error, warning, info, hint
+language: Python
+rule:
+  pattern: exec($CODE)
+metadata:
+  some: metadata
+note: test $CODE
+fix: $CODE
+
+# utils: Extract repeated rule as local utility here.
+# note: Add detailed explanation for the rule.

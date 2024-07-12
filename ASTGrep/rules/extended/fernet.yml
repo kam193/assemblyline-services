@@ -1,0 +1,15 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/main/schemas/rule.json
+
+id: obfuscation-fernet
+message: Executing code dynamically $CODE
+severity: error # error, warning, info, hint
+language: Python
+rule:
+  pattern: Fernet($PASS).decrypta($DATA)
+metadata:
+  some: metadata
+  extended-obfuscation: yes
+note: test
+
+# utils: Extract repeated rule as local utility here.
+# note: Add detailed explanation for the rule.
