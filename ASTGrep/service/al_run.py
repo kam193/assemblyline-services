@@ -61,7 +61,9 @@ class AssemblylineService(ServiceBase):
         for rule_path in RULES_DIR:
             for root, _, files in os.walk(rule_path):
                 for file in files:
-                    if file.endswith(".yml") or file.endswith(".yaml") and ".sgconfig." not in file:
+                    if (
+                        file.endswith(".yml") or file.endswith(".yaml")
+                    ) and ".sgconfig." not in file:
                         with open(os.path.join(root, file), "r") as f:
                             yaml_docs = yaml.safe_load_all(f)
 
@@ -188,7 +190,7 @@ class AssemblylineService(ServiceBase):
 
         try:
             results = self._astgrep.process_file(request.file_path, request.file_type)
-            request.set_service_context(f"AST-Grep OSS {self._astgrep.version}")
+            request.set_service_context(self._astgrep.version)
             for result_section in self._process_results(results):
                 result.add_section(result_section)
         except UnsupportedLanguageError:

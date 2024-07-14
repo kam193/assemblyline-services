@@ -213,11 +213,18 @@ class ASTGrepLSPController(ASTGrepScanController):
 
     def _add_results(self, params):
         with self._diagnostic_cond:
-            self.log.debug("Got results: %s", params)
+            self.log.info("Got results: %s", params)
             # if self._current_uri != params["uri"]:
             #     return
             self.last_results.extend(params["diagnostics"])
             self._diagnostic_cond.notify()
+
+    def _handle_message(self, message):
+        if message["type"] == 1:
+            self.log.error("logMessage: %s", message)
+            raise RuntimeError("Failed to start sg lsp server")
+        else:
+            self.log.debug("logMessage: %s", message)
 
     def _initialize(self):
         self._server_process = subprocess.Popen(
@@ -241,7 +248,7 @@ class ASTGrepLSPController(ASTGrepScanController):
             notify_callbacks={
                 "$/progress": lambda _: None,
                 "textDocument/publishDiagnostics": self._add_results,
-                "window/logMessage": lambda params: self.log.debug("logMessage: %s", params),
+                "window/logMessage": self._handle_message,
             },
             method_callbacks={
                 "window/workDoneProgress/create": lambda _: dict(token="be-ignored"),
@@ -275,10 +282,10 @@ class ASTGrepLSPController(ASTGrepScanController):
                 }
             ],
         )
-        self.version = server_init_data["serverInfo"]["name"]
         self.client.initialized()
         self._ready = True
         self._is_initialized = True
+        self.log.info("AST-Grep LSP server started, %s", server_init_data)
 
     def __init__(self, logger: logging.Logger = None, rules_dir: str = None):
         super().__init__(logger=logger, rules_dir=rules_dir)
@@ -384,7 +391,9 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
         for rule_path in rule_paths:
             for root, _, files in os.walk(rule_path):
                 for file in files:
-                    if file.endswith(".yml") or file.endswith(".yaml") and ".sgconfig." not in file:
+                    if (
+                        file.endswith(".yml") or file.endswith(".yaml")
+                    ) and ".sgconfig." not in file:
                         with open(os.path.join(root, file), "r") as f:
                             yaml_docs = yaml.safe_load_all(f)
 
