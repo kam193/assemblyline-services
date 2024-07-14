@@ -1,15 +1,32 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/main/schemas/rule.json
 
-id: example
-message: Executing code dynamically $CODE
-severity: error # error, warning, info, hint
+# id: example
+# message: Executing code dynamically $CODE
+# severity: error # error, warning, info, hint
+# language: Python
+# rule:
+#   pattern: exec($CODE)
+# metadata:
+#   some: metadata
+
+# ---
+
+id: python-detect-builtin-getattr
+message: Uses getattr to obfuscate using a builtin function
 language: Python
 rule:
-  pattern: exec($CODE)
-metadata:
-  some: metadata
-note: test $CODE
-fix: $CODE
+  any:
+    - pattern:
+        context: getattr(__import__("builtins"), $ANY)
+        strictness: signature
+    - pattern:
+        context: getattr(__import__(bytes([$$$ANY][::-1]).decode()), $$$ANY2)
+        strictness: signature
 
-# utils: Extract repeated rule as local utility here.
-# note: Add detailed explanation for the rule.
+metadata:
+  extended-obfuscation: yes
+  # confirmed-obfuscation: yes
+  deobfuscate: |
+    {
+      "confirmed-obfuscation": true
+    }

@@ -1,0 +1,65 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/main/schemas/rule.json
+
+id: python-static-compute-slice
+message: python-static-compute-slice
+language: Python
+rule:
+  any:
+    - pattern: '"$DATA"[$SLICE_START:$SLICE_END]'
+    - pattern: "'$DATA'[$SLICE_START:$SLICE_END]"
+
+metadata:
+  extended-obfuscation: yes
+  alone-unimportant: yes
+  deobfuscate: |
+    {
+      "type": "fix-generate",
+      "steps": [
+        {"func": "math_eval", "source": "SLICE_START"},
+        {"func": "math_eval", "source": "SLICE_END"},
+        {"func": "slice", "source": "DATA"},
+        {"func": "quote", "source": "DATA"}
+      ]
+    }
+
+---
+
+# yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/main/schemas/rule.json
+
+
+id: python-static-concat-args
+message: python-static-concat-args
+language: Python
+rule:
+  any:
+    - pattern:
+        context: $METHOD($ARGS)
+        # selector: argument_list
+
+constraints:
+  ARGS:
+    all:
+      - has:
+          any:
+            - kind: identifier
+            - kind: string
+      - has:
+          pattern: +
+      - not:
+          has:
+            any:
+              - kind: call
+              - kind: expression_statement
+
+metadata:
+  extended-obfuscation: yes
+  alone-unimportant: yes
+  deobfuscate: |
+    {
+      "type": "secondary-fix-generate",
+      "steps": [
+        {"func": "py_ast_concat", "source": "ARGS", "output": "DATA"},
+        {"func": "quote", "source": "DATA"},
+        {"func": "replace_in_match", "source": "ARGS", "replace": "DATA"}
+      ]
+    }

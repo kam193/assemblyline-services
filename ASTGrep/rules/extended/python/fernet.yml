@@ -21,7 +21,6 @@ rule:
           strictness: signature
     # TODO: other variations
 metadata:
-  some: metadata
   extended-obfuscation: yes
   deobfuscate: |
     {

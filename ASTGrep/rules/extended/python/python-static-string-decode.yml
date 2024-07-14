@@ -1,0 +1,67 @@
+id: python-extract-exec
+message: Extract code executed by exec
+language: Python
+rule:
+  any:
+    - pattern: exec(b"$DATA")
+    - pattern: exec(b'$DATA')
+    - pattern: exec("$DATA")
+    - pattern: exec('$DATA')
+
+metadata:
+  extended-obfuscation: yes
+  alone-unimportant: yes
+  deobfuscate: |
+    {
+      "type": "extract",
+      "steps": [
+        {"func": "output", "source": "DATA"}
+      ]
+    }
+
+---
+id: python-static-b64decode
+message: Decode static base64 strings
+language: Python
+rule:
+  any:
+    - pattern: base64.b64decode("$DATA")
+    - pattern: base64.b64decode('$DATA')
+    - pattern: b64decode("$DATA")
+    - pattern: b64decode('$DATA')
+
+metadata:
+  extended-obfuscation: yes
+  # alone-unimportant: yes
+  deobfuscate: |
+    {
+      "type": "fix-generate",
+      "steps": [
+        {"func": "encode", "encoding": "utf-8", "source": "DATA"},
+        {"func": "encode", "encoding": "base64-bytes", "source": "DATA"},
+        {"func": "quote", "source": "DATA", "style": "py-byte"}
+      ]
+    }
+
+---
+id: python-static-zlib-decompress
+message: Decompress static zlib strings
+language: Python
+rule:
+  any:
+    - pattern: zlib.decompress(b"$DATA")
+    - pattern: zlib.decompress(b'$DATA')
+    - pattern: decompress(b"$DATA")
+    - pattern: decompress(b'$DATA')
+
+metadata:
+  extended-obfuscation: yes
+  deobfuscate: |
+    {
+      "type": "fix-generate",
+      "steps": [
+        {"func": "encode", "encoding": "py-bytes", "source": "DATA"},
+        {"func": "encode", "encoding": "zlib-decompress", "source": "DATA"},
+        {"func": "quote", "source": "DATA"}
+      ]
+    }

@@ -51,7 +51,7 @@ USE_LSP = True
 MAX_LINE_SIZE = 5000
 
 RULES_DIR = [
-    "./rules/extended",
+    "./rules",
     # "./rules/detection",
 ]
 
@@ -61,11 +61,15 @@ class AssemblylineService(ServiceBase):
         for rule_path in RULES_DIR:
             for root, _, files in os.walk(rule_path):
                 for file in files:
-                    if file.endswith(".yml") or file.endswith(".yaml"):
+                    if file.endswith(".yml") or file.endswith(".yaml") and ".sgconfig." not in file:
                         with open(os.path.join(root, file), "r") as f:
-                            data = yaml.safe_load(f)
-                        metadata = data.get("metadata", {})
-                        self.metadata_cache[data.get("id")] = metadata
+                            yaml_docs = yaml.safe_load_all(f)
+
+                            for yaml_doc in yaml_docs:
+                                if not yaml_doc:
+                                    continue
+                                metadata = yaml_doc.get("metadata", {})
+                                self.metadata_cache[yaml_doc.get("id")] = metadata
 
     def __init__(self, config=None):
         super().__init__(config)
@@ -84,82 +88,9 @@ class AssemblylineService(ServiceBase):
     def start(self):
         self.log.info(f"{self.service_attributes.name} service started")
 
-    def _load_rules(self) -> None:
-        # Currently just a stub for AST-Grep
-        return
-        # signature client doesn't support joining to a yaml, so we need to recreate it using our delimiter
-        os.makedirs(RULES_DIR, exist_ok=True)
-        new_rules_dir = tempfile.TemporaryDirectory(prefix="sg_rules_", dir=RULES_DIR)
-        new_deobfuscation_rules_dir = tempfile.TemporaryDirectory(prefix="sg_rules_", dir=RULES_DIR)
-        deobfuscation_files = []
-        metadata = {}
-        files = []
-
-        def _rebuild_rule(rule_lines: list[str]) -> dict:
-            rule = yaml.safe_load("".join(rule_lines))
-            full_id = f"{source_name}.{rule['id']}"
-            if self.use_lsp:
-                rule["id"] = f"{source_name}.{rule['id']}"
-                metadata[full_id] = rule.get("metadata", {})
-                if rule.get("fix") or rule.get("fix-regex"):
-                    metadata[full_id]["deobfuscation-trigger"] = True
-            return rule
-
-        def _dump_rules(
-            rules: list[dict], directory: tempfile.TemporaryDirectory, source_name: str
-        ):
-            new_file = os.path.join(directory.name, source_name, "rules.yaml")
-            os.makedirs(os.path.dirname(new_file), exist_ok=True)
-            with open(new_file, "w") as f:
-                yaml.safe_dump({"rules": rules}, f)
-            return new_file
-
-        for source_file in self.rules_list:
-            source_name = os.path.basename(source_file)
-            rules = []
-            deobfuscation_rules = []
-            with open(source_file, "r") as f:
-                tmp_data = []
-                for line in f:
-                    if "#SIGNATURE-DELIMITER" in line:
-                        rule = _rebuild_rule(tmp_data)
-                        rules.append(rule)
-                        if rule.get("autofix") or rule.get("metadata", {}).get(
-                            "deobfuscation-trigger"
-                        ):
-                            deobfuscation_rules.append(rule)
-                        tmp_data = []
-                    else:
-                        tmp_data.append(line)
-                if tmp_data:
-                    rule = _rebuild_rule(tmp_data)
-                    rules.append(rule)
-                    if rule.get("autofix") or rule.get("metadata", {}).get("deobfuscation-trigger"):
-                        deobfuscation_rules.append(rule)
-            new_file = _dump_rules(rules, new_rules_dir, source_name)
-            files.append(new_file)
-            if deobfuscation_rules:
-                deobfuscation_files.append(
-                    _dump_rules(deobfuscation_rules, new_deobfuscation_rules_dir, source_name)
-                )
-
-        self.log.debug(self.rules_list)
-        new_prefix = ".".join(new_rules_dir.name.split("/"))
-
-        with RULES_LOCK:
-            self._active_rules_dir, old_rules_dir = new_rules_dir, self._active_rules_dir
-            self._active_deobfuscation_rules_dir, old_deobfuscation_rules_dir = (
-                new_deobfuscation_rules_dir,
-                self._active_deobfuscation_rules_dir,
-            )
-            self.metadata_cache = metadata
-            if old_rules_dir:
-                old_rules_dir.cleanup()
-            if old_deobfuscation_rules_dir:
-                old_deobfuscation_rules_dir.cleanup()
-            self._astgrep.load_rules(files, new_prefix)
-            deobfuscation_prefix = ".".join(new_deobfuscation_rules_dir.name.split("/"))
-            self._deobfuscator.load_rules(deobfuscation_files, deobfuscation_prefix)
+    # def _load_rules(self) -> None:
+    #     # Currently just a stub for AST-Grep
+    #     return
 
     def _get_code_hash(self, code: str):
         code = code or ""
@@ -220,7 +151,6 @@ class AssemblylineService(ServiceBase):
             attack_id = metadata.get("attack_id")
 
             is_deobfuscation = metadata.get("extended-obfuscation", False)
-            self.log.debug("Is deobfuscation: %s", is_deobfuscation)
             self._should_deobfuscate = self._should_deobfuscate or is_deobfuscation
 
             section = ResultTextSection(
@@ -275,7 +205,7 @@ class AssemblylineService(ServiceBase):
             for deobf_result in self._deobfuscator.deobfuscate_file(
                 request.file_path, request.file_type
             ):
-                path = f"{self.working_directory}/_deobfuscated_code_{result_no}.{LANGUAGE_TO_EXT[request.file_type]}"
+                path = f"{self.working_directory}/_deobfuscated_code_{result_no}{LANGUAGE_TO_EXT[request.file_type]}"
                 with open(path, "w+") as f:
                     f.write(deobf_result)
                 request.add_extracted(
@@ -283,22 +213,15 @@ class AssemblylineService(ServiceBase):
                     f"_deobfuscated_code_{result_no}.{LANGUAGE_TO_EXT[request.file_type]}",
                     "Deobfuscated file",
                 )
-            deobf_section = ResultTextSection("Obfuscation found")
-            deobf_section.add_line(
-                "Obfuscation was detected in the file. Extracted deobfuscated code."
+                result_no += 1
+            deobf_section = ResultTextSection(
+                "Obfuscation found"
+                if self._deobfuscator.confirmed_obfuscation
+                else "Possible obfuscation"
             )
-            deobf_section.set_heuristic(4)
+            deobf_section.add_line(self._deobfuscator.status)
+            deobf_section.set_heuristic(4 if self._deobfuscator.confirmed_obfuscation else 5)
             result.add_section(deobf_section)
-
-        #     deobfuscated_path = self._deobfuscator.deobfuscate_file(
-        #         request.file_path, request.file_type
-        #     )
-        #     if deobfuscated_path:
-        #         request.add_extracted(deobfuscated_path, "_deobfuscated_code", "Deobfuscated file")
-        #         deobf_section = ResultTextSection("Obfuscation found")
-        #         deobf_section.add_line("Obfuscation was detected in the file. Extracted deobfuscated code.")
-        #         deobf_section.set_heuristic(4)
-        #         result.add_section(deobf_section)
 
     def _cleanup(self) -> None:
         self._astgrep.cleanup()

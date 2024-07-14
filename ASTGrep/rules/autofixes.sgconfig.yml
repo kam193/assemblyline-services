@@ -1,0 +1,3 @@
+ruleDirs:
+- ./autofixes
+- ./extended/autofixes

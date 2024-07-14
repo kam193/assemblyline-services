@@ -1,9 +1,16 @@
+import ast
 import base64
+import codecs
 import hashlib
+import zlib
 
 import cryptography
 import cryptography.fernet
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+
+
+class TransformationRejected(Exception):
+    pass
 
 
 def scrypt(config: dict, context: dict):
@@ -60,6 +67,23 @@ def encode(config: dict, context: dict):
         data = bytes(context[source]).decode()
     elif encoding == "bytes":
         data = bytes(context[source])
+    elif encoding == "py-bytes":
+        methods = [
+            # lambda d: bytes.fromhex(d),
+            lambda d: codecs.escape_decode(d)[0],
+            # lambda d: bytes(d, "utf-8"),
+        ]
+
+        for method in methods:
+            try:
+                return method(context[source])
+            except Exception:
+                pass
+        raise TransformationRejected("Cannot decode bytes")
+    elif encoding == "zlib-decompress":
+        data = zlib.decompress(context[source])
+    elif encoding == "base64-bytes":
+        data = base64.b64decode(context[source])
 
     if "output" not in config:
         context[source] = data
@@ -102,18 +126,14 @@ def reverse(config: dict, context: dict):
 
 def quote(config: dict, context: dict):
     source = config.get("source", "DATA")
-    style = config.get("style", "double")
-    if style == "single":
-        return "'" + context[source] + "'"
-    elif style == "double":
-        return '"' + context[source] + '"'
-    elif style == "py-byte":
-        return "b'" + context[source] + "'"
+    # style = config.get("style", "double")
+    return repr(context[source])
 
 
 def output(config: dict, context: dict):
     source = config.get("source", "DATA")
     return context[source]
+
 
 def concat(config: dict, context: dict):
     sources = config.get("sources", ["DATA"])
@@ -121,4 +141,60 @@ def concat(config: dict, context: dict):
     return separator.join(context[source] for source in sources)
 
 
-# def fix_simple_replace(config: dict, context: dict):
+MATH_ALLOWED = "0123456789/+-*^(). "
+
+
+def math_eval(config: dict, context: dict):
+    source = config.get("source", "MATH_SOURCE")
+    data = context[source]
+    if not isinstance(data, str) or any(c not in MATH_ALLOWED for c in data):
+        raise TransformationRejected("Not allowed chars found")
+    return eval(data, {}, {})
+
+
+def collect_var(config: dict, context: dict):
+    source_var = config.get("source", "VAR")
+    source_value = config.get("value", "VALUE")
+    parse = config.get("parse", "no")
+
+    name = context[source_var]
+    if parse == "python":
+        name = ast.parse(name).body[0].value.id
+
+    return {name: context[source_value]}
+
+
+def py_ast_concat(config: dict, context: dict):
+    """Parse AST and concat nodes using static values or variables from context["vars"]"""
+
+    source = config.get("source", "ARGS")
+    tree = ast.parse(context[source])
+    result = []
+    stack = []
+    stack.append(tree)
+
+    while stack:
+        node = stack.pop(0)
+        if isinstance(node, ast.Constant):
+            result.append(node.s)
+        elif isinstance(node, ast.Name):
+            if "vars" not in context:
+                raise TransformationRejected("Context['vars'] not found")
+            value = context["vars"].get(node.id, "<MISSED>")
+            if value == "<MISSED>":
+                raise TransformationRejected(f"Variable {node.id} not found in context['vars']")
+            result.append(context["vars"][node.id])
+        elif isinstance(node, ast.BinOp):
+            stack.insert(0, node.right)
+            stack.insert(0, node.left)
+        else:
+            for child in ast.iter_child_nodes(node):
+                stack.insert(0, child)
+
+    return "".join(result)
+
+
+def replace_in_match(config: dict, context: dict):
+    source = config.get("source", "INPUT")
+    replace = config.get("match", "DATA")
+    return context["match"].replace(context[source], context[replace])

@@ -1,0 +1,20 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/main/schemas/rule.json
+
+id: python-collect-static-vars
+message: Collecting static variables
+language: Python
+rule:
+  any:
+    - pattern: $VAR = "$VALUE"
+    - pattern: $VAR = '$VALUE'
+
+metadata:
+  extended-obfuscation: yes
+  alone-unimportant: yes
+  deobfuscate: |
+    {
+      "type": "context",
+      "steps": [
+        {"func": "collect_var", "parse": "python"}
+      ]
+    }

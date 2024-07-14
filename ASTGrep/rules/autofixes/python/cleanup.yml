@@ -1,0 +1,60 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/main/schemas/rule.json
+
+id: python-static-string-decode-double-quotes
+message: python-static-string-decode-double-quotes
+language: Python
+rule:
+  any:
+    - pattern: '"$DATA".decode()'
+
+fix: '"$DATA"'
+
+metadata:
+  extended-obfuscation: yes
+  alone-unimportant: yes
+
+---
+id: python-static-string-decode-single-quotes
+message: python-static-string-decode-single-quotes
+language: Python
+rule:
+  any:
+    - pattern: "'$DATA'.decode()"
+
+fix: "'$DATA'"
+
+metadata:
+  extended-obfuscation: yes
+  alone-unimportant: yes
+
+---
+id: python-static-cleanup-eval
+message: python-static-cleanup-eval
+language: Python
+rule:
+  any:
+    - pattern: eval('exec')
+    - pattern: eval("exec")
+
+fix: exec
+
+metadata:
+  extended-obfuscation: yes
+  alone-unimportant: yes
+
+---
+id: python-static-comment
+message: Removing comments
+language: Python
+rule:
+  any:
+    - pattern:
+        context: "#$$$"
+        selector: comment
+        strictness: signature
+
+fix: ""
+
+metadata:
+  extended-obfuscation: yes
+  alone-unimportant: yes

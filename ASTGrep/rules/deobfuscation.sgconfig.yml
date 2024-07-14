@@ -1,0 +1,4 @@
+ruleDirs:
+- ./helpers
+- ./extended
+- ./autofixes

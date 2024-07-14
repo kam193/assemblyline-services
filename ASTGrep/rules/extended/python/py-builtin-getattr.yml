@@ -1,7 +1,7 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/main/schemas/rule.json
 
 id: python-eval-getattr-import
-message: Reverse inline bytes decode
+message: Uses eval and getattr to obfuscate using a method
 language: Python
 rule:
   any:
@@ -11,6 +11,7 @@ rule:
 
 metadata:
   extended-obfuscation: yes
+  confirmed-obfuscation: yes
   deobfuscate: |
     {
       "type": "fix-generate",

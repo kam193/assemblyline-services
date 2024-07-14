@@ -50,12 +50,18 @@ heuristics:
     name: Informative code pattern
     score: 10
     max_score: 50
-  - description: Code was obfuscated
+  - description: Obfuscation was found in the source code
     filetype: "*"
     heur_id: 4
     name: Code was obfuscated
     score: 500
     # max_score: 500
+  - description: Code might have been obfuscated, but no strong indicators were found
+    filetype: "*"
+    heur_id: 5
+    name: Possible obfuscation
+    score: 50
+    max_score: 200
 
 docker_config:
   image: ${REGISTRY}ghcr.io/kam193/assemblyline-service-astgrep:$SERVICE_TAG

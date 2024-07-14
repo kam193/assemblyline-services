@@ -1,10 +1,13 @@
+import argparse
 import json
 import logging
 import os
 import shutil
 import subprocess
+import sys
 import tempfile
 import threading
+import time
 from contextlib import suppress
 from threading import RLock
 from typing import Iterable
@@ -15,9 +18,12 @@ import yaml
 from assemblyline.common.identify_defaults import type_to_extension
 
 from . import transformations
-from .helpers import configure_yaml
 
-configure_yaml()
+# from .helpers import configure_yaml
+
+# configure_yaml()
+
+# TODO: fix supported list
 
 # The default mapping misses some supported languages, so we need to add them manually
 LANGUAGE_TO_EXT = {
@@ -74,7 +80,6 @@ class ASTGrepScanController:
         self._lock = RLock()
         self._ready = False
         self.last_results = {}
-        self.version = "ast-grep"
         self.cli_timeout = 60
         self._rules_dir = rules_dir
         self._working_file = ""
@@ -86,6 +91,10 @@ class ASTGrepScanController:
             self.log = logger.getChild(self.__class__.__name__.lower())
         else:
             self.log = logging.getLogger(__name__)
+            logging.basicConfig(level=logging.INFO)
+
+        self.version = subprocess.getoutput("ast-grep --version")
+        self.config_file: str = "./rules/detection.sgconfig.yml"
 
     @property
     def ready(self):
@@ -126,13 +135,16 @@ class ASTGrepScanController:
             self._active_rules_prefix = rule_id_prefix
             self._ready = True
 
-    def _execute_sg(self, file_path: str) -> dict:
-        cmd = ["sg", "scan", "--json"] + self._cli_config
-        for option, value in self._sg_config.items():
-            cmd.append(f"--{option}")
-            cmd.append(value)
+    def _execute_sg(self, file_path: str, autofix: bool = False, config_file: str = None) -> dict:
+        cmd = ["sg", "scan"] + self._cli_config
 
-        active_config = ["-c", "./rules/sgconfig.yml"]
+        if not autofix:
+            cmd.append("--json")
+        else:
+            cmd.append("--update-all")
+
+        active_config = ["-c", config_file or self.config_file]
+        self.log.debug("SG CMD: %s", " ".join(cmd + active_config + [file_path]))
 
         with self._lock:
             result = subprocess.run(
@@ -142,19 +154,18 @@ class ASTGrepScanController:
                 timeout=self.cli_timeout,
             )
 
-        # self.log.debug("AST-Grep result: %s", result.stdout)
-
         # Something was found
-        if result.returncode <= 1:
+        if result.returncode <= 1 and not autofix:
             return json.loads(result.stdout)
-        else:
+        elif result.returncode > 1:
             self.log.error(
                 "Error running sg (%d) %s, %s", result.returncode, result.stdout, result.stderr
             )
             raise RuntimeError(
                 f"Error {result.returncode} running sg: {result.stdout[:250]}, {result.stderr[:250]}"
             )
-            # return {}
+
+        return {}
 
     def process_file(self, file_path: str, file_type: str) -> Iterable[dict]:
         self._prepare_file_with_extension(file_path, file_type)
@@ -198,7 +209,6 @@ class ASTGrepLSPController(ASTGrepScanController):
 
         self._lock = RLock()
         self._diagnostic_cond = threading.Condition(self._lock)
-        self._refresh_rules_cond = threading.Condition(self._lock)
         self.cli_timeout = 15
 
     def _add_results(self, params):
@@ -211,14 +221,12 @@ class ASTGrepLSPController(ASTGrepScanController):
 
     def _initialize(self):
         self._server_process = subprocess.Popen(
-            ["sg", "lsp", "-c", "./rules/sgconfig.yml"],
+            ["sg", "lsp", "-c", self.config_file],
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
-            env={**os.environ, "NO_COLOR": "true", "RUST_LOG": "debug"},
+            env={**os.environ, "NO_COLOR": "true"},
         )
-
-        # self.log.debug(os.environ["PATH"])
 
         if self._server_process.returncode is not None:
             self.log.error(
@@ -258,13 +266,6 @@ class ASTGrepLSPController(ASTGrepScanController):
                 "hoverProvider": True,
                 "textDocumentSync": {"change": 2, "openClose": True, "save": True},
                 "workspace": {},
-                # {
-                #     # "workspaceFolders": {"changeNotifications": True, "supported": True},
-                #     "fileOperations": {
-                #         "didCreate": {"filters": [{"pattern": {"glob": "**/*"}}]},
-                #         "didDelete": {"filters": [{"pattern": {"glob": "**/*"}}]},
-                #     },
-                # },
             },
             trace=None,
             workspaceFolders=[
@@ -282,8 +283,6 @@ class ASTGrepLSPController(ASTGrepScanController):
     def __init__(self, logger: logging.Logger = None, rules_dir: str = None):
         super().__init__(logger=logger, rules_dir=rules_dir)
         self.client = None
-        self.log = logger or logging.getLogger(__name__)
-        # logging.basicConfig(level=logging.DEBUG)
         self._startup_values()
 
         self._initialize()
@@ -336,10 +335,6 @@ class ASTGrepLSPController(ASTGrepScanController):
 
             self.client.didClose(self._current_uri)
 
-            self.log.debug("Last results: %s", self.last_results)
-
-            # return self.last_results
-
             for result in self.last_results:
                 yield {
                     "check_id": result["code"],
@@ -377,58 +372,183 @@ class ASTGrepLSPController(ASTGrepScanController):
 
 
 class ASTGrepDeobfuscationController(ASTGrepScanController):
-    # def __init__(self, logger: logging.Logger = None, rules_dir: str = None):
-    #     super().__init__(logger, rules_dir)
-    #     self._cli_config.remove("--no-autofix")
-    #     self._cli_config.append("--autofix")
-
-    def __init__(self, logger: logging.Logger = None, rules_dir: str = None):
-        super().__init__(logger, rules_dir)
+    def __init__(self, logger: logging.Logger = None, rules_dirs: list[str] = None):
+        super().__init__(logger, rules_dirs)
         self._rules_transformations = {}
-        self.read_rules(rules_dir)
+        self.read_rules(rules_dirs)
+        self.cli_timeout = 10
+        self.deobfuscation_timeout = 60
+        self.config_file = "./rules/deobfuscation.sgconfig.yml"
 
     def read_rules(self, rule_paths: list[str]):
         for rule_path in rule_paths:
             for root, _, files in os.walk(rule_path):
                 for file in files:
-                    if file.endswith(".yml") or file.endswith(".yaml"):
+                    if file.endswith(".yml") or file.endswith(".yaml") and ".sgconfig." not in file:
                         with open(os.path.join(root, file), "r") as f:
-                            data = yaml.safe_load(f)
-                        if transformation := data.get("metadata", {}).get("deobfuscate", ""):
-                            self._rules_transformations[data.get("id")] = json.loads(transformation)
+                            yaml_docs = yaml.safe_load_all(f)
+
+                            for yaml_doc in yaml_docs:
+                                if not yaml_doc:
+                                    continue
+                                metadata = yaml_doc.get("metadata", {})
+                                if transformation := metadata.get("deobfuscate", ""):
+                                    self._rules_transformations[yaml_doc.get("id")] = json.loads(
+                                        transformation
+                                    )
+                                elif yaml_doc.get("fix"):
+                                    self._rules_transformations[yaml_doc.get("id")] = {
+                                        "type": "auto-fix"
+                                    }
+
+                                if metadata.get("confirmed-deobfuscation", False):
+                                    self._rules_transformations[yaml_doc.get("id")][
+                                        "confirmed-deobfuscation"
+                                    ] = True
+
+    def _apply_fix(self, pattern: str, fix: str):
+        try:
+            # AST-Grep cannot escape metavars-like "$" in fixes
+            escape_dollar = False
+            if "$" in fix:
+                fix = fix.replace("$", "{{{DOLLARPLACEHOLDER}}}")
+                escape_dollar = True
+            subprocess.run(
+                ["sg", "run", "-p", pattern, "-r", fix, "-U", self._working_file],
+                check=True,
+                timeout=self.cli_timeout,
+            )
+            if escape_dollar:
+                subprocess.run(
+                    ["sed", "-i", "s/{{{DOLLARPLACEHOLDER}}}/$/g", self._working_file],
+                    check=True,
+                    timeout=self.cli_timeout,
+                )
+        except subprocess.CalledProcessError as e:
+            self.log.error("Error applying fix: %s", e)
+
+    def _get_type(self, result: dict) -> tuple[str, bool]:
+        rule_id = result.get("ruleId")
+        if rule_id not in self._rules_transformations:
+            return None, None
+        return self._rules_transformations[rule_id].get(
+            "type", "extract"
+        ), self._rules_transformations[rule_id].get("confirmed-obfuscation", False)
+
+    def _cleanup_status(self):
+        self._generated_fixes = {}
+        self._secondary_transformations = []
+        self._run_auto_fixes = False
+        self._global_context = {}
+
+    def _process_result(self, result: dict, secondary=False):
+        if not result:
+            return
+        type_, confirmed = self._get_type(result)
+        if not type_:
+            return
+        if secondary and type_.startswith("secondary-"):
+            type_ = type_[len("secondary-") :]
+        if type_ == "auto-fix":
+            self._run_auto_fixes = True
+        elif type_ == "context":
+            output = self.transform(result)
+            if output:
+                self._global_context.update(output)
+        elif type_.startswith("secondary-"):
+            self._secondary_transformations.append(result)
+        elif type_ == "fix-generate":
+            match = result.get("text")
+            if match in self._generated_fixes:
+                return
+            try:
+                self._generated_fixes[match] = self.transform(result)
+                if confirmed:
+                    self.confirmed_obfuscation = True
+            except Exception as exc:
+                self.log.error("Error transforming fix-generate result: %r", exc)
+        elif type_ == "extract":
+            # if confirmed:
+            # Assume that extraction means obfuscation
+            self.confirmed_obfuscation = True
+            return self.transform(result)
+
+    def _should_extract(self, data: str | bytes) -> bool:
+        if not data:
+            return False
+        hashed = hash(data)
+        if hashed in self._extracted_cache:
+            return False
+        self._extracted_cache.add(hashed)
+        return True
 
     def deobfuscate_file(self, file_path: str, file_type: str):
         self._prepare_file_with_extension(file_path, file_type, copy=True)
 
-        for result in self._execute_sg(self._working_file):
-            yield self.transform(result)
+        self._iterations = 0
+        self.status = ""
+        self._extracted_cache = set()
+        self.confirmed_obfuscation = False
+        original_timestamp = last_timestamp = os.stat(self._working_file).st_mtime_ns
+
+        start = time.monotonic()
+        while time.monotonic() - start < self.deobfuscation_timeout:
+            self._cleanup_status()
+
+            for result in self._execute_sg(self._working_file):
+                outcome = self._process_result(result)
+                if self._should_extract(outcome):
+                    if isinstance(outcome, bytes):
+                        yield outcome.decode()
+                    else:
+                        yield outcome
+
+            for secondary in self._secondary_transformations:
+                outcome = self._process_result(secondary, secondary=True)
+                if self._should_extract(outcome):
+                    if isinstance(outcome, bytes):
+                        yield outcome.decode()
+                    else:
+                        yield outcome
+
+            if self._run_auto_fixes:
+                # ast-grep does not apply fixes when returning JSON results, need to re-run :(
+                self._execute_sg(
+                    self._working_file, autofix=True, config_file="./rules/autofixes.sgconfig.yml"
+                )
+
+            if self._generated_fixes:
+                for match, fix in self._generated_fixes.items():
+                    self._apply_fix(match, fix)
+
+            self._iterations += 1
+
+            if last_timestamp == os.stat(self._working_file).st_mtime_ns:
+                break
+            last_timestamp = os.stat(self._working_file).st_mtime_ns
+
+        stop = time.monotonic()
+
+        if original_timestamp != os.stat(self._working_file).st_mtime:
+            yield open(self._working_file).read()
+
+        self.status = (
+            f"Deobfuscation done in {stop - start:.3f} seconds ({self._iterations} iterations)."
+        )
+        if self.confirmed_obfuscation:
+            self.status += "\n - Confirmed obfuscation."
+        if stop - start > self.deobfuscation_timeout:
+            self.status += "\n - Timeout exceeded, potentially not all fixes applied."
 
     def _build_context(self, result: dict) -> dict:
-        context = {}
+        context = {"vars": self._global_context, "match": result.get("text")}
         single_metavars = result.get("metaVariables", {}).get("single", {})
         for name, data in single_metavars.items():
             context[name] = data.get("text")
-
+        multi_metavars = result.get("metaVariables", {}).get("multi", {})
+        for name, data in multi_metavars.items():
+            context[name] = [x.get("text") for x in data]
         return context
-
-        # TODO: deobfuscation through fix instructions
-
-        # iterations = 0
-        # changed = False
-        # while iterations < 10:
-        #     results, rule_prefix = self._execute_sg(self._working_file)
-        #     self.last_results = results
-        #     self.version = results.get("version", "")
-        #     if res_list := results.get("results", []):
-        #         # TODO: transform deobfuscation rules
-        #         changed = True
-        #     else:
-        #         break
-        #     iterations += 1
-
-        # if changed:
-        #     return self._working_file
-        # return None
 
     def transform(self, result: dict) -> str:
         rule_id = result.get("ruleId")
@@ -436,7 +556,6 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
             return
 
         transformation = self._rules_transformations[rule_id]
-        transformation.get("type", "extract")
         context = self._build_context(result)
 
         output = ""
@@ -445,10 +564,37 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
             func = step.get("func")
             if func.startswith("_"):
                 raise RuntimeError("Not implemented")
-            output_field = step.get("output")
+            output_field = step.get("output", step.get("source"))
             func = getattr(transformations, func)
             output = func(step, context)
             if output_field:
                 context[output_field] = output
 
         return output
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--lang",
+        "-l",
+        # required=True,
+        type=str,
+        help="Language as in AL convention",
+        default="code/python",
+    )
+    parser.add_argument("file", type=str, help="File path")
+    args = parser.parse_args()
+
+    deobfuscator = ASTGrepDeobfuscationController(rules_dirs=["./rules/"])
+
+    for result in deobfuscator.deobfuscate_file(args.file, args.lang):
+        print("#" + "=" * 80 + "#")
+        print(result)
+
+    print("#" + "=" * 80 + "#", file=sys.stderr)
+    print(deobfuscator.status, file=sys.stderr)
+
+
+if __name__ == "__main__":
+    main()

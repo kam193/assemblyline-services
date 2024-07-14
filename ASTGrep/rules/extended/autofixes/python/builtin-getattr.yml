@@ -1,7 +1,7 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/main/schemas/rule.json
 
 id: python-builtin-getattr
-message: Reverse inline bytes decode
+message: Uses getattr to obfuscate using a builtin function
 language: Python
 rule:
   any:
@@ -9,12 +9,8 @@ rule:
         context: getattr(__import__("builtins"), "$DATA")
         strictness: signature
 
+fix: $DATA
+
 metadata:
   extended-obfuscation: yes
-  deobfuscate: |
-    {
-      "type": "fix-generate",
-      "steps": [
-        {"func": "output", "source": "DATA"}
-      ]
-    }
+  confirmed-obfuscation: yes

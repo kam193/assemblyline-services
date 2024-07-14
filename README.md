@@ -12,6 +12,11 @@ Simple service extracting [ASAR Archives](https://www.electronjs.org/docs/latest
 using official [asar tool](https://www.npmjs.com/package/@electron/asar) from Electron. By default, node modules
 are omitted from the extracted files, but it can be configured using submission parameters.
 
+### ASTGrep
+
+Service using [AST-Grep](https://ast-grep.github.io/) to analyze the source code. Currently used only for
+obfuscation detection and deobfuscation. At the moment, only builtin rules are supported.
+
 ### ClamAV
 
 This service uses the ClamAV antivirus engine to scan files for viruses. It leverages the daemon mode to keep db
