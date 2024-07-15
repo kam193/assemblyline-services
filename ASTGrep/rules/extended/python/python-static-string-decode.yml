@@ -1,10 +1,37 @@
+id: python-clean-exec-bytes
+message: Extract code executed by exec
+language: Python
+rule:
+  any:
+    - pattern:
+        context: exec(b"$DATA")
+        strictness: cst
+    - pattern:
+        context: exec(b'$DATA')
+        strictness: cst
+
+metadata:
+  extended-obfuscation: yes
+  alone-unimportant: yes
+  deobfuscate: |
+    {
+      "type": "fix-generate",
+      "steps": [
+        {"func": "encode", "source": "DATA", "output": "OUT"},
+        {"func": "encode", "source": "OUT", "encoding": "bytes-decode"},
+        {"func": "quote", "source": "OUT"},
+        {"func": "produce", "template": "exec({OUT})"}
+      ]
+    }
+
+---
 id: python-extract-exec
 message: Extract code executed by exec
 language: Python
 rule:
   any:
-    - pattern: exec(b"$DATA")
-    - pattern: exec(b'$DATA')
+    # - pattern: exec(b"$DATA")
+    # - pattern: exec(b'$DATA')
     - pattern: exec("$DATA")
     - pattern: exec('$DATA')
 
@@ -15,7 +42,7 @@ metadata:
     {
       "type": "extract",
       "steps": [
-        {"func": "output", "source": "DATA"}
+        {"func": "decode", "source": "DATA"}
       ]
     }
 

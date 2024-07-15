@@ -1,0 +1,20 @@
+id: python-replace-static-exec
+message: Extract code executed by exec
+language: Python
+rule:
+  any:
+    - pattern: exec("$DATA")
+    - pattern: exec('$DATA')
+
+fix: $DATA
+
+metadata:
+  extended-obfuscation: yes
+  alone-unimportant: yes
+  deobfuscate: |
+    {
+      "type": "fix-generate",
+      "steps": [
+        {"func": "decode", "source": "DATA"}
+      ]
+    }

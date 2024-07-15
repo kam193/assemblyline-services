@@ -204,17 +204,24 @@ class AssemblylineService(ServiceBase):
 
         if self._should_deobfuscate:
             result_no = 1
-            for deobf_result in self._deobfuscator.deobfuscate_file(
+            for deobf_result, layer in self._deobfuscator.deobfuscate_file(
                 request.file_path, request.file_type
             ):
                 path = f"{self.working_directory}/_deobfuscated_code_{result_no}{LANGUAGE_TO_EXT[request.file_type]}"
                 with open(path, "w+") as f:
                     f.write(deobf_result)
-                request.add_extracted(
-                    path,
-                    f"_deobfuscated_code_{result_no}.{LANGUAGE_TO_EXT[request.file_type]}",
-                    "Deobfuscated file",
-                )
+                if layer != "#final-layer#":
+                    request.add_extracted(
+                        path,
+                        f"_deobfuscated_code_{result_no}{LANGUAGE_TO_EXT[request.file_type]}",
+                        f"Deobfuscated code extracted by {layer}",
+                    )
+                else:
+                    request.add_extracted(
+                        path,
+                        f"_deobfuscated_code_FINAL{LANGUAGE_TO_EXT[request.file_type]}",
+                        "Final deobfuscation layer",
+                    )
                 result_no += 1
             deobf_section = ResultTextSection(
                 "Obfuscation found"

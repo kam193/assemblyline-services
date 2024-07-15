@@ -8,6 +8,9 @@ rule:
     - pattern:
         context: getattr(__import__("builtins"), "$DATA")
         strictness: signature
+    - pattern:
+        context: getattr(__import__('builtins'), '$DATA')
+        strictness: signature
 
 fix: $DATA
 

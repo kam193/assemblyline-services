@@ -416,6 +416,9 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
                                     ] = True
 
     def _apply_fix(self, pattern: str, fix: str):
+        if pattern == fix:
+            self.log.info("Transformation is a no-op")
+            return
         try:
             # AST-Grep cannot escape metavars-like "$" in fixes
             escape_dollar = False
@@ -508,17 +511,17 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
                 outcome = self._process_result(result)
                 if self._should_extract(outcome):
                     if isinstance(outcome, bytes):
-                        yield outcome.decode()
+                        yield outcome.decode(), result.get("ruleId")
                     else:
-                        yield outcome
+                        yield outcome, result.get("ruleId")
 
             for secondary in self._secondary_transformations:
                 outcome = self._process_result(secondary, secondary=True)
                 if self._should_extract(outcome):
                     if isinstance(outcome, bytes):
-                        yield outcome.decode()
+                        yield outcome.decode(), result.get("ruleId")
                     else:
-                        yield outcome
+                        yield outcome, result.get("ruleId")
 
             if self._run_auto_fixes:
                 # ast-grep does not apply fixes when returning JSON results, need to re-run :(
@@ -539,7 +542,7 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
         stop = time.monotonic()
 
         if original_timestamp != os.stat(self._working_file).st_mtime:
-            yield open(self._working_file).read()
+            yield open(self._working_file).read(), "#final-layer#"
 
         self.status = (
             f"Deobfuscation done in {stop - start:.3f} seconds ({self._iterations} iterations)."
@@ -597,8 +600,8 @@ def main():
 
     deobfuscator = ASTGrepDeobfuscationController(rules_dirs=["./rules/"])
 
-    for result in deobfuscator.deobfuscate_file(args.file, args.lang):
-        print("#" + "=" * 80 + "#")
+    for result, layer in deobfuscator.deobfuscate_file(args.file, args.lang):
+        print("#" + "=" * 80 + "#" + layer + "#")
         print(result)
 
     print("#" + "=" * 80 + "#", file=sys.stderr)

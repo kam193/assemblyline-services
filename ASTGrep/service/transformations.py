@@ -53,7 +53,7 @@ def aes(config: dict, context: dict):
 
 def encode(config: dict, context: dict):
     source = config.get("source", "DATA")
-    encoding = config.get("encoding", "utf-8")
+    encoding = config.get("encoding", "auto")
     if encoding in context:
         encoding = context[encoding]
 
@@ -80,6 +80,19 @@ def encode(config: dict, context: dict):
             except Exception:
                 pass
         raise TransformationRejected("Cannot decode bytes")
+    elif encoding == "auto":
+        methods = [
+            lambda d: bytes.fromhex(d),
+            lambda d: codecs.escape_decode(d)[0],
+            lambda d: bytes(d, "utf-8"),
+        ]
+
+        for method in methods:
+            try:
+                return method(context[source])
+            except Exception:
+                pass
+        raise TransformationRejected("Cannot decode bytes")
     elif encoding == "zlib-decompress":
         data = zlib.decompress(context[source])
     elif encoding == "base64-bytes":
@@ -88,6 +101,13 @@ def encode(config: dict, context: dict):
     if "output" not in config:
         context[source] = data
     return data
+
+
+def decode(config: dict, context: dict):
+    source = config.get("source", "DATA")
+    encoding = config.get("encoding", "unicode_escape")
+
+    return codecs.decode(context[source], encoding)
 
 
 def fernet(config: dict, context: dict):
@@ -198,3 +218,9 @@ def replace_in_match(config: dict, context: dict):
     source = config.get("source", "INPUT")
     replace = config.get("match", "DATA")
     return context["match"].replace(context[source], context[replace])
+
+
+def produce(config: dict, context: dict):
+    # source = config.get("source", "INPUT")
+    template = config.get("template", "TEMPLATE")
+    return template.format(**context)

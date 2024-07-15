@@ -1,4 +1,4 @@
 assemblyline-v4-service
-ast-grep-cli<0.25.0
+ast-grep-cli!=0.25.0
 pylspclient
 cryptography
