@@ -1,3 +1,5 @@
+import re
+
 from assemblyline_v4_service.common.result import ResultTextSection
 
 from .opener import OPENER_MAP, PackageOpener
@@ -6,6 +8,9 @@ HEURISTICS_MAP = {
     "malicious": 1,
     "suspicious": 2,
 }
+
+_separator_replace = re.compile(r"([._-])+")
+_cleanup_replace = re.compile(r"([^a-z0-9-])")
 
 
 class Analyzer:
@@ -18,6 +23,12 @@ class Analyzer:
             "malicious": set(),
             "suspicious": set(),
         }
+
+    @staticmethod
+    def _normalize_pypi_name(name):
+        name = _separator_replace.sub("-", name)
+        name = name.lower().strip()
+        return _cleanup_replace.sub("", name)
 
     def analyze(self):
         section = ResultTextSection("Python package analysis")
@@ -35,11 +46,13 @@ class Analyzer:
                 req_section.add_line("This package declares following dependencies:")
                 heur_sections = {}
                 for req in requirements:
-                    req_section.add_line(req)
-                    if req.lower() in self.requirements_blocklist["malicious"]:
-                        heur_sections.setdefault("malicious", []).append(req)
-                    elif req.lower() in self.requirements_blocklist["suspicious"]:
-                        heur_sections.setdefault("suspicious", []).append(req)
+                    normalized = self._normalize_pypi_name(req)
+                    req_section.add_line(f"{req} ({normalized})")
+                    section.add_tag("file.lib", f"pypi.{normalized}")
+                    if normalized in self.requirements_blocklist["malicious"]:
+                        heur_sections.setdefault("malicious", []).append(normalized)
+                    elif normalized in self.requirements_blocklist["suspicious"]:
+                        heur_sections.setdefault("suspicious", []).append(normalized)
                 for heur_type, heur_reqs in heur_sections.items():
                     heur_section = ResultTextSection(
                         f"{heur_type.capitalize()} dependencies ({len(heur_reqs)})"
@@ -51,7 +64,7 @@ class Analyzer:
                     for req in heur_reqs:
                         heur_section.add_line(req)
                         heur_section.heuristic.add_signature_id(
-                            f"PythonMagic.{heur_type.lower()}_dependencies.{req.lower()}"
+                            f"PythonMagic.{heur_type.lower()}_dependencies.{req}"
                         )
                     req_section.add_subsection(heur_section)
                 section.add_subsection(req_section)
