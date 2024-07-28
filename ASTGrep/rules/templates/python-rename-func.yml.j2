@@ -1,0 +1,11 @@
+id: python-rename-func
+language: Python
+rule:
+  any:
+    - pattern: ($F)($X)
+    - pattern: $F($X)
+constraints:
+  F:
+    kind: identifier
+    pattern: {{FUNC_NAME}}
+fix: {{ORIGINAL_NAME}}($X)

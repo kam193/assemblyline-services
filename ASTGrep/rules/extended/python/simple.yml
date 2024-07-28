@@ -1,0 +1,28 @@
+---
+
+# yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/main/schemas/rule.json
+
+id: python-simple-decode-bytes
+message: Apply decoding
+language: Python
+rule:
+  any:
+    - pattern: 'b"$DATA".decode($ENCODING)'
+    - pattern: "b'$DATA'.decode($ENCODING)"
+
+constraints:
+  ENCODING:
+    kind: string
+
+metadata:
+  extended-obfuscation: yes
+  alone-unimportant: yes
+  deobfuscate: |
+    {
+      "type": "fix-generate",
+      "steps": [
+        {"func": "encode", "source": "DATA", "output": "OUT"},
+        {"func": "decode", "source": "OUT", "encoding": "ENCODING"},
+        {"func": "quote", "source": "OUT"}
+      ]
+    }

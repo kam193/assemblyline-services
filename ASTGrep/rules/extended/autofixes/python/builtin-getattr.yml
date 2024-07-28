@@ -11,6 +11,8 @@ rule:
     - pattern:
         context: getattr(__import__('builtins'), '$DATA')
         strictness: signature
+    - pattern: getattr(builtins, '$DATA')
+    - pattern: getattr(builtins, "$DATA")
 
 fix: $DATA
 

@@ -1,0 +1,25 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/main/schemas/rule.json
+
+id: python-renaming-builtin
+message: Uses getattr to obfuscate using a builtin function
+language: Python
+rule:
+  any:
+    - pattern: $FUNC_NAME = $ORIGINAL_NAME
+
+constraints:
+  ORIGINAL_NAME:
+    kind: identifier
+    any:
+      - pattern: eval
+      - pattern: exec
+
+metadata:
+  extended-obfuscation: yes
+  confirmed-obfuscation: yes
+  template_file: python-rename-func.yml.j2
+  deobfuscate: |
+    {
+      "type": "template",
+      "steps": []
+    }

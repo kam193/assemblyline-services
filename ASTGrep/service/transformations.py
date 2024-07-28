@@ -107,6 +107,12 @@ def encode(config: dict, context: dict):
 def decode(config: dict, context: dict):
     source = config.get("source", "DATA")
     encoding = config.get("encoding", "unicode_escape")
+    if encoding in context:
+        encoding = context[encoding]
+    if any(c in encoding for c in "'\""):
+        if encoding.startswith("b"):
+            encoding = encoding[1:]
+        encoding = encoding.replace("'", "").replace('"', "")
 
     return codecs.decode(context[source], encoding)
 

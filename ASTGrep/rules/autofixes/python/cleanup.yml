@@ -77,3 +77,19 @@ fix: $MODULE.$FUNC($DATA)
 metadata:
   extended-obfuscation: yes
   alone-unimportant: yes
+
+---
+
+id: python-static-extract-eval
+message: Extract code executed by eval
+language: Python
+rule:
+  any:
+    - pattern: eval("$DATA")
+    - pattern: eval('$DATA')
+
+fix: $DATA
+
+metadata:
+  extended-obfuscation: yes
+  alone-unimportant: yes
