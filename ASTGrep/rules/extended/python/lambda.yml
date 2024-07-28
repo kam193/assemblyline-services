@@ -1,0 +1,32 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/main/schemas/rule.json
+
+id: python-lambda-hiding-obfuscation-with-slice
+language: Python
+message: Lambda is probably used to hide obfuscation, variant with slice
+rule:
+  any:
+    - has:
+        pattern: "$FUNC = lambda $ARG: $ANY"
+        # stopBy: end
+        has:
+          stopBy: end
+          any:
+            - pattern: $CALL($ARG[$SLICE])
+            - pattern: $CALL($ARG)
+      kind: expression_statement
+
+    - pattern: "$FUNC = lambda $ARG: $ANY($ARG)"
+
+# TODO: detecting when lambda really was used for the obfuscation
+
+metadata:
+  extended-obfuscation: yes
+  alone-unimportant: yes
+  template_file: call-replace-tpl.yml.j2
+  deobfuscate: |
+    {
+      "type": "template",
+      "steps": [
+        {"func": "substitute_var", "source": "ANY", "pattern": "ARG", "replacement": "$X", "output": "TPL_FIX"}
+      ]
+    }

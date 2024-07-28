@@ -12,6 +12,7 @@ from contextlib import suppress
 from threading import RLock
 from typing import Iterable
 
+import jinja2
 import pylspclient
 import pylspclient.lsp_pydantic_strcuts
 import yaml
@@ -382,6 +383,7 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
     def __init__(self, logger: logging.Logger = None, rules_dirs: list[str] = None):
         super().__init__(logger, rules_dirs)
         self._rules_transformations = {}
+        self._metadata = {}
         self.read_rules(rules_dirs)
         self.cli_timeout = 10
         self.deobfuscation_timeout = 60
@@ -401,6 +403,7 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
                                 if not yaml_doc:
                                     continue
                                 metadata = yaml_doc.get("metadata", {})
+                                self._metadata[yaml_doc.get("id")] = metadata
                                 if transformation := metadata.get("deobfuscate", ""):
                                     self._rules_transformations[yaml_doc.get("id")] = json.loads(
                                         transformation
@@ -414,6 +417,11 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
                                     self._rules_transformations[yaml_doc.get("id")][
                                         "confirmed-deobfuscation"
                                     ] = True
+
+                                if tpl := metadata.get("template_file"):
+                                    self._metadata[yaml_doc.get("id")]["template"] = open(
+                                        os.path.join("rules/templates", tpl)
+                                    ).read()
 
     def _apply_fix(self, pattern: str, fix: str):
         if pattern == fix:
@@ -439,6 +447,30 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
         except subprocess.CalledProcessError as e:
             self.log.error("Error applying fix: %s", e)
 
+    def _apply_rule(self, rule: str):
+        self.log.debug("Applying rule generated from a template")
+        pre_stat_mtime = os.stat(self._working_file).st_mtime_ns
+        try:
+            subprocess.run(
+                [
+                    "sg",
+                    "scan",
+                    # "--json", # it skips applying rules
+                    "--update-all",
+                    "--inline-rules",
+                    rule,
+                    self._working_file,
+                ],
+                check=True,
+                timeout=self.cli_timeout,
+            )
+            post_stat_mtime = os.stat(self._working_file).st_mtime_ns
+            if pre_stat_mtime == post_stat_mtime:
+                self.log.debug("Rule is a no-op")
+        except subprocess.CalledProcessError as e:
+            self.log.error("Error applying rule: %s", e)
+            self.log.debug("Rule: %s", rule)
+
     def _get_type(self, result: dict) -> tuple[str, bool]:
         rule_id = result.get("ruleId")
         if rule_id not in self._rules_transformations:
@@ -449,6 +481,7 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
 
     def _cleanup_status(self):
         self._generated_fixes = {}
+        self._generated_templates = {}
         self._secondary_transformations = []
         self._run_auto_fixes = False
         self._global_context = {}
@@ -456,34 +489,55 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
     def _process_result(self, result: dict, secondary=False):
         if not result:
             return
+        self.log.debug("Matched rule: %s", result.get("ruleId"))
         type_, confirmed = self._get_type(result)
         if not type_:
             return
         if secondary and type_.startswith("secondary-"):
             type_ = type_[len("secondary-") :]
-        if type_ == "auto-fix":
-            self._run_auto_fixes = True
-        elif type_ == "context":
-            output = self.transform(result)
-            if output:
-                self._global_context.update(output)
-        elif type_.startswith("secondary-"):
-            self._secondary_transformations.append(result)
-        elif type_ == "fix-generate":
-            match = result.get("text")
-            if match in self._generated_fixes:
-                return
-            try:
-                self._generated_fixes[match] = self.transform(result)
-                if confirmed:
-                    self.confirmed_obfuscation = True
-            except Exception as exc:
-                self.log.error("Error transforming fix-generate result: %r", exc)
-        elif type_ == "extract":
-            # if confirmed:
-            # Assume that extraction means obfuscation
-            self.confirmed_obfuscation = True
-            return self.transform(result)
+
+        try:
+            if type_ == "auto-fix":
+                self._run_auto_fixes = True
+            elif type_ == "context":
+                output, _ = self.transform(result)
+                if output:
+                    self._global_context.update(output)
+            elif type_.startswith("secondary-"):
+                self._secondary_transformations.append(result)
+            elif type_ == "fix-generate":
+                match = result.get("text")
+                if match in self._generated_fixes:
+                    return
+                try:
+                    self._generated_fixes[match], _ = self.transform(result)
+                    if confirmed:
+                        self.confirmed_obfuscation = True
+                except Exception as exc:
+                    self.log.error(
+                        "Error transforming fix-generate '%s' result: %r", result.get("ruleId"), exc
+                    )
+            elif type_ == "template":
+                match = result.get("text")
+                if match in self._generated_templates:
+                    return
+                try:
+                    self._generated_templates[match] = self.transform_template(result)
+                    if confirmed:
+                        self.confirmed_obfuscation = True
+                except Exception as exc:
+                    self.log.error(
+                        "Error transforming template '%s' result: %r", result.get("ruleId"), exc
+                    )
+            elif type_ == "extract":
+                # if confirmed:
+                # Assume that extraction means obfuscation
+                self.confirmed_obfuscation = True
+                output, _ = self.transform(result)
+                return output
+        except Exception as exc:
+            self.log.error("Error processing result for rule %s: %r", result.get("ruleId"), exc)
+            return None
 
     def _should_extract(self, data: str | bytes) -> bool:
         if not data:
@@ -532,6 +586,10 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
             if self._generated_fixes:
                 for match, fix in self._generated_fixes.items():
                     self._apply_fix(match, fix)
+
+            if self._generated_templates:
+                for fix_rule in self._generated_templates.values():
+                    self._apply_rule(fix_rule)
 
             self._iterations += 1
 
@@ -582,7 +640,21 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
             if output_field:
                 context[output_field] = output
 
-        return output
+        return output, context
+
+    def transform_template(self, result: dict) -> str:
+        rule_id = result.get("ruleId")
+        if rule_id not in self._rules_transformations:
+            return
+        template = self._metadata[rule_id].get("template")
+        if not template:
+            self.log.error("Template not found for rule %s", rule_id)
+            return
+
+        _, context = self.transform(result)
+        return jinja2.Template(template).render(
+            **self._metadata[rule_id], **self._global_context, **context
+        )
 
 
 def main():
@@ -595,10 +667,12 @@ def main():
         help="Language as in AL convention",
         default="code/python",
     )
+    parser.add_argument("--verbose", help="Verbose output", default=False, action="store_true")
     parser.add_argument("file", type=str, help="File path")
     args = parser.parse_args()
 
     deobfuscator = ASTGrepDeobfuscationController(rules_dirs=["./rules/"])
+    deobfuscator.log.setLevel(logging.DEBUG if args.verbose else logging.INFO)
 
     for result, layer in deobfuscator.deobfuscate_file(args.file, args.lang):
         print("#" + "=" * 80 + "#" + layer + "#")

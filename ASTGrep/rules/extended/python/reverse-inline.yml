@@ -19,3 +19,51 @@ metadata:
         {"func": "quote", "source": "DATA"}
       ]
     }
+
+---
+
+# yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/main/schemas/rule.json
+
+id: python-reverse-inline-static-decoded
+message: Reverse inline bytes decode
+language: Python
+rule:
+  any:
+    - pattern: '"$DATA"[::-1]'
+    - pattern: "'$DATA'[::-1]"
+
+metadata:
+  extended-obfuscation: yes
+  deobfuscate: |
+    {
+      "type": "fix-generate",
+      "steps": [
+        {"func": "reverse", "source": "DATA"},
+        {"func": "quote", "source": "DATA"}
+      ]
+    }
+
+---
+
+# yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/main/schemas/rule.json
+
+id: python-reverse-inline-static-bytes
+message: Reverse inline bytes decode
+language: Python
+rule:
+  any:
+    - pattern: 'b"$DATA"[::-1]'
+    - pattern: "b'$DATA'[::-1]"
+
+metadata:
+  extended-obfuscation: yes
+  deobfuscate: |
+    {
+      "type": "fix-generate",
+      "steps": [
+        {"func": "reverse", "source": "DATA"},
+        {"func": "encode", "source": "DATA", "encoding": "py-bytes"},
+        {"func": "quote", "source": "DATA"}
+      ]
+    }
+

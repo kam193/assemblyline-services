@@ -203,6 +203,7 @@ class AssemblylineService(ServiceBase):
             request.add_supplementary(f.name, "astgrep_raw_results.json", "AST-Grep Results")
 
         if self._should_deobfuscate:
+            extracted_layers = []
             result_no = 1
             for deobf_result, layer in self._deobfuscator.deobfuscate_file(
                 request.file_path, request.file_type
@@ -211,10 +212,12 @@ class AssemblylineService(ServiceBase):
                 with open(path, "w+") as f:
                     f.write(deobf_result)
                 if layer != "#final-layer#":
-                    request.add_extracted(
-                        path,
-                        f"_deobfuscated_code_{result_no}{LANGUAGE_TO_EXT[request.file_type]}",
-                        f"Deobfuscated code extracted by {layer}",
+                    extracted_layers.append(
+                        (
+                            path,
+                            f"_deobfuscated_code_{result_no}{LANGUAGE_TO_EXT[request.file_type]}",
+                            f"Deobfuscated code extracted by {layer}",
+                        )
                     )
                 else:
                     request.add_extracted(
@@ -231,6 +234,16 @@ class AssemblylineService(ServiceBase):
             deobf_section.add_line(self._deobfuscator.status)
             deobf_section.set_heuristic(4 if self._deobfuscator.confirmed_obfuscation else 5)
             result.add_section(deobf_section)
+
+            if extracted_layers:
+                for args in extracted_layers[:-10:-1]:
+                    request.add_extracted(*args)
+            if len(extracted_layers) > 10:
+                layers_section = ResultTextSection(
+                    f"Found {len(extracted_layers)} layers of obfuscation"
+                )
+                layers_section.set_heuristic(6)
+                result.add_section(layers_section)
 
     def _cleanup(self) -> None:
         self._astgrep.cleanup()

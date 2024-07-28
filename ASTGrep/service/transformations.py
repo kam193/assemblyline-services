@@ -6,6 +6,7 @@ import zlib
 
 import cryptography
 import cryptography.fernet
+from ast_grep_py import SgRoot
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 
 
@@ -218,6 +219,30 @@ def replace_in_match(config: dict, context: dict):
     source = config.get("source", "INPUT")
     replace = config.get("match", "DATA")
     return context["match"].replace(context[source], context[replace])
+
+
+def replace_in_ctx(config: dict, context: dict):
+    to_replace = config.get("to_replace", "TO_REPLACE")
+    source = config.get("source", "INPUT")
+    replace = config.get("match", "DATA")
+    return context[to_replace].replace(context[source], context[replace])
+
+
+def substitute_var(config: dict, context: dict):
+    source = config.get("source", "INPUT")
+    pattern = config.get("pattern", "PATTERN")
+    language = config.get("language", "python")
+    replacement = config.get("replacement", "REPLACEMENT")
+
+    if not replacement.startswith("$"):
+        replacement = context[replacement]
+
+    sg = SgRoot(context[source], language)
+    root = sg.root()
+    ret = root.commit_edits(
+        [m.replace(replacement) for m in root.find_all(pattern=context[pattern], kind="identifier")]
+    )
+    return ret
 
 
 def produce(config: dict, context: dict):

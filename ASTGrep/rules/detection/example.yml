@@ -28,3 +28,27 @@ metadata:
     {
       "confirmed-obfuscation": true
     }
+
+---
+
+id: python-detect-manual-import-of-stdlib
+message: Manual import of standard library module
+language: Python
+rule:
+  any:
+    - pattern: __import__("zlib")
+    - pattern: __import__('zlib')
+    - pattern: __import__(b"zlib")
+    - pattern: __import__(b'zlib')
+    - pattern: __import__("base64")
+    - pattern: __import__('base64')
+    - pattern: __import__(b"base64")
+    - pattern: __import__(b'base64')
+
+metadata:
+  extended-obfuscation: yes
+  # confirmed-obfuscation: yes
+  deobfuscate: |
+    {
+      "confirmed-obfuscation": true
+    }

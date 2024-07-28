@@ -58,3 +58,22 @@ fix: ""
 metadata:
   extended-obfuscation: yes
   alone-unimportant: yes
+
+---
+
+id: python-static-manual-import-and-call
+message: Manually import and execute a function on static data
+language: Python
+rule:
+  any:
+    - pattern: '__import__("$MODULE").$FUNC($DATA)'
+      has:
+        stopBy: end
+        pattern: $DATA
+        kind: string
+
+fix: $MODULE.$FUNC($DATA)
+
+metadata:
+  extended-obfuscation: yes
+  alone-unimportant: yes

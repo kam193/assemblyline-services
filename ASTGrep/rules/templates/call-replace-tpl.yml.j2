@@ -1,0 +1,11 @@
+id: python-call-replace
+language: Python
+rule:
+  any:
+    - pattern: ($F)($X)
+    - pattern: $F($X)
+constraints:
+  F:
+    kind: identifier
+    pattern: {{FUNC}}
+fix: {{TPL_FIX}}
