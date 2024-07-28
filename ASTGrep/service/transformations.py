@@ -63,7 +63,10 @@ def encode(config: dict, context: dict):
     elif encoding == "hex":
         data = bytes.fromhex(context[source])
     elif encoding == "utf-8":
-        data = bytes(context[source], "utf-8")
+        if isinstance(context[source], str):
+            data = bytes(context[source], "utf-8")
+        else:
+            data = context[source]
     elif encoding == "bytes-decode":
         data = bytes(context[source]).decode()
     elif encoding == "bytes":
@@ -255,3 +258,8 @@ def produce(config: dict, context: dict):
     # source = config.get("source", "INPUT")
     template = config.get("template", "TEMPLATE")
     return template.format(**context)
+
+
+def literal_eval(config: dict, context: dict):
+    source = config.get("source", "DATA")
+    return ast.literal_eval(context[source])

@@ -7,25 +7,29 @@ language: Python
 rule:
   any:
     - pattern:
-        context: Fernet("$FERNET_KEY").decrypt("$FERNET_SOURCE")
-        strictness: signature
+        context: Fernet($FERNET_KEY).decrypt($FERNET_SOURCE)
     - pattern:
-        context: $X.decrypt("$FERNET_SOURCE")
+        context: $X.decrypt($FERNET_SOURCE)
         selector: expression_statement
-        strictness: signature
       follows:
         stopBy: end
         pattern:
-          context: $X = Fernet("$FERNET_KEY")
+          context: $X = Fernet($FERNET_KEY)
           selector: expression_statement
-          strictness: signature
     # TODO: other variations
+constraints:
+  FERNET_KEY:
+    kind: string
+  FERNET_SOURCE:
+    kind: string
 metadata:
   extended-obfuscation: yes
   deobfuscate: |
     {
       "type": "extract",
       "steps": [
+        {"func": "literal_eval", "source": "FERNET_KEY"},
+        {"func": "literal_eval", "source": "FERNET_SOURCE"},
         {"func": "encode", "source": "FERNET_KEY", "encoding": "utf-8"},
         {"func": "encode", "source": "FERNET_SOURCE", "encoding": "utf-8"},
         {"func": "fernet"}
