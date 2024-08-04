@@ -11,6 +11,7 @@ HEURISTICS_MAP = {
 
 _separator_replace = re.compile(r"([._-])+")
 _cleanup_replace = re.compile(r"([^a-z0-9-])")
+_cleanup_extras = re.compile(r"\[[a-zA-Z0-9-]*\]")
 
 
 class Analyzer:
@@ -28,6 +29,7 @@ class Analyzer:
     def _normalize_pypi_name(name):
         name = _separator_replace.sub("-", name)
         name = name.lower().strip()
+        name = _cleanup_extras.sub("", name)
         return _cleanup_replace.sub("", name)
 
     def analyze(self):
