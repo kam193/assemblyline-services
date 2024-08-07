@@ -83,6 +83,10 @@ By default configured to use rules from [GuardDog](https://github.com/DataDog/gu
 
 Very simple service to download URLs, without running a whole browser. User-agent can be configured.
 
+Additional features:
+
+  - extract URLs from directory listings as URI files allowing to download automatically download them.
+
 ## License
 
 Although the code is licensed under the MIT license, the services may use third-party data or dependencies.

@@ -21,6 +21,18 @@ submission_params:
     name: user_agent
     type: str
     value: "python-requests/2.25.0"
+  - name: extract_dir_listing_as_urls
+    type: bool
+    default: false
+    value: false
+  - name: extract_directories_from_listing
+    type: bool
+    default: false
+    value: false
+  - name: extraction_depth
+    type: int
+    default: 1
+    value: 1
 
 # -1000: safe
 # 0 - 299: informative

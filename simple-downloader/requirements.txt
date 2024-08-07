@@ -1,2 +1,7 @@
 assemblyline-v4-service
 requests
+beautifulsoup4
+lxml
+
+# dev-only
+pytest
