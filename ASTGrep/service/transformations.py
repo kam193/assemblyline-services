@@ -189,7 +189,11 @@ def collect_var(config: dict, context: dict):
 
     name = context[source_var]
     if parse == "python":
-        name = ast.parse(name).body[0].value.id
+        obj = ast.parse(name).body[0].value
+        if hasattr(obj, "id"):
+            name = obj.id
+        else:
+            return {}
 
     return {name: context[source_value]}
 

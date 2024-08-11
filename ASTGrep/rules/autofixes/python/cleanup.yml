@@ -1,27 +1,19 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/main/schemas/rule.json
 
-id: python-static-string-decode-double-quotes
-message: python-static-string-decode-double-quotes
+id: python-static-string-decode
+message: python-static-string-decode
 language: Python
 rule:
   any:
-    - pattern: '"$DATA".decode()'
+    - pattern: "$DATA.decode($UTF)"
 
-fix: '"$DATA"'
+constraints:
+  DATA:
+    kind: string
+  UTF:
+    regex: "(?i)utf-8"
 
-metadata:
-  extended-obfuscation: yes
-  alone-unimportant: yes
-
----
-id: python-static-string-decode-single-quotes
-message: python-static-string-decode-single-quotes
-language: Python
-rule:
-  any:
-    - pattern: "'$DATA'.decode()"
-
-fix: "'$DATA'"
+fix: $DATA
 
 metadata:
   extended-obfuscation: yes
@@ -33,8 +25,12 @@ message: python-static-cleanup-eval
 language: Python
 rule:
   any:
-    - pattern: eval('exec')
-    - pattern: eval("exec")
+    - pattern: eval($EXEC)
+
+constraints:
+  EXEC:
+    kind: string
+    regex: "exec"
 
 fix: exec
 
@@ -60,6 +56,7 @@ metadata:
   alone-unimportant: yes
 
 ---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/main/schemas/rule.json
 
 id: python-static-manual-import-and-call
 message: Manually import and execute a function on static data
@@ -67,10 +64,17 @@ language: Python
 rule:
   any:
     - pattern: '__import__("$MODULE").$FUNC($DATA)'
-      has:
-        stopBy: end
-        pattern: $DATA
-        kind: string
+    - pattern: __import__('$MODULE').$FUNC($DATA)
+    - pattern: __import__(b'$MODULE').$FUNC($DATA)
+    - pattern: __import__(b"$MODULE").$FUNC($DATA)
+    - pattern: __import__('''$MODULE''').$FUNC($DATA)
+    - pattern: __import__("""$MODULE""").$FUNC($DATA)
+    - pattern: __import__(b'''$MODULE''').$FUNC($DATA)
+    - pattern: __import__(b"""$MODULE""").$FUNC($DATA)
+
+constraints:
+  DATA:
+    kind: string
 
 fix: $MODULE.$FUNC($DATA)
 
@@ -79,14 +83,22 @@ metadata:
   alone-unimportant: yes
 
 ---
-
 id: python-static-extract-eval
 message: Extract code executed by eval
 language: Python
 rule:
-  any:
-    - pattern: eval("$DATA")
-    - pattern: eval('$DATA')
+  all:
+    - pattern: eval($DATA)
+    - not:
+        pattern: eval($EXEC)
+        has:
+          stopBy: end
+          regex: '([b''"]+)exec([b''"]+)'
+          kind: string
+
+constraints:
+  DATA:
+    kind: string
 
 fix: $DATA
 
