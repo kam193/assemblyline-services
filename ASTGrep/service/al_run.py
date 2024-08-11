@@ -242,6 +242,9 @@ class AssemblylineService(ServiceBase):
                 layers_section = ResultTextSection(
                     f"Found {len(extracted_layers)} layers of obfuscation"
                 )
+                layers_section.add_line(
+                    "Only last 10 extracted layers and the final layer are shown"
+                )
                 layers_section.set_heuristic(6)
                 result.add_section(layers_section)
 
