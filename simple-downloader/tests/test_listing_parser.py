@@ -20,6 +20,7 @@ def listing():
         ("cern", 3826),
         ("five-sh", 52),
         ("maven", 27),
+        ("ul", 7),
     ],
 )
 def test_parse(listing, name, expected):

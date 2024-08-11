@@ -42,6 +42,10 @@ class ListingParser:
             if self._listing.find("pre"):
                 paths.update(list(self.pre_extractor()))
 
+            # This is very generic catch, so try only when no other extractors worked
+            if self._listing.find("ul"):
+                paths.update(list(self.ul_extractor()))
+
             return list(self._filter_paths(paths))
         except Exception as e:
             # Treat incorrect files as not listings
@@ -59,3 +63,12 @@ class ListingParser:
         for pre in self._listing.find_all("pre"):
             for href in pre.find_all("a"):
                 yield href.get("href")
+
+    def ul_extractor(self):
+        for ul in self._listing.find_all("ul"):
+            for li in ul.find_all("li"):
+                for href in li.findChildren("a", recursive=False):
+                    path = href.get("href")
+                    name = href.get_text().strip()
+                    if name == path.strip():
+                        yield path
