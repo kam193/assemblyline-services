@@ -26,12 +26,14 @@ metadata:
   extended-obfuscation: yes
   deobfuscate: |
     {
-      "type": "extract",
+      "type": "fix-generate",
+      "extract": true,
       "steps": [
         {"func": "literal_eval", "source": "FERNET_KEY"},
         {"func": "literal_eval", "source": "FERNET_SOURCE"},
         {"func": "encode", "source": "FERNET_KEY", "encoding": "utf-8"},
         {"func": "encode", "source": "FERNET_SOURCE", "encoding": "utf-8"},
-        {"func": "fernet"}
+        {"func": "fernet", "output": "DATA"},
+        {"func": "quote"}
       ]
     }

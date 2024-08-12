@@ -1,0 +1,4 @@
+from fernet import Fernet
+
+data = "print('hello world')"
+print('hello world')

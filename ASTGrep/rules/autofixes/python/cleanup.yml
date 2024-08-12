@@ -30,7 +30,7 @@ rule:
 constraints:
   EXEC:
     kind: string
-    regex: "exec"
+    regex: "^exec$"
 
 fix: exec
 
@@ -77,30 +77,6 @@ constraints:
     kind: string
 
 fix: $MODULE.$FUNC($DATA)
-
-metadata:
-  extended-obfuscation: yes
-  alone-unimportant: yes
-
----
-id: python-static-extract-eval
-message: Extract code executed by eval
-language: Python
-rule:
-  all:
-    - pattern: eval($DATA)
-    - not:
-        pattern: eval($EXEC)
-        has:
-          stopBy: end
-          regex: '([b''"]+)exec([b''"]+)'
-          kind: string
-
-constraints:
-  DATA:
-    kind: string
-
-fix: $DATA
 
 metadata:
   extended-obfuscation: yes

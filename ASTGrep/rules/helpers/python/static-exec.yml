@@ -3,10 +3,16 @@ message: Extract code executed by exec
 language: Python
 rule:
   any:
-    - pattern: exec("$DATA")
-    - pattern: exec('$DATA')
+    - pattern: $FUNC("$DATA")
+    - pattern: $FUNC('$DATA')
 
 fix: $DATA
+
+constraints:
+  FUNC:
+    any:
+      - pattern: exec
+      - pattern: eval
 
 metadata:
   extended-obfuscation: yes

@@ -474,10 +474,13 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
     def _get_type(self, result: dict) -> tuple[str, bool]:
         rule_id = result.get("ruleId")
         if rule_id not in self._rules_transformations:
-            return None, None
-        return self._rules_transformations[rule_id].get(
-            "type", "extract"
-        ), self._rules_transformations[rule_id].get("confirmed-obfuscation", False)
+            return None, None, None
+        type_ = self._rules_transformations[rule_id].get("type", "extract")
+        extract = type_ == "extract" or self._rules_transformations[rule_id].get("extract", False)
+        confirmed = extract or self._rules_transformations[rule_id].get(
+            "confirmed-obfuscation", False
+        )
+        return type_, extract, confirmed
 
     def _cleanup_status(self):
         self._generated_fixes = {}
@@ -490,11 +493,13 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
         if not result:
             return
         self.log.debug("Matched rule: %s", result.get("ruleId"))
-        type_, confirmed = self._get_type(result)
+        type_, extract, confirmed = self._get_type(result)
         if not type_:
             return
         if secondary and type_.startswith("secondary-"):
             type_ = type_[len("secondary-") :]
+            if type_ == "extract":
+                extract = True
 
         try:
             if type_ == "auto-fix":
@@ -513,6 +518,8 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
                     self._generated_fixes[match], _ = self.transform(result)
                     if confirmed:
                         self.confirmed_obfuscation = True
+                    if extract:
+                        return self._generated_fixes[match]
                 except Exception as exc:
                     self.log.error(
                         "Error transforming fix-generate '%s' result: %r", result.get("ruleId"), exc
