@@ -55,7 +55,7 @@ jobs:
       - name: Check service was changed in the commit
         id: check-service-changed
         run: |
-          git diff --quiet ${{ github.event.before }} ${{ github.event.after }} -- ${{ matrix.service }}
+          git diff --quiet ${{ github.event.before }} ${{ github.event.after }} -- .
           echo exit-code=$? >> $GITHUB_OUTPUT
       - name: Run tests
         if: steps.check-service-changed.outputs.exit-code != 0
