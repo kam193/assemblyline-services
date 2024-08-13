@@ -5,16 +5,30 @@ message: Uses getattr to obfuscate using a builtin function
 language: Python
 rule:
   any:
-    - pattern:
-        context: getattr(__import__("builtins"), "$DATA")
-        strictness: signature
-    - pattern:
-        context: getattr(__import__('builtins'), '$DATA')
-        strictness: signature
+    - pattern: getattr(__import__($BUILTINS), "$DATA")
+    - pattern: getattr(__import__($BUILTINS), '$DATA')
+    - pattern: getattr(__import__($BUILTINS), b'$DATA')
+    - pattern: getattr(__import__($BUILTINS), b"$DATA")
+    - pattern: getattr(__import__($BUILTINS), b'''$DATA''')
+    - pattern: getattr(__import__($BUILTINS), b"""$DATA""")
+    - pattern: getattr(__import__($BUILTINS), '''$DATA''')
+    - pattern: getattr(__import__($BUILTINS), """$DATA""")
     - pattern: getattr(builtins, '$DATA')
     - pattern: getattr(builtins, "$DATA")
+    - pattern: getattr(builtins, b'$DATA')
+    - pattern: getattr(builtins, b"$DATA")
+    - pattern: getattr(builtins, b'''$DATA''')
+    - pattern: getattr(builtins, b"""$DATA""")
+    - pattern: getattr(builtins, '''$DATA''')
+    - pattern: getattr(builtins, """$DATA""")
 
 fix: $DATA
+
+constraints:
+  BUILTINS:
+    kind: string
+    regex: "[Bb]?[\"']+builtins[\"']+"
+
 
 metadata:
   extended-obfuscation: yes

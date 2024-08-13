@@ -1,0 +1,13 @@
+# Different quoting styles
+getattr(builtins, "exec")("print('hello')")
+getattr(builtins, 'exec')("print('hello')")
+getattr(builtins, b'exec')("print('hello')")
+getattr(builtins, b"exec")("print('hello')")
+
+getattr(__import__("builtins"), "exec")("print('hello')")
+getattr(__import__('builtins'), 'exec')("print('hello')")
+getattr(__import__(b'builtins'), b'exec')("print('hello')")
+getattr(__import__(b"builtins"), b"exec")("print('hello')")
+
+# Example of false positives
+saveFile = QAction(QIcon('pyfem/qt/img/save128.png'),'&Save', self )

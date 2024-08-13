@@ -17,6 +17,13 @@ def deobfuscate_example(deobfuscator):
     return _check_example
 
 
-@pytest.mark.parametrize("example", ["simple_fernet", "simple_cc"])
+@pytest.mark.parametrize(
+    "example",
+    [
+        "simple_fernet",
+        "simple_cc",
+        "simple_getattr",
+    ],
+)
 def test_simple_cases(deobfuscate_example, example):
     deobfuscate_example(example)
