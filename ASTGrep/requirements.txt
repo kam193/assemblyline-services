@@ -3,3 +3,4 @@ ast-grep-cli >0.25.0, <0.26.0
 pylspclient
 cryptography
 ast-grep-py
+jinja2

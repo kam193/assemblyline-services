@@ -91,7 +91,9 @@ bash:
 	docker exec -it ${SERVICE_NAME} bash
 
 test:
-	true
+	if [ -d "tests" ]; then \
+		WORK_DIR=$$(pwd) tox -c ../tox.ini; \
+	fi
 
 print:
 	@echo ${SERVICE_NAME}
