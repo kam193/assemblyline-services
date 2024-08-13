@@ -267,3 +267,11 @@ def produce(config: dict, context: dict):
 def literal_eval(config: dict, context: dict):
     source = config.get("source", "DATA")
     return ast.literal_eval(context[source])
+
+
+def dequote(config: dict, context: dict):
+    source = config.get("source", "DATA")
+    result = ast.literal_eval(context[source])
+    if isinstance(result, bytes):
+        return result.decode("utf-8")
+    return result

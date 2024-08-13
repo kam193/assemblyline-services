@@ -408,7 +408,7 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
                                     self._rules_transformations[yaml_doc.get("id")] = json.loads(
                                         transformation
                                     )
-                                elif yaml_doc.get("fix"):
+                                elif "fix" in yaml_doc:
                                     self._rules_transformations[yaml_doc.get("id")] = {
                                         "type": "auto-fix"
                                     }
@@ -492,8 +492,8 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
     def _process_result(self, result: dict, secondary=False):
         if not result:
             return
-        self.log.debug("Matched rule: %s", result.get("ruleId"))
         type_, extract, confirmed = self._get_type(result)
+        self.log.debug("Matched rule: %s [%s]", result.get("ruleId"), type_)
         if not type_:
             return
         if secondary and type_.startswith("secondary-"):

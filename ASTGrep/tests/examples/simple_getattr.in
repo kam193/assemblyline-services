@@ -4,7 +4,7 @@ getattr(builtins, 'exec')("print('hello')")
 getattr(builtins, b'exec')("print('hello')")
 getattr(builtins, b"exec")("print('hello')")
 
-getattr(__import__("builtins"), "exec")("print('hello')")
+getattr(__import__("builtins"), "exec")("print('hel\"lo')")
 getattr(__import__('builtins'), 'exec')("print('hello')")
 getattr(__import__(b'builtins'), b'exec')("print('hello')")
 getattr(__import__(b"builtins"), b"exec")("print('hello')")

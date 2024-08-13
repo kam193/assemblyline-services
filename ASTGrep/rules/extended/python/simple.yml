@@ -26,3 +26,34 @@ metadata:
         {"func": "quote", "source": "OUT"}
       ]
     }
+
+---
+
+id: python-simple-builtin-getattr
+message: Uses getattr to obfuscate using a builtin function
+language: Python
+rule:
+  any:
+    - pattern: getattr(__import__($BUILTINS), $DATA)
+    - pattern: getattr(builtins, $DATA)
+
+# fix: $DATA
+
+constraints:
+  BUILTINS:
+    kind: string
+    regex: "[Bb]?[\"']+builtins[\"']+"
+  DATA:
+    kind: string
+
+
+metadata:
+  extended-obfuscation: yes
+  confirmed-obfuscation: yes
+  deobfuscate: |
+    {
+      "type": "fix-generate",
+      "steps": [
+        {"func": "dequote", "source": "DATA"}
+      ]
+    }
