@@ -1,0 +1,16 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/main/schemas/rule.json
+
+id: python-extra-length-comments
+message: Extremely long comments are used to obfuscate the code and prevent analysis
+severity: warning
+language: Python
+rule:
+  any:
+    - regex: ".{10000,}"
+      kind: comment
+
+fix: ""
+
+metadata:
+  extended-obfuscation: yes
+  confirmed-obfuscation: yes
