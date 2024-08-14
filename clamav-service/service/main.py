@@ -27,6 +27,7 @@ class ClamAVService(ServiceBase):
         self.daemon_process: subprocess.Popen = None
         self.clamd: ClamdUnixSocket = None
         self.clamd_conf: str = None
+        self._wait_for_daemon = WAIT_FOR_DAEMON
 
     def _generate_clamd_config(self) -> None:
         conf_file = tempfile.NamedTemporaryFile(mode="w+", prefix="clamd_conf", delete=False)
@@ -41,12 +42,15 @@ class ClamAVService(ServiceBase):
     def start(self):
         self.log.info(f"start() from {self.service_attributes.name} service called")
         self._generate_clamd_config()
+        self._wait_for_daemon = int(
+            self.service_attributes.config.get("_WAIT_FOR_DAEMON", WAIT_FOR_DAEMON)
+        )
 
         self.daemon_process = subprocess.Popen(["clamd", "-c", self.clamd_conf])
         self.log.info(f"ClamAV daemon started with PID {self.daemon_process.pid}")
 
         start_time = time()
-        while time() - start_time <= WAIT_FOR_DAEMON:
+        while time() - start_time <= self._wait_for_daemon:
             try:
                 self.clamd = ClamdUnixSocket(CLAMD_SOCKET)
                 self.clamd.ping()
@@ -56,7 +60,7 @@ class ClamAVService(ServiceBase):
                 self.log.debug("ClamAV daemon not ready yet, waiting...", exc_info=True)
                 if self.daemon_process.returncode:
                     # Break and go to else clause
-                    start_time = time() - WAIT_FOR_DAEMON
+                    start_time = time() - self._wait_for_daemon
                 sleep(0.5)
         else:
             self.log.error(f"ClamAV daemon not ready after {time() - start_time} seconds, aborting")

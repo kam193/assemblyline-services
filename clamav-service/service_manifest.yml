@@ -20,6 +20,7 @@ config:
   AlertOLE2Macros: yes
   AlertPartitionIntersection: yes
   MaxScanTime: 60000
+  _WAIT_FOR_DAEMON: 60
 
 # -1000: safe
 # 0 - 299: informative
