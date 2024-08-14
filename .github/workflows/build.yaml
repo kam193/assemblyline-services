@@ -57,6 +57,7 @@ jobs:
         run: |
           git diff --quiet ${{ github.event.before }} ${{ github.event.after }} -- .
           echo exit-code=$? >> $GITHUB_OUTPUT
+        continue-on-error: true
       - name: Run tests
         if: steps.check-service-changed.outputs.exit-code != 0
         run: |
