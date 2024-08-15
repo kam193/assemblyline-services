@@ -1,0 +1,5 @@
+import base64
+from base64 import b64decode
+
+base64.b64decode("YWJj")
+b64decode('YWJj')

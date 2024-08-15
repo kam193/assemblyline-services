@@ -5,6 +5,12 @@ rule:
   any:
     - pattern: $FUNC("$DATA")
     - pattern: $FUNC('$DATA')
+    - pattern: $FUNC(b"$DATA")
+    - pattern: $FUNC(b'$DATA')
+    - pattern: $FUNC("""$DATA""")
+    - pattern: $FUNC('''$DATA''')
+    - pattern: $FUNC(b"""$DATA""")
+    - pattern: $FUNC(b'''$DATA''')
 
 fix: $DATA
 

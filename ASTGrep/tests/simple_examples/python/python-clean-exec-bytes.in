@@ -1,0 +1,4 @@
+exec(b"print('aaa')")
+exec(b'print(\'aaa\')')
+exec(b"""print('aaa')""")
+exec(b'''print('aaa')''')

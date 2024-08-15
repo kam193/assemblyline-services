@@ -1,0 +1,5 @@
+import zlib
+from zlib import decompress
+
+zlib.decompress(b'x\x9cKLL\x04\x00\x02I\x01$')
+decompress(b"x\x9cKLL\x04\x00\x02I\x01$")

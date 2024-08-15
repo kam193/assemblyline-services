@@ -1,7 +1,7 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/main/schemas/rule.json
 
 id: python-renaming-builtin
-message: Uses getattr to obfuscate using a builtin function
+message: Renaming builtin is often used as obfuscation method
 language: Python
 rule:
   any:

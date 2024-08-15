@@ -1,0 +1,7 @@
+func1 = lambda a: sth(a)
+func2 = lambda a: sth(a[1:4])
+func3 = lambda a: module.sth(a)
+
+func1("xxx")
+func2("123456789")
+func3(16)

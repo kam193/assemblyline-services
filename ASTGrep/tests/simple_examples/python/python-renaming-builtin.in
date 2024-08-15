@@ -1,0 +1,5 @@
+var1 = exec
+var2 = eval
+
+var2("123+5")
+var1("print('evil')")

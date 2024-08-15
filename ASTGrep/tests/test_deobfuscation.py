@@ -1,49 +1,63 @@
+import os
+
 import pytest
+import yaml
 from service.controller import ASTGrepDeobfuscationController
+
+RULES_DIR = "./rules/"
 
 
 @pytest.fixture
 def deobfuscator():
-    return ASTGrepDeobfuscationController(rules_dirs=["./rules/"])
+    return ASTGrepDeobfuscationController(rules_dirs=[RULES_DIR])
 
 
 @pytest.fixture
 def deobfuscate_example(deobfuscator):
-    def _check_example(name: str, group: str, language: str = "code/python"):
-        results = list(deobfuscator.deobfuscate_file(f"./tests/examples/{group}/{name}.in", language))
-        assert results[-1][0] == open(f"./tests/examples/{group}/{name}.out", "r").read()
+    def _check_example(path: str, language: str | None = None):
+        if not language:
+            lang_name = os.path.relpath(path, "./tests").split("/")[1]
+            language = f"code/{lang_name}"
+        results = list(deobfuscator.deobfuscate_file(f"{path}.in", language))
+        assert results[-1][0].strip() == open(f"{path}.out", "r").read().strip()
         return results
 
     return _check_example
 
 
-# TODO: Simple cases should reflect every rule
-# TODO: Structure of samples to reflect the structure of the rules
+def _list_examples(group: str):
+    examples = []
+    for root, _, files in os.walk(f"./tests/{group}_examples/"):
+        for file in files:
+            if file.endswith(".in"):
+                examples.append(os.path.join(root, file[:-3]))
+    return examples
+
 
 @pytest.mark.parametrize(
     "example",
-    [
-        "fernet",
-        "cc",
-        "getattr",
-        "comment",
-    ],
+    _list_examples("simple"),
 )
 def test_simple_cases(deobfuscate_example, example):
-    """Test 1-2 rules per example"""
-    deobfuscate_example(example, "simple")
-
-@pytest.mark.skip(reason="TODO: Fix the rule")
-@pytest.mark.parametrize(
-    "example",
-    [
-        "getattr",
-    ]
-)
-def test_mixed_cases(deobfuscate_example, example):
-    """Mix a few rules to check if they don't interfere"""
-    deobfuscate_example(example, "mixed")
+    """Test for every rule"""
+    deobfuscate_example(example)
 
 
-# TODO: Tests based on real cases
+def test_all_extended_rules_have_simple_tests():
+    # read all rules and collect IDs
+    rules = []
+    for root, _, files in os.walk(f"{RULES_DIR}/extended/"):
+        for file in files:
+            if file.endswith(".yml") or file.endswith(".yaml"):
+                with open(os.path.join(root, file), "r") as f:
+                    reader = yaml.safe_load_all(f)
+                    for doc in reader:
+                        if not doc:
+                            continue
+                        rules.append(doc["id"])
 
+    assert sorted(rules) == sorted(set(rules)), "Duplicated rule ID"
+
+    examples = [os.path.basename(e) for e in _list_examples("simple")]
+
+    assert sorted(examples) == sorted(rules), "Rules does not match basic test examples"

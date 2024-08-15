@@ -1,0 +1,3 @@
+var1 = "evil code"
+
+print(var1)

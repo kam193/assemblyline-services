@@ -74,14 +74,14 @@ def get_language_id(file_format: str) -> str:
 
 
 class ASTGrepScanController:
-    def __init__(self, logger: logging.Logger = None, rules_dir: str = None):
+    def __init__(self, logger: logging.Logger = None, rules_dir: str = None, cli_timeout: int = 60):
         self._active_rules = []
         self._active_rules_prefix = ""
         self._sg_config = {}
         self._lock = RLock()
         self._ready = False
         self.last_results = {}
-        self.cli_timeout = 60
+        self.cli_timeout = cli_timeout
         self._rules_dir = rules_dir
         self._working_file = ""
         self._cli_config = []
@@ -380,12 +380,14 @@ class ASTGrepLSPController(ASTGrepScanController):
 
 
 class ASTGrepDeobfuscationController(ASTGrepScanController):
-    def __init__(self, logger: logging.Logger = None, rules_dirs: list[str] = None):
+    def __init__(
+        self, logger: logging.Logger = None, rules_dirs: list[str] = None, cli_timeout: int = 20
+    ):
         super().__init__(logger, rules_dirs)
         self._rules_transformations = {}
         self._metadata = {}
         self.read_rules(rules_dirs)
-        self.cli_timeout = 10
+        self.cli_timeout = cli_timeout
         self.deobfuscation_timeout = 60
         self.config_file = "./rules/deobfuscation.sgconfig.yml"
 
@@ -524,12 +526,26 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
                     self.log.error(
                         "Error transforming fix-generate '%s' result: %r", result.get("ruleId"), exc
                     )
+            elif type_ == "fix-template":
+                match = result.get("text")
+                if match in self._generated_fixes:
+                    return
+                try:
+                    self._generated_fixes[match], output = self.transform_template(result)
+                    if confirmed:
+                        self.confirmed_obfuscation = True
+                    if extract:
+                        return output
+                except Exception as exc:
+                    self.log.error(
+                        "Error transforming fix-template '%s' result: %r", result.get("ruleId"), exc
+                    )
             elif type_ == "template":
                 match = result.get("text")
                 if match in self._generated_templates:
                     return
                 try:
-                    self._generated_templates[match] = self.transform_template(result)
+                    self._generated_templates[match], _ = self.transform_template(result)
                     if confirmed:
                         self.confirmed_obfuscation = True
                 except Exception as exc:
@@ -627,7 +643,7 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
             context[name] = [x.get("text") for x in data]
         return context
 
-    def transform(self, result: dict) -> str:
+    def transform(self, result: dict) -> tuple[str, dict]:
         rule_id = result.get("ruleId")
         if rule_id not in self._rules_transformations:
             return
@@ -649,7 +665,7 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
 
         return output, context
 
-    def transform_template(self, result: dict) -> str:
+    def transform_template(self, result: dict) -> tuple[str, str]:
         rule_id = result.get("ruleId")
         if rule_id not in self._rules_transformations:
             return
@@ -658,10 +674,12 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
             self.log.error("Template not found for rule %s", rule_id)
             return
 
-        _, context = self.transform(result)
+        output, context = self.transform(result)
+        if "OUTPUT" not in context:
+            context["OUTPUT"] = output
         return jinja2.Template(template).render(
             **self._metadata[rule_id], **self._global_context, **context
-        )
+        ), output
 
 
 def main():

@@ -1,0 +1,18 @@
+    const crypto = require('crypto');
+
+    function decrypt(encdata, authTag, salt, iv, masterkey) {
+        const key = crypto.scryptSync(masterkey, Buffer.from(salt, 'hex'), 64, { N: 16384, r: 8, p: 1 }).slice(0, 32);
+        const decipher = crypto.createDecipheriv('aes-256-gcm', key, Buffer.from(iv, 'hex'));
+        decipher.setAuthTag(Buffer.from(authTag, 'hex'));
+        let decrypted = decipher.update(encdata, 'hex', 'utf8');
+        decrypted += decipher.final('utf8');
+        return decrypted;
+    }
+
+    const decrypted = `console.log('evil')`;
+
+    try {
+        new Function('require', decrypted)(require);
+      } catch (error) {
+        console.error('Decryption or execution failed:', error);
+      }

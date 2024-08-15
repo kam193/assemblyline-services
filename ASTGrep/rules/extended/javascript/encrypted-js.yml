@@ -6,9 +6,11 @@ severity: error
 metadata:
   category: obfuscation
   extended-obfuscation: yes
+  template_file: javascript/const-var-tpl.j2
   deobfuscate: |
     {
-      "type": "extract",
+      "type": "fix-template",
+      "extract": true,
       "steps": [
         {"func": "encode", "source": "IV", "encoding": "hex"},
         {"func": "encode", "source": "SALT", "encoding": "hex"},
@@ -21,7 +23,7 @@ metadata:
     }
 rule:
   pattern:
-    context: const $DECR = $DECRYPT('$DATA', '$AUTH_TAG', '$SALT', '$IV', "$MASTER_KEY")
+    context: const $VAR_NAME = $DECRYPT('$DATA', '$AUTH_TAG', '$SALT', '$IV', "$MASTER_KEY")
     strictness: signature
   # kind: lexical_declaration
 

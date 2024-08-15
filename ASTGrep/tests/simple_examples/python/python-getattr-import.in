@@ -1,0 +1,2 @@
+eval("getattr")(eval("__import__")("os"), "open")
+eval(b"getattr")(eval('__import__')("subprocess"), '''check_output''')

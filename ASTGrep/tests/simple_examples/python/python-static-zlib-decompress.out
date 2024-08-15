@@ -1,0 +1,5 @@
+import zlib
+from zlib import decompress
+
+b'aaa'
+b'aaa'
