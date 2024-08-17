@@ -58,6 +58,18 @@ jobs:
           git diff --quiet ${{ github.event.before }} ${{ github.event.after }} -- .
           echo exit-code=$? >> $GITHUB_OUTPUT
         continue-on-error: true
+        # Tests based on real examples, not suitable to keep in the public repo
+      - name: Get test samples for ASTGrep
+        if: steps.check-service-changed.outputs.exit-code != 0 && matrix.service == 'ASTGrep'
+        uses: actions/checkout@v4
+        with:
+          repository: kam193/unsafe-examples
+          path: ASTGrep/tests/
+          sparse-checkout: |
+            dangerous_examples/*
+          sparse-checkout-cone-mode: false
+          persist-credentials: false
+          ssh-key: ${{ secrets.UNSAFE_SAMPLES_SSH }}
       - name: Run tests
         if: steps.check-service-changed.outputs.exit-code != 0
         run: |

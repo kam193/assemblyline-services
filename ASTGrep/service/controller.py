@@ -693,6 +693,9 @@ def main():
         default="code/python",
     )
     parser.add_argument("--verbose", help="Verbose output", default=False, action="store_true")
+    parser.add_argument(
+        "--final-only", help="Print only final layer", default=False, action="store_true"
+    )
     parser.add_argument("file", type=str, help="File path")
     args = parser.parse_args()
 
@@ -700,8 +703,10 @@ def main():
     deobfuscator.log.setLevel(logging.DEBUG if args.verbose else logging.INFO)
 
     for result, layer in deobfuscator.deobfuscate_file(args.file, args.lang):
-        print("#" + "=" * 80 + "#" + layer + "#")
-        print(result)
+        if not args.final_only:
+            print("#" + "=" * 80 + "#" + layer + "#")
+        if not args.final_only or layer == "#final-layer#":
+            print(result)
 
     print("#" + "=" * 80 + "#", file=sys.stderr)
     print(deobfuscator.status, file=sys.stderr)

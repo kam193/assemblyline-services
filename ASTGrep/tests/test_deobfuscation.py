@@ -61,3 +61,15 @@ def test_all_extended_rules_have_simple_tests():
     examples = [os.path.basename(e) for e in _list_examples("simple")]
 
     assert sorted(examples) == sorted(rules), "Rules does not match basic test examples"
+
+
+@pytest.mark.skipif(
+    not os.path.exists("./tests/dangerous_examples"), reason="Samples are not accessible"
+)
+@pytest.mark.parametrize(
+    "example",
+    _list_examples("dangerous"),
+)
+def test_real_samples(deobfuscate_example, example):
+    """Tests on real samples"""
+    deobfuscate_example(example)
