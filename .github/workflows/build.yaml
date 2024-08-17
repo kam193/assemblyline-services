@@ -75,7 +75,7 @@ jobs:
       - name: Install tox
         if: steps.check-service-changed.outputs.exit-code != 0
         run: |
-          pip install tox
+          make test-dependencies
       - name: Run tests
         if: steps.check-service-changed.outputs.exit-code != 0
         run: |

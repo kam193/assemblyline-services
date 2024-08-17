@@ -90,6 +90,9 @@ run-dep:
 bash:
 	docker exec -it ${SERVICE_NAME} bash
 
+test-dependencies:
+	pip install tox
+
 test:
 	if [ -d "tests" ]; then \
 		WORK_DIR=$$(pwd) tox -c ../tox.ini; \
