@@ -5,4 +5,4 @@ AL_SERVICE_NAME=ASTGrep
 
 test-dependencies:
 	pip install tox
-	apt-get update && apt-get install -y libfuzzy-dev
+	sudo apt-get install -y libfuzzy-dev
