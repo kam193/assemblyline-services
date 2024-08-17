@@ -71,6 +71,11 @@ jobs:
           sparse-checkout-cone-mode: false
           persist-credentials: false
           ssh-key: ${{ secrets.UNSAFE_SAMPLES_SSH }}
+          clean: false
+      - name: Install tox
+        if: steps.check-service-changed.outputs.exit-code != 0
+        run: |
+          pip install tox
       - name: Run tests
         if: steps.check-service-changed.outputs.exit-code != 0
         run: |

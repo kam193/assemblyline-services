@@ -4,7 +4,6 @@ import pytest
 import yaml
 from service.controller import ASTGrepDeobfuscationController
 
-
 RULES_DIR = "./rules/"
 
 
