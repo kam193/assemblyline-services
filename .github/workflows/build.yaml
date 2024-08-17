@@ -66,9 +66,9 @@ jobs:
         with:
           repository: kam193/unsafe-examples
           path: ASTGrep/tmp/
-          sparse-checkout: |
-            dangerous_examples/*
-          sparse-checkout-cone-mode: false
+          # sparse-checkout: |
+          #   dangerous_examples/*
+          # sparse-checkout-cone-mode: false
           persist-credentials: false
           ssh-key: ${{ secrets.UNSAFE_SAMPLES_SSH }}
           clean: false
@@ -76,6 +76,7 @@ jobs:
         if: steps.check-service-changed.outputs.exit-code != 0 && matrix.service == 'ASTGrep'
         run: |
           ln -s tmp/dangerous_examples/ tests/dangerous_examples
+          ls -l tmp/
           ls -l tests/
           ls -l tests/dangerous_examples/
       - name: Install tox
