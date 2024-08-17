@@ -76,6 +76,8 @@ jobs:
         if: steps.check-service-changed.outputs.exit-code != 0 && matrix.service == 'ASTGrep'
         run: |
           ln -s tmp/dangerous_examples tests/dangerous_examples
+          ls -l tests/
+          ls -l tests/dangerous_examples
       - name: Install tox
         if: steps.check-service-changed.outputs.exit-code != 0
         run: |
