@@ -60,18 +60,22 @@ jobs:
         shell: bash {0}
         continue-on-error: true
         # Tests based on real examples, not suitable to keep in the public repo
-      - name: Get test samples for ASTGrep
+      - name: Checkout repository with test samples
         if: steps.check-service-changed.outputs.exit-code != 0 && matrix.service == 'ASTGrep'
         uses: actions/checkout@v4
         with:
           repository: kam193/unsafe-examples
-          path: ASTGrep/tests/
+          path: ASTGrep/tmp/
           sparse-checkout: |
             dangerous_examples/*
           sparse-checkout-cone-mode: false
           persist-credentials: false
           ssh-key: ${{ secrets.UNSAFE_SAMPLES_SSH }}
           clean: false
+      - name: Link the test samples
+        if: steps.check-service-changed.outputs.exit-code != 0 && matrix.service == 'ASTGrep'
+        run: |
+          ln -s tmp/dangerous_examples tests/dangerous_examples
       - name: Install tox
         if: steps.check-service-changed.outputs.exit-code != 0
         run: |
