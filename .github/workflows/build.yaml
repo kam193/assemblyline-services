@@ -77,7 +77,6 @@ jobs:
         run: |
           cd tests
           ln -s ../tmp/dangerous_examples/ dangerous_examples
-          ls -l dangerous_examples/
       - name: Install tox
         if: steps.check-service-changed.outputs.exit-code != 0
         run: |
