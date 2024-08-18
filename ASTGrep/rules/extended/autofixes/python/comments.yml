@@ -6,7 +6,7 @@ severity: warning
 language: Python
 rule:
   any:
-    - regex: ".{10000,}"
+    - regex: ".{1000,}"
       kind: comment
 
 fix: ""

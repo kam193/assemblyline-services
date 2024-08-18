@@ -1,4 +1,5 @@
 import os
+import warnings
 
 import pytest
 import yaml
@@ -14,12 +15,17 @@ def deobfuscator():
 
 @pytest.fixture
 def deobfuscate_example(deobfuscator):
-    def _check_example(path: str, language: str | None = None):
+    def _check_example(path: str, language: str | None = None, warning_time: int = 5):
         if not language:
             lang_name = os.path.relpath(path, "./tests").split("/")[1]
             language = f"code/{lang_name}"
         results = list(deobfuscator.deobfuscate_file(f"{path}.in", language))
         assert results[-1][0].strip() == open(f"{path}.out", "r").read().strip()
+        if deobfuscator.work_time > warning_time:
+            warnings.warn(f"Deobfuscation took {deobfuscator.work_time:.3f} seconds")
+        assert (
+            deobfuscator.work_time < deobfuscator.deobfuscation_timeout
+        ), "Deobfuscation took too long"
         return results
 
     return _check_example
@@ -32,6 +38,14 @@ def _list_examples(group: str):
             if file.endswith(".in"):
                 examples.append(os.path.join(root, file[:-3]))
     return examples
+
+
+@pytest.mark.parametrize(
+    "example",
+    _list_examples("autofixes"),
+)
+def test_autofixes_cases(deobfuscate_example, example):
+    deobfuscate_example(example)
 
 
 @pytest.mark.parametrize(
@@ -63,6 +77,7 @@ def test_all_extended_rules_have_simple_tests():
     assert sorted(examples) == sorted(rules), "Rules does not match basic test examples"
 
 
+@pytest.mark.slow
 @pytest.mark.skipif(
     not os.path.exists("./tests/dangerous_examples"), reason="Samples are not accessible"
 )
@@ -72,4 +87,4 @@ def test_all_extended_rules_have_simple_tests():
 )
 def test_real_samples(deobfuscate_example, example):
     """Tests on real samples"""
-    deobfuscate_example(example)
+    deobfuscate_example(example, warning_time=30)

@@ -1,0 +1,4 @@
+__import__("builtins").exec("print('hel\"lo')")
+__import__("builtins").exec(b"print('hel\"lo')")
+__import__(b"builtins").exec("print('hel\"lo')")
+__import__('base64').some_func("AAAA")

@@ -390,6 +390,7 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
         self.cli_timeout = cli_timeout
         self.deobfuscation_timeout = 60
         self.config_file = "./rules/deobfuscation.sgconfig.yml"
+        self.work_time = 0
 
     def read_rules(self, rule_paths: list[str]):
         for rule_path in rule_paths:
@@ -621,16 +622,17 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
             last_timestamp = os.stat(self._working_file).st_mtime_ns
 
         stop = time.monotonic()
+        self.work_time = stop - start
 
         if original_timestamp != os.stat(self._working_file).st_mtime:
             yield open(self._working_file).read(), "#final-layer#"
 
         self.status = (
-            f"Deobfuscation done in {stop - start:.3f} seconds ({self._iterations} iterations)."
+            f"Deobfuscation done in {self.work_time:.3f} seconds ({self._iterations} iterations)."
         )
         if self.confirmed_obfuscation:
             self.status += "\n - Confirmed obfuscation."
-        if stop - start > self.deobfuscation_timeout:
+        if self.work_time > self.deobfuscation_timeout:
             self.status += "\n - Timeout exceeded, potentially not all fixes applied."
 
     def _build_context(self, result: dict) -> dict:
