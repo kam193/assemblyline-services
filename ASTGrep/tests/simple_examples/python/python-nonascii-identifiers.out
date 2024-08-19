@@ -1,0 +1,9 @@
+deobfuscated_var1 = 'abc'
+deobfuscated_var2 = 1
+
+cczsd = deobfuscated_var2 + deobfuscated_var1
+
+do_not_change = 17
+
+print(cczsd)
+print(deobfuscated_var1)

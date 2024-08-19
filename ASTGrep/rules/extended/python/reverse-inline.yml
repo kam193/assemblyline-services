@@ -15,7 +15,7 @@ metadata:
       "steps": [
         {"func": "reverse", "source": "DATA"},
         {"func": "encode_list", "source": "DATA", "encoding": "int"},
-        {"func": "encode", "source": "DATA", "encoding": "bytes-decode"},
+        {"func": "encode", "source": "DATA", "encoding": "bytes"},
         {"func": "quote", "source": "DATA"}
       ]
     }
