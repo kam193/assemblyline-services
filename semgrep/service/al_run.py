@@ -19,10 +19,11 @@ from assemblyline_v4_service.common.result import (
 )
 
 from .controller import (
+    # SemgrepDeobfuscationController,
     SemgrepLSPController,
     SemgrepScanController,
+    SemgrepTimeoutError,
     UnsupportedLanguageError,
-    SemgrepDeobfuscationController,
 )
 from .helpers import configure_yaml
 
@@ -71,7 +72,7 @@ class AssemblylineService(ServiceBase):
             self._semgrep = SemgrepLSPController(self.log, RULES_DIR)
         else:
             self._semgrep = SemgrepScanController(self.log, RULES_DIR)
-        self._deobfuscator = SemgrepDeobfuscationController(self.log, RULES_DIR)
+        # self._deobfuscator = SemgrepDeobfuscationController(self.log, RULES_DIR)
         self._load_config()
 
     def start(self):
@@ -81,10 +82,7 @@ class AssemblylineService(ServiceBase):
         # signature client doesn't support joining to a yaml, so we need to recreate it using our delimiter
         os.makedirs(RULES_DIR, exist_ok=True)
         new_rules_dir = tempfile.TemporaryDirectory(prefix="semgrep_rules_", dir=RULES_DIR)
-        new_deobfuscation_rules_dir = tempfile.TemporaryDirectory(
-            prefix="semgrep_rules_", dir=RULES_DIR
-        )
-        deobfuscation_files = []
+        tempfile.TemporaryDirectory(prefix="semgrep_rules_", dir=RULES_DIR)
         metadata = {}
         files = []
 
@@ -110,49 +108,49 @@ class AssemblylineService(ServiceBase):
         for source_file in self.rules_list:
             source_name = os.path.basename(source_file)
             rules = []
-            deobfuscation_rules = []
+            # deobfuscation_rules = []
             with open(source_file, "r") as f:
                 tmp_data = []
                 for line in f:
                     if "#SIGNATURE-DELIMITER" in line:
                         rule = _rebuild_rule(tmp_data)
                         rules.append(rule)
-                        if rule.get("autofix") or rule.get("metadata", {}).get(
-                            "deobfuscation-trigger"
-                        ):
-                            deobfuscation_rules.append(rule)
+                        # if rule.get("autofix") or rule.get("metadata", {}).get(
+                        #     "deobfuscation-trigger"
+                        # ):
+                        #     deobfuscation_rules.append(rule)
                         tmp_data = []
                     else:
                         tmp_data.append(line)
                 if tmp_data:
                     rule = _rebuild_rule(tmp_data)
                     rules.append(rule)
-                    if rule.get("autofix") or rule.get("metadata", {}).get("deobfuscation-trigger"):
-                        deobfuscation_rules.append(rule)
+                    # if rule.get("autofix") or rule.get("metadata", {}).get("deobfuscation-trigger"):
+                    #     deobfuscation_rules.append(rule)
             new_file = _dump_rules(rules, new_rules_dir, source_name)
             files.append(new_file)
-            if deobfuscation_rules:
-                deobfuscation_files.append(
-                    _dump_rules(deobfuscation_rules, new_deobfuscation_rules_dir, source_name)
-                )
+            # if deobfuscation_rules:
+            #     deobfuscation_files.append(
+            #         _dump_rules(deobfuscation_rules, new_deobfuscation_rules_dir, source_name)
+            #     )
 
         self.log.debug(self.rules_list)
         new_prefix = ".".join(new_rules_dir.name.split("/"))
 
         with RULES_LOCK:
             self._active_rules_dir, old_rules_dir = new_rules_dir, self._active_rules_dir
-            self._active_deobfuscation_rules_dir, old_deobfuscation_rules_dir = (
-                new_deobfuscation_rules_dir,
-                self._active_deobfuscation_rules_dir,
-            )
+            # self._active_deobfuscation_rules_dir, old_deobfuscation_rules_dir = (
+            #     new_deobfuscation_rules_dir,
+            #     self._active_deobfuscation_rules_dir,
+            # )
             self.metadata_cache = metadata
             if old_rules_dir:
                 old_rules_dir.cleanup()
-            if old_deobfuscation_rules_dir:
-                old_deobfuscation_rules_dir.cleanup()
+            # if old_deobfuscation_rules_dir:
+            #     old_deobfuscation_rules_dir.cleanup()
             self._semgrep.load_rules(files, new_prefix)
-            deobfuscation_prefix = ".".join(new_deobfuscation_rules_dir.name.split("/"))
-            self._deobfuscator.load_rules(deobfuscation_files, deobfuscation_prefix)
+            # deobfuscation_prefix = ".".join(new_deobfuscation_rules_dir.name.split("/"))
+            # self._deobfuscator.load_rules(deobfuscation_files, deobfuscation_prefix)
 
     def _get_code_hash(self, code: str):
         code = code or ""
@@ -248,13 +246,23 @@ class AssemblylineService(ServiceBase):
         result = Result()
         request.result = result
 
+        request.set_service_context(f"Semgrep™ OSS {self._semgrep.version}")
         try:
-            results = self._semgrep.process_file(request.file_path, request.file_type)
-            request.set_service_context(f"Semgrep™ OSS {self._semgrep.version}")
+            # TODO: better tests if we should retry by default
+            results = self._semgrep.process_file(request.file_path, request.file_type, retry=False)
             for result_section in self._process_results(results):
                 result.add_section(result_section)
         except UnsupportedLanguageError:
             self.log.warning(f"Unsupported language: {request.file_type}")
+            return
+        except SemgrepTimeoutError:
+            err_section = ResultTextSection("Failed to process file")
+            err_section.add_line(
+                "Timeout reached while processing file. The file may be too large, too complex"
+                " or it's an issue with the Semgrep OSS engine."
+            )
+            err_section.set_heuristic(5)
+            result.add_section(err_section)
             return
 
         if self._semgrep.last_results:
@@ -262,16 +270,19 @@ class AssemblylineService(ServiceBase):
                 json.dump(self._semgrep.last_results, f, indent=2)
             request.add_supplementary(f.name, "semgrep_raw_results.json", "Semgrep™ OSS Results")
 
-        if self._should_deobfuscate:
-            deobfuscated_path = self._deobfuscator.deobfuscate_file(
-                request.file_path, request.file_type
-            )
-            if deobfuscated_path:
-                request.add_extracted(deobfuscated_path, "_deobfuscated_code", "Deobfuscated file")
-                deobf_section = ResultTextSection("Obfuscation found")
-                deobf_section.add_line("Obfuscation was detected in the file. Extracted deobfuscated code.")
-                deobf_section.set_heuristic(4)
-                result.add_section(deobf_section)
+        # Not implemented.
+        # if self._should_deobfuscate:
+        #     deobfuscated_path = self._deobfuscator.deobfuscate_file(
+        #         request.file_path, request.file_type
+        #     )
+        #     if deobfuscated_path:
+        #         request.add_extracted(deobfuscated_path, "_deobfuscated_code", "Deobfuscated file")
+        #         deobf_section = ResultTextSection("Obfuscation found")
+        #         deobf_section.add_line(
+        #             "Obfuscation was detected in the file. Extracted deobfuscated code."
+        #         )
+        #         deobf_section.set_heuristic(4)
+        #         result.add_section(deobf_section)
 
     def _cleanup(self) -> None:
         self._semgrep.cleanup()
