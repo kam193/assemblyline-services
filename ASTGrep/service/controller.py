@@ -1,4 +1,5 @@
 import argparse
+import codecs
 import json
 import logging
 import os
@@ -381,7 +382,11 @@ class ASTGrepLSPController(ASTGrepScanController):
 
 class ASTGrepDeobfuscationController(ASTGrepScanController):
     def __init__(
-        self, logger: logging.Logger = None, rules_dirs: list[str] = None, cli_timeout: int = 20
+        self,
+        logger: logging.Logger = None,
+        rules_dirs: list[str] = None,
+        cli_timeout: int = 20,
+        max_iterations: int = None,
     ):
         super().__init__(logger, rules_dirs)
         self._rules_transformations = {}
@@ -391,6 +396,7 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
         self.deobfuscation_timeout = 60
         self.config_file = "./rules/deobfuscation.sgconfig.yml"
         self.work_time = 0
+        self.max_iterations = max_iterations
 
     def read_rules(self, rule_paths: list[str]):
         for rule_path in rule_paths:
@@ -621,6 +627,9 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
                 break
             last_timestamp = os.stat(self._working_file).st_mtime_ns
 
+            if self.max_iterations and self._iterations >= self.max_iterations:
+                break
+
         stop = time.monotonic()
         self.work_time = stop - start
 
@@ -698,17 +707,25 @@ def main():
     parser.add_argument(
         "--final-only", help="Print only final layer", default=False, action="store_true"
     )
+    parser.add_argument("--output", help="Output file", default=None)
+    parser.add_argument("--max-iterations", help="Maximum iterations", default=None, type=int)
     parser.add_argument("file", type=str, help="File path")
     args = parser.parse_args()
 
-    deobfuscator = ASTGrepDeobfuscationController(rules_dirs=["./rules/"])
+    deobfuscator = ASTGrepDeobfuscationController(
+        rules_dirs=["./rules/"], max_iterations=args.max_iterations
+    )
     deobfuscator.log.setLevel(logging.DEBUG if args.verbose else logging.INFO)
 
     for result, layer in deobfuscator.deobfuscate_file(args.file, args.lang):
-        if not args.final_only:
-            print("#" + "=" * 80 + "#" + layer + "#")
-        if not args.final_only or layer == "#final-layer#":
-            print(result)
+        if not args.output:
+            if not args.final_only:
+                print("#" + "=" * 80 + "#" + layer + "#")
+            if not args.final_only or layer == "#final-layer#":
+                print(result)
+        else:
+            with codecs.open(args.output, "w+", "utf-16") as f:
+                f.write(result)
 
     print("#" + "=" * 80 + "#", file=sys.stderr)
     print(deobfuscator.status, file=sys.stderr)

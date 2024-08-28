@@ -9,6 +9,8 @@ rule:
   any:
     - pattern: 'b"$DATA".decode($ENCODING)'
     - pattern: "b'$DATA'.decode($ENCODING)"
+    - pattern: 'b"$DATA".decode()'
+    - pattern: "b'$DATA'.decode()"
 
 constraints:
   ENCODING:
@@ -37,8 +39,6 @@ rule:
     - pattern: getattr(__import__($BUILTINS), $DATA)
     - pattern: getattr(builtins, $DATA)
 
-# fix: $DATA
-
 constraints:
   BUILTINS:
     kind: string
@@ -57,3 +57,21 @@ metadata:
         {"func": "dequote", "source": "DATA"}
       ]
     }
+
+---
+
+# yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/main/schemas/rule.json
+
+
+id: python-nonascii-identifiers
+message: Identifiers with non-ascii characters are often use to obfuscate the code
+language: Python
+rule:
+  any:
+    - pattern: $VAR
+      kind: identifier
+
+constraints:
+  VAR:
+    not:
+      regex: "[a-zA-Z_0-9]+"

@@ -77,9 +77,10 @@ jobs:
         run: |
           cd tests
           ln -s ../tmp/dangerous_examples/ dangerous_examples
-      - name: Install tox
+      - name: Install test dependencies
         if: steps.check-service-changed.outputs.exit-code != 0
         run: |
+          apt-get install -y libfuzzy-dev
           make test-dependencies
       - name: Run tests
         if: steps.check-service-changed.outputs.exit-code != 0

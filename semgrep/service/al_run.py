@@ -290,3 +290,4 @@ class AssemblylineService(ServiceBase):
 
     def stop(self) -> None:
         self._semgrep.stop()
+
