@@ -138,3 +138,17 @@ service-yara: SERVICE_IMAGE=${REGISTRY}/cccs/assemblyline-service-yara:${SERVICE
 service-yara: ARGS_INT=-e updates_host=al-service-yara-updater -e updates_port=5003 -e updates_key=changeme
 service-yara: CONTAINER_NETWORK=external
 service-yara: al-service
+
+service-badlist-updater: CONTAINER_NAME=al-service-badlist-updater
+service-badlist-updater: COMMAND=python -m badlist.update_server
+service-badlist-updater: AL_SERVICE_NAME=Badlist
+service-badlist-updater: SERVICE_IMAGE=${REGISTRY}/cccs/assemblyline-service-badlist:${SERVICE_TAG}
+service-badlist-updater: CONTAINER_NETWORK=external
+service-badlist-updater: ARGS_INT=-e AL_INSTANCE_KEY=changeme -e UPDATER_DIR=/tmp/updater -e SERVICE_PATH=badlist_.badlist_.Badlist -e LOG_LEVEL=DEBUG
+service-badlist-updater: al-service
+
+service-badlist: CONTAINER_NAME=al-service-badlist
+service-badlist: SERVICE_IMAGE=${REGISTRY}/cccs/assemblyline-service-badlist:${SERVICE_TAG}
+service-badlist: ARGS_INT=-e updates_host=al-service-badlist-updater -e updates_port=5003 -e updates_key=changeme
+service-badlist: CONTAINER_NETWORK=external
+service-badlist: al-service
