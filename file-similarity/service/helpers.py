@@ -9,6 +9,7 @@ BADLIST_QUERY = "hashes.tlsh:* AND enabled:true"
 class TLSHData:
     hash: tlsh.Tlsh
     reference: str
+    campaigns: str = None
 
     def get_distance(self, hash: tlsh.Tlsh):
         return self.hash.diff(hash)

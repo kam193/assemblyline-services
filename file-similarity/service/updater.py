@@ -8,12 +8,12 @@ from typing import Iterable
 
 import tlsh
 from assemblyline.common import forge
-from assemblyline.odm.models.badlist import Badlist
+from assemblyline.odm.models.badlist import Badlist, Source
 from assemblyline_v4_service.updater.updater import Service, ServiceUpdater
 
 BADLIST_NAME = "Badlist"
 BADLIST_QUERY = "hashes.tlsh:* AND enabled:true"
-HEADERS = ["tlsh", "file_type", "reference"]
+HEADERS = ["tlsh", "file_type", "reference", "attribution.campaign"]
 HASH_FILE_NAME = "hashes.csv"
 
 
@@ -36,7 +36,7 @@ class AssemblylineServiceUpdater(ServiceUpdater):
         for field in nested_fields:
             try:
                 obj = obj[field]
-            except (KeyError, AttributeError):
+            except (KeyError, AttributeError, TypeError):
                 return None
         return obj
 
@@ -48,6 +48,12 @@ class AssemblylineServiceUpdater(ServiceUpdater):
                 for row in reader:
                     hashes.add(row["tlsh"])
         return hashes
+
+    def _describe_source(self, source: Source) -> str:
+        reason = (
+            f" ({self._safe_get(source, 'reason')})" if self._safe_get(source, "reason") else ""
+        )
+        return f"{self._safe_get(source, 'name') or ''}{reason}"
 
     def _update_badlist(self):
         self.log.info("Loading TLSH data from Badlist")
@@ -63,9 +69,9 @@ class AssemblylineServiceUpdater(ServiceUpdater):
         hashes = set()
         self.push_status("UPDATING", "Pulling currently badlisted files..")
         # TODO: streaming results and configurable limit
-        results: Iterable[Badlist] = self.datastore.badlist.search(
-            BADLIST_QUERY, fl="hashes.tlsh, file.type, sources.name, sources.reason", rows=10000
-        ).get("items", [])
+        results: Iterable[Badlist] = self.datastore.badlist.search(BADLIST_QUERY, rows=10000).get(
+            "items", []
+        )
 
         with tempfile.TemporaryDirectory() as tmpdir, open(f"{tmpdir}/{HASH_FILE_NAME}", "w+") as f:
             writer = csv.DictWriter(f, fieldnames=HEADERS)
@@ -91,9 +97,15 @@ class AssemblylineServiceUpdater(ServiceUpdater):
 
                 hashes.add(result.hashes.tlsh)
                 sources = self._safe_get(result, "sources") or []
-                reference = f"Marked by ({len(sources)})"
+                reference = f"Marked by ({len(sources)}: {', '.join(self._describe_source(source) for source in sources)})"
+                campaigns = self._safe_get(result, "attribution.campaign")
                 writer.writerow(
-                    {"tlsh": result.hashes.tlsh, "file_type": type_, "reference": reference}
+                    {
+                        "tlsh": result.hashes.tlsh,
+                        "file_type": type_,
+                        "reference": reference,
+                        "attribution.campaign": campaigns,
+                    }
                 )
             self.log.info(f"Loaded {len(hashes)} TLSH hashes")
 

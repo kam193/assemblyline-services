@@ -56,7 +56,7 @@ class AssemblylineService(ServiceBase):
             for row in reader:
                 t = tlsh.Tlsh()
                 t.fromTlshStr(row["tlsh"])
-                self.tlsh_data[row["file_type"]].add(TLSHData(t, row["reference"]))
+                self.tlsh_data[row["file_type"]].add(TLSHData(t, row["reference"], row.get("attribution.campaign", "")))
                 hashes_count += 1
         self.log.info(f"Loaded {hashes_count} TLSH hashes for {len(self.tlsh_data)} extensions")
 
@@ -149,7 +149,11 @@ class AssemblylineService(ServiceBase):
             main_section.add_line("Used algorithm: TLSH. Lower number means more similar.")
             main_section.add_line("")
             for similar in similars:
-                main_section.add_line(f"({similar.distance}) {similar.similar_to.reference}")
+                similar: TLSHResult
+                main_section.add_line(f"({similar.distance}) {similar.similar_to.hash.hexdigest()}")
+                main_section.add_line(f"     {similar.similar_to.reference}")
+                if similar.similar_to.campaigns:
+                    main_section.add_tag("attribution.campaign", similar.similar_to.campaigns)
             main_section.set_heuristic(
                 HEURISTIC_BY_SEVERITY[severity],
                 signature=f"similarity/tlsh/{severity.value}",
