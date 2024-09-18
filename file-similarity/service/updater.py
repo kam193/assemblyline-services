@@ -13,7 +13,14 @@ from assemblyline_v4_service.updater.updater import Service, ServiceUpdater
 
 BADLIST_NAME = "Badlist"
 BADLIST_QUERY = "hashes.tlsh:* AND enabled:true"
-HEADERS = ["tlsh", "file_type", "reference", "attribution.campaign"]
+HEADERS = [
+    "tlsh",
+    "file_type",
+    "reference",
+    "attribution.campaign",
+    "attribution.family",
+    "attribution.actor",
+]
 HASH_FILE_NAME = "hashes.csv"
 
 
@@ -50,9 +57,10 @@ class AssemblylineServiceUpdater(ServiceUpdater):
         return hashes
 
     def _describe_source(self, source: Source) -> str:
-        reason = (
-            f" ({self._safe_get(source, 'reason')})" if self._safe_get(source, "reason") else ""
-        )
+        reason = ", ".join(self._safe_get(source, "reason") or [])
+        if reason:
+            reason = f" ({reason})"
+
         return f"{self._safe_get(source, 'name') or ''}{reason}"
 
     def _update_badlist(self):
@@ -69,9 +77,9 @@ class AssemblylineServiceUpdater(ServiceUpdater):
         hashes = set()
         self.push_status("UPDATING", "Pulling currently badlisted files..")
         # TODO: streaming results and configurable limit
-        results: Iterable[Badlist] = self.datastore.badlist.search(BADLIST_QUERY, rows=10000).get(
-            "items", []
-        )
+        results: Iterable[Badlist] = self.datastore.badlist.search(
+            BADLIST_QUERY, fl="*", rows=10000
+        ).get("items", [])
 
         with tempfile.TemporaryDirectory() as tmpdir, open(f"{tmpdir}/{HASH_FILE_NAME}", "w+") as f:
             writer = csv.DictWriter(f, fieldnames=HEADERS)
@@ -88,23 +96,31 @@ class AssemblylineServiceUpdater(ServiceUpdater):
                 try:
                     t.fromTlshStr(result.hashes.tlsh)
                 except ValueError:
-                    self.log.warning(
-                        "Invalid TLSH hash found in Badlist [%s]", result.hashes.tlsh, exc_info=True
-                    )
+                    # self.log.warning(
+                    #     "Invalid TLSH hash found in Badlist [%s]", result.hashes.tlsh, exc_info=True
+                    # )
                     continue
                 if result.hashes.tlsh in hashes:
                     continue
 
                 hashes.add(result.hashes.tlsh)
                 sources = self._safe_get(result, "sources") or []
-                reference = f"Marked by ({len(sources)}: {', '.join(self._describe_source(source) for source in sources)})"
+                reference = (
+                    f"Marked by {', '.join(self._describe_source(source) for source in sources)}"
+                )
+                self.log.info(self._safe_get(result, "attribution"))
+                self.log.info(result.as_primitives())
                 campaigns = self._safe_get(result, "attribution.campaign")
+                family = self._safe_get(result, "attribution.family")
+                actor = self._safe_get(result, "attribution.actor")
                 writer.writerow(
                     {
                         "tlsh": result.hashes.tlsh,
                         "file_type": type_,
                         "reference": reference,
-                        "attribution.campaign": campaigns,
+                        "attribution.campaign": ",".join(campaigns) if campaigns else None,
+                        "attribution.family": ",".join(family) if family else None,
+                        "attribution.actor": ",".join(actor) if actor else None,
                     }
                 )
             self.log.info(f"Loaded {len(hashes)} TLSH hashes")

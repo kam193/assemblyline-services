@@ -56,7 +56,15 @@ class AssemblylineService(ServiceBase):
             for row in reader:
                 t = tlsh.Tlsh()
                 t.fromTlshStr(row["tlsh"])
-                self.tlsh_data[row["file_type"]].add(TLSHData(t, row["reference"], row.get("attribution.campaign", "")))
+                self.tlsh_data[row["file_type"]].add(
+                    TLSHData(
+                        t,
+                        row["reference"],
+                        row.get("attribution.campaign", "").split(","),
+                        row.get("attribution.family", "").split(","),
+                        row.get("attribution.actor", "").split(","),
+                    )
+                )
                 hashes_count += 1
         self.log.info(f"Loaded {hashes_count} TLSH hashes for {len(self.tlsh_data)} extensions")
 
@@ -151,12 +159,17 @@ class AssemblylineService(ServiceBase):
             for similar in similars:
                 similar: TLSHResult
                 main_section.add_line(f"({similar.distance}) {similar.similar_to.hash.hexdigest()}")
-                main_section.add_line(f"     {similar.similar_to.reference}")
-                if similar.similar_to.campaigns:
-                    main_section.add_tag("attribution.campaign", similar.similar_to.campaigns)
+                main_section.add_line(f"          {similar.similar_to.reference}")
+                for campaign in similar.similar_to.campaigns or []:
+                    main_section.add_tag("attribution.campaign", campaign)
+                for family in similar.similar_to.families or []:
+                    main_section.add_tag("attribution.family", family)
+                for actor in similar.similar_to.actors or []:
+                    main_section.add_tag("attribution.actor", actor)
+
             main_section.set_heuristic(
                 HEURISTIC_BY_SEVERITY[severity],
-                signature=f"similarity/tlsh/{severity.value}",
+                signature=f"file-similarity.{severity.value}",
             )
             result.add_section(main_section)
 
