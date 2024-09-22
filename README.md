@@ -74,6 +74,11 @@ Designed to help with analysis of Python artifacts. Currently supported:
 - decompyling Python bytecode (.pyc) (using [Decompyle++](https://github.com/zrax/pycdc)),
 - extracting declared dependencies and matching them against configurable lists of suspicious and malicious packages,
 
+### RemoteAV
+
+Allows simple scan using a remote antivirus. It requires a host with a running HTTP service exposing API (see attached `openapi.json` for definition).
+Server implementation is not published yet.
+
 ### Semgrep
 
 Service using [Semgrep](https://semgrep.dev) OSS to analyze code for malicious activity. Currently in the alpha stage.
