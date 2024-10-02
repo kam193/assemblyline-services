@@ -117,7 +117,7 @@ class AssemblylineServiceUpdater(ServiceUpdater):
                 actor = self._safe_get(result, "attribution.actor")
                 writer.writerow(
                     {
-                        "tlsh": result.hashes.tlsh,
+                        "tlsh": result.hashes.tlsh.upper(),
                         "file_type": type_,
                         "reference": reference,
                         "attribution.campaign": ",".join(campaigns) if campaigns else None,
