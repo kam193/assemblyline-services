@@ -75,6 +75,7 @@ class AssemblylineServiceUpdater(ServiceUpdater):
         )
 
         hashes = set()
+        errors = 0
         self.push_status("UPDATING", "Pulling currently badlisted files..")
         # TODO: streaming results and configurable limit
         results: Iterable[Badlist] = self.datastore.badlist.search(
@@ -94,16 +95,17 @@ class AssemblylineServiceUpdater(ServiceUpdater):
 
                 t = tlsh.Tlsh()
                 try:
-                    t.fromTlshStr(result.hashes.tlsh)
-                except ValueError:
-                    # self.log.warning(
-                    #     "Invalid TLSH hash found in Badlist [%s]", result.hashes.tlsh, exc_info=True
-                    # )
+                    t.fromTlshStr(result.hashes.tlsh.upper())
+                except Exception:
+                    self.log.warning(
+                        "Invalid TLSH hash found in Badlist [%s]", result.hashes.tlsh, exc_info=True
+                    )
+                    errors += 1
                     continue
                 if result.hashes.tlsh in hashes:
                     continue
 
-                hashes.add(result.hashes.tlsh)
+                hashes.add(result.hashes.tlsh.upper())
                 sources = self._safe_get(result, "sources") or []
                 reference = (
                     f"Marked by {', '.join(self._describe_source(source) for source in sources)}"
@@ -138,7 +140,7 @@ class AssemblylineServiceUpdater(ServiceUpdater):
                 f"{self.latest_updates_dir}/{self._current_source}",
                 dirs_exist_ok=True,
             )
-            self.push_status("DONE", f"Imported {len(hashes)} hashes")
+            self.push_status("DONE", f"Imported {len(hashes)} hashes, {errors} errors")
 
     def do_source_update(self, service: Service) -> None:
         sources_to_update = []
