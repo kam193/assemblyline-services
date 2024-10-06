@@ -417,7 +417,7 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
         cli_timeout: int = 20,
         max_iterations: int = None,
         min_length_for_confirmed: int = 100,
-        group_fixes: bool = False,
+        group_fixes: bool = True,
     ):
         super().__init__(logger, rules_dirs)
         self._rules_transformations = {}
@@ -638,22 +638,44 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
             }
 
     def _batch_apply_fixes(self):
-        if not self._generated_fixes:
-            return
+        # if not self._generated_fixes:
+        #     return
 
+        apply_rule_dirs = set()
         self._fix_number = 0
         self._escape_dollar = False
         with tempfile.TemporaryDirectory(suffix="rules") as tmpdir:
-            rules_dir = os.path.join(tmpdir, "rules")
-            os.makedirs(rules_dir, exist_ok=True)
-            with open(os.path.join(rules_dir, "fixes.yml"), "w+") as f:
+            fixes_dir = os.path.join(tmpdir, "rules")
+            os.makedirs(fixes_dir, exist_ok=True)
+
+            with open(os.path.join(fixes_dir, "fixes.yml"), "w+") as f:
                 yaml.dump_all(self._generate_fix_documents(), f, Dumper=yaml.CSafeDumper)
 
-            with open(os.path.join(tmpdir, "fixes.sgconfig.yml"), "w+") as f:
-                yaml.dump({"ruleDirs": [rules_dir]}, f, Dumper=yaml.CSafeDumper)
+            if self._fix_number > 0:
+                apply_rule_dirs.add(fixes_dir)
 
-            if self._fix_number == 0:
+            if self._run_auto_fixes:
+                apply_rule_dirs.add(os.path.realpath("./rules/autofixes"))
+                apply_rule_dirs.add(os.path.realpath("./rules/extended/autofixes"))
+
+            if self._generated_templates:
+                templates_dir = os.path.join(tmpdir, "templates")
+                os.makedirs(templates_dir, exist_ok=True)
+                apply_rule_dirs.add(templates_dir)
+                with open(os.path.join(templates_dir, "templates.yml"), "w+") as f:
+                    first_template = True
+                    for template in self._generated_templates.values():
+                        if not first_template:
+                            f.write("\n---\n")
+                        first_template = False
+                        f.write(template)
+
+            if not apply_rule_dirs:
+                self.log.debug("No fixes to apply")
                 return
+
+            with open(os.path.join(tmpdir, "fixes.sgconfig.yml"), "w+") as f:
+                yaml.dump({"ruleDirs": list(apply_rule_dirs)}, f, Dumper=yaml.CSafeDumper)
 
             try:
                 self._execute_sg(
@@ -663,7 +685,7 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
                 )
             except Exception:
                 os.system(
-                    f'cp {os.path.join(rules_dir, "fixes.yml")} /home/kamil/Devel/assemblyline-services/ASTGrep/rules.yaml'
+                    f'cp {os.path.join(fixes_dir, "fixes.yml")} /home/kamil/Devel/assemblyline-services/ASTGrep/rules.yaml'
                 )
                 raise
         if self._escape_dollar:
@@ -672,6 +694,7 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
                 check=True,
                 timeout=self.cli_timeout,
             )
+
     def deobfuscate_file(self, file_path: str, file_type: str):
         self._prepare_file_with_extension(file_path, file_type, copy=True)
 
@@ -701,22 +724,24 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
                     else:
                         yield outcome, result.get("ruleId")
 
-            if self._run_auto_fixes:
-                # ast-grep does not apply fixes when returning JSON results, need to re-run :(
-                self._execute_sg(
-                    self._working_file, autofix=True, config_file="./rules/autofixes.sgconfig.yml"
-                )
-
             if self.group_fixes:
                 self._batch_apply_fixes()
             else:
+                if self._run_auto_fixes:
+                    # ast-grep does not apply fixes when returning JSON results, need to re-run :(
+                    self._execute_sg(
+                        self._working_file,
+                        autofix=True,
+                        config_file="./rules/autofixes.sgconfig.yml",
+                    )
+
                 if self._generated_fixes:
                     for match, fix in self._generated_fixes.items():
                         self._apply_fix(match, fix)
 
-            if self._generated_templates:
-                for fix_rule in self._generated_templates.values():
-                    self._apply_rule(fix_rule)
+                if self._generated_templates:
+                    for fix_rule in self._generated_templates.values():
+                        self._apply_rule(fix_rule)
 
             self._iterations += 1
 
