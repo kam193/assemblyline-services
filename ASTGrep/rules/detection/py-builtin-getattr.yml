@@ -1,6 +1,6 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/main/schemas/rule.json
 
-id: python-getattr-import
+id: python-detect-getattr-import
 message: Uses getattr and import to obfuscate using a method
 language: Python
 rule:
@@ -12,10 +12,10 @@ rule:
 metadata:
   extended-obfuscation: yes
   confirmed-obfuscation: yes
-  deobfuscate: |
-    {
-      "type": "fix-generate",
-      "steps": [
-        {"func": "concat", "sources": ["MODULE", "METHOD"]}
-      ]
-    }
+  # deobfuscate: |
+  #   {
+  #     "type": "fix-generate",
+  #     "steps": [
+  #       {"func": "concat", "sources": ["MODULE", "METHOD"]}
+  #     ]
+  #   }
