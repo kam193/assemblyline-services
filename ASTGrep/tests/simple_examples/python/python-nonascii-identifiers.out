@@ -1,9 +1,9 @@
-deobfuscated_var1 = 'abc'
-deobfuscated_var2 = 1
+renamed_var_0 = 'abc'
+renamed_var_1 = 1
 
-cczsd = deobfuscated_var2 + deobfuscated_var1
+renamed_var_2 = renamed_var_1 + renamed_var_0
 
 do_not_change = 17
 
-print(cczsd)
-print(deobfuscated_var1)
+print(renamed_var_2)
+print('abc')

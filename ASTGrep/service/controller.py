@@ -387,6 +387,7 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
         rules_dirs: list[str] = None,
         cli_timeout: int = 20,
         max_iterations: int = None,
+        min_length_for_confirmed: int = 100,
     ):
         super().__init__(logger, rules_dirs)
         self._rules_transformations = {}
@@ -397,6 +398,7 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
         self.config_file = "./rules/deobfuscation.sgconfig.yml"
         self.work_time = 0
         self.max_iterations = max_iterations
+        self.min_length_for_confirmed = min_length_for_confirmed
 
     def read_rules(self, rule_paths: list[str]):
         for rule_path in rule_paths:
@@ -496,7 +498,8 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
         self._generated_templates = {}
         self._secondary_transformations = []
         self._run_auto_fixes = False
-        self._global_context = {}
+        self._global_variable_context = {}
+        self._global_cache = {}
 
     def _process_result(self, result: dict, secondary=False):
         if not result:
@@ -516,7 +519,7 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
             elif type_ == "context":
                 output, _ = self.transform(result)
                 if output:
-                    self._global_context.update(output)
+                    self._global_variable_context.update(output)
             elif type_.startswith("secondary-"):
                 self._secondary_transformations.append(result)
             elif type_ == "fix-generate":
@@ -526,7 +529,13 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
                 try:
                     self._generated_fixes[match], _ = self.transform(result)
                     if confirmed:
-                        self.confirmed_obfuscation = True
+                        if not extract:
+                            self.confirmed_obfuscation = True
+                        elif (
+                            self._generated_fixes[match]
+                            and len(self._generated_fixes[match]) >= self.min_length_for_confirmed
+                        ):
+                            self.confirmed_obfuscation = True
                     if extract:
                         return self._generated_fixes[match]
                 except Exception as exc:
@@ -540,7 +549,10 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
                 try:
                     self._generated_fixes[match], output = self.transform_template(result)
                     if confirmed:
-                        self.confirmed_obfuscation = True
+                        if not extract:
+                            self.confirmed_obfuscation = True
+                        elif output and len(output) >= self.min_length_for_confirmed:
+                            self.confirmed_obfuscation = True
                     if extract:
                         return output
                 except Exception as exc:
@@ -645,7 +657,11 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
             self.status += "\n - Timeout exceeded, potentially not all fixes applied."
 
     def _build_context(self, result: dict) -> dict:
-        context = {"vars": self._global_context, "match": result.get("text")}
+        context = {
+            "vars": self._global_variable_context,
+            "match": result.get("text"),
+            "cache": self._global_cache,
+        }
         single_metavars = result.get("metaVariables", {}).get("single", {})
         for name, data in single_metavars.items():
             context[name] = data.get("text")
@@ -689,7 +705,7 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
         if "OUTPUT" not in context:
             context["OUTPUT"] = output
         return jinja2.Template(template).render(
-            **self._metadata[rule_id], **self._global_context, **context
+            **self._metadata[rule_id], **self._global_variable_context, **context
         ), output
 
 

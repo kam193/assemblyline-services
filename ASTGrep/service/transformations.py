@@ -2,6 +2,7 @@ import ast
 import base64
 import codecs
 import hashlib
+import re
 import zlib
 
 import cryptography
@@ -275,3 +276,26 @@ def dequote(config: dict, context: dict):
     if isinstance(result, bytes):
         return result.decode("utf-8")
     return result
+
+ascii_varname = re.compile(r"[a-zA-Z_][a-zA-Z0-9_]*$")
+def rename(config: dict, context: dict):
+    prefix = config.get("prefix", "renabmed_during_deobfuscation")
+    source = config.get("source", "VAR")
+    source_value = context[source]
+    if "rename_cache" not in context["cache"]:
+        context["cache"]["rename_cache"] = {}
+    if source_value in context["cache"]["rename_cache"]:
+        var_config = context["cache"]["rename_cache"][source_value]
+    else:
+        new_name = f"{prefix}_{len(context['cache']['rename_cache'])}"
+        try:
+            parsed_name = ast.parse(source_value).body[0].value.id
+            # catches cases when name is changed by normalization
+            if ascii_varname.match(parsed_name):
+                new_name = parsed_name
+            var_config = (new_name, True)
+        except Exception as exc:
+            print(exc)
+            var_config = (new_name, False)
+        context["cache"]["rename_cache"][source_value] = var_config
+    return new_name

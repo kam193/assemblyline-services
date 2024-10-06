@@ -1,5 +1,4 @@
 ---
-
 # yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/main/schemas/rule.json
 
 id: python-simple-decode-bytes
@@ -30,7 +29,6 @@ metadata:
     }
 
 ---
-
 id: python-simple-builtin-getattr
 message: Uses getattr to obfuscate using a builtin function
 language: Python
@@ -42,10 +40,9 @@ rule:
 constraints:
   BUILTINS:
     kind: string
-    regex: "[Bb]?[\"']+builtins[\"']+"
+    regex: '[Bb]?["'']+builtins["'']+'
   DATA:
     kind: string
-
 
 metadata:
   extended-obfuscation: yes
@@ -59,9 +56,7 @@ metadata:
     }
 
 ---
-
 # yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/main/schemas/rule.json
-
 
 id: python-nonascii-identifiers
 message: Identifiers with non-ascii characters are often use to obfuscate the code
@@ -73,5 +68,16 @@ rule:
 
 constraints:
   VAR:
-    not:
-      regex: "[a-zA-Z_0-9]+"
+    regex: "[^a-zA-Z_0-9]+"
+
+metadata:
+  extended-obfuscation: yes
+  alone-unimportant: yes
+  deobfuscate: |
+    {
+      "type": "fix-generate",
+      "source": "VAR",
+      "steps": [
+        {"func": "rename", "prefix": "renamed_var"}
+      ]
+    }

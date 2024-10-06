@@ -10,12 +10,14 @@ RULES_DIR = "./rules/"
 
 @pytest.fixture
 def deobfuscator():
-    return ASTGrepDeobfuscationController(rules_dirs=[RULES_DIR])
+    return ASTGrepDeobfuscationController(rules_dirs=[RULES_DIR], min_length_for_confirmed=5)
 
 
 @pytest.fixture
 def deobfuscate_example(deobfuscator):
-    def _check_example(path: str, language: str | None = None, warning_time: int = 5):
+    def _check_example(
+        path: str, language: str | None = None, warning_time: int = 5, check_confirmed: bool = False
+    ):
         if not language:
             lang_name = os.path.relpath(path, "./tests").split("/")[1]
             language = f"code/{lang_name}"
@@ -26,6 +28,8 @@ def deobfuscate_example(deobfuscator):
         assert (
             deobfuscator.work_time < deobfuscator.deobfuscation_timeout
         ), "Deobfuscation took too long"
+        if check_confirmed:
+            assert deobfuscator.confirmed_obfuscation is True, "Deobfuscation was not confirmed"
         return results
 
     return _check_example
