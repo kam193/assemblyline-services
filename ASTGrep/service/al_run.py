@@ -80,6 +80,7 @@ class AssemblylineService(ServiceBase):
         self.metadata_cache = {}
 
         self.use_lsp = self.config.get("USE_LANGUAGE_SERVER_PROTOCOL", True)
+        self.extract_intermediate_layers = self.config.get("EXTRACT_INTERMEDIATE_LAYERS", False)
         if self.use_lsp:
             self._astgrep = ASTGrepLSPController(self.log, RULES_DIR)
         else:
@@ -237,7 +238,10 @@ class AssemblylineService(ServiceBase):
 
             if extracted_layers:
                 for args in extracted_layers[:-10:-1]:
-                    request.add_extracted(*args)
+                    if self.extract_intermediate_layers:
+                        request.add_extracted(*args)
+                    else:
+                        request.add_supplementary(*args)
             if len(extracted_layers) > 10:
                 layers_section = ResultTextSection(
                     f"Found {len(extracted_layers)} layers of obfuscation"

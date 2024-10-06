@@ -17,6 +17,7 @@ config:
   # reducing the startup time for subsequent requests
   # but may be less stable
   USE_LANGUAGE_SERVER_PROTOCOL: true
+  EXTRACT_INTERMEDIATE_LAYERS: false
 
 # submission_params:
 #   - default: "auto"

@@ -677,17 +677,11 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
             with open(os.path.join(tmpdir, "fixes.sgconfig.yml"), "w+") as f:
                 yaml.dump({"ruleDirs": list(apply_rule_dirs)}, f, Dumper=yaml.CSafeDumper)
 
-            try:
-                self._execute_sg(
-                    self._working_file,
-                    autofix=True,
-                    config_file=os.path.join(tmpdir, "fixes.sgconfig.yml"),
-                )
-            except Exception:
-                os.system(
-                    f'cp {os.path.join(fixes_dir, "fixes.yml")} /home/kamil/Devel/assemblyline-services/ASTGrep/rules.yaml'
-                )
-                raise
+            self._execute_sg(
+                self._working_file,
+                autofix=True,
+                config_file=os.path.join(tmpdir, "fixes.sgconfig.yml"),
+            )
         if self._escape_dollar:
             subprocess.run(
                 ["sed", "-i", "s/{{{DOLLARPLACEHOLDER}}}/$/g", self._working_file],
