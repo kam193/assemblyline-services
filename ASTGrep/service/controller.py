@@ -58,6 +58,29 @@ LANGUAGE_TO_EXT = {
 # TypeScript
 # YAML
 
+# AST-Grep in rules expects a very specific language name
+# https://ast-grep.github.io/reference/yaml.html#language
+AL_TO_SG_LANGUAGE = {
+    "python": "Python",
+    "javascript": "JavaScript",
+    "java": "Java",
+    "c": "C",
+    "cpp": "Cpp",
+    "csharp": "CSharp",
+    "css": "Css",
+    "dart": "Dart",
+    "go": "Go",
+    "html": "Html",
+    "kotlin": "Kotlin",
+    "lua": "Lua",
+    "rust": "Rust",
+    "scala": "Scala",
+    "swift": "Swift",
+    "typescript": "TypeScript",
+    "tsx": "Tsx",
+    "thrift": "Thrift",
+}
+
 
 class UnsupportedLanguageError(ValueError):
     pass
@@ -86,6 +109,7 @@ class ASTGrepScanController:
         self._rules_dir = rules_dir
         self._working_file = ""
         self._cli_config = []
+        self.current_language = ""
 
         self.workspace = tempfile.TemporaryDirectory("sg_workspace")
 
@@ -111,6 +135,11 @@ class ASTGrepScanController:
             # yeah, with languages we have an extension for we would just try;
             # without it doesn't make sense at all
             raise UnsupportedLanguageError(f"Language {file_type} not supported by AST-Grep")
+
+        try:
+            self.current_language = AL_TO_SG_LANGUAGE[file_type.split("/")[1].lower()]
+        except KeyError:
+            raise UnsupportedLanguageError(f"Unsupported language: {file_type}")
 
         # AL likes to clear the whole tmp directory
         os.makedirs(self.workspace.name, exist_ok=True)
@@ -388,6 +417,7 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
         cli_timeout: int = 20,
         max_iterations: int = None,
         min_length_for_confirmed: int = 100,
+        group_fixes: bool = False,
     ):
         super().__init__(logger, rules_dirs)
         self._rules_transformations = {}
@@ -399,6 +429,7 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
         self.work_time = 0
         self.max_iterations = max_iterations
         self.min_length_for_confirmed = min_length_for_confirmed
+        self.group_fixes = group_fixes
 
     def read_rules(self, rule_paths: list[str]):
         for rule_path in rule_paths:
@@ -590,6 +621,57 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
         self._extracted_cache.add(hashed)
         return True
 
+    def _generate_fix_documents(self) -> Iterable[dict]:
+        for match, fix in self._generated_fixes.items():
+            if fix == match:
+                continue
+            self._fix_number += 1
+            if "$" in fix:
+                fix = fix.replace("$", "{{{DOLLARPLACEHOLDER}}}")
+                self._escape_dollar = True
+            yield {
+                "id": f"fix-rule-{self._fix_number}",
+                "message": f"Fixing {match}",
+                "language": self.current_language,
+                "rule": {"pattern": match},
+                "fix": fix,
+            }
+
+    def _batch_apply_fixes(self):
+        if not self._generated_fixes:
+            return
+
+        self._fix_number = 0
+        self._escape_dollar = False
+        with tempfile.TemporaryDirectory(suffix="rules") as tmpdir:
+            rules_dir = os.path.join(tmpdir, "rules")
+            os.makedirs(rules_dir, exist_ok=True)
+            with open(os.path.join(rules_dir, "fixes.yml"), "w+") as f:
+                yaml.dump_all(self._generate_fix_documents(), f, Dumper=yaml.CSafeDumper)
+
+            with open(os.path.join(tmpdir, "fixes.sgconfig.yml"), "w+") as f:
+                yaml.dump({"ruleDirs": [rules_dir]}, f, Dumper=yaml.CSafeDumper)
+
+            if self._fix_number == 0:
+                return
+
+            try:
+                self._execute_sg(
+                    self._working_file,
+                    autofix=True,
+                    config_file=os.path.join(tmpdir, "fixes.sgconfig.yml"),
+                )
+            except Exception:
+                os.system(
+                    f'cp {os.path.join(rules_dir, "fixes.yml")} /home/kamil/Devel/assemblyline-services/ASTGrep/rules.yaml'
+                )
+                raise
+        if self._escape_dollar:
+            subprocess.run(
+                ["sed", "-i", "s/{{{DOLLARPLACEHOLDER}}}/$/g", self._working_file],
+                check=True,
+                timeout=self.cli_timeout,
+            )
     def deobfuscate_file(self, file_path: str, file_type: str):
         self._prepare_file_with_extension(file_path, file_type, copy=True)
 
@@ -625,9 +707,12 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
                     self._working_file, autofix=True, config_file="./rules/autofixes.sgconfig.yml"
                 )
 
-            if self._generated_fixes:
-                for match, fix in self._generated_fixes.items():
-                    self._apply_fix(match, fix)
+            if self.group_fixes:
+                self._batch_apply_fixes()
+            else:
+                if self._generated_fixes:
+                    for match, fix in self._generated_fixes.items():
+                        self._apply_fix(match, fix)
 
             if self._generated_templates:
                 for fix_rule in self._generated_templates.values():
@@ -704,8 +789,12 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
         output, context = self.transform(result)
         if "OUTPUT" not in context:
             context["OUTPUT"] = output
+        counter = len(self._generated_templates)
         return jinja2.Template(template).render(
-            **self._metadata[rule_id], **self._global_variable_context, **context
+            TEMPLATE_COUNTER=counter,
+            **self._metadata[rule_id],
+            **self._global_variable_context,
+            **context,
         ), output
 
 
