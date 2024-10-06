@@ -1,0 +1,9 @@
+id: python-rename-identifier
+language: Python
+rule:
+  pattern: {{RENAMED}}
+  kind: identifier
+  not:
+    inside:
+      kind: aliased_import
+fix: {{ORIGINAL}}

@@ -1,0 +1,23 @@
+id: python-renaming-imports
+message: Renaming imports is sometimes used as obfuscation method
+language: Python
+rule:
+  all:
+  - kind: aliased_import
+    has:
+      pattern: $ORIGINAL
+      nthChild: 1
+  - kind: aliased_import
+    has:
+      pattern: $RENAMED
+      nthChild: 2
+
+metadata:
+  extended-obfuscation: yes
+  # confirmed-obfuscation: no
+  template_file: python-rename-identifier.yml.j2
+  deobfuscate: |
+    {
+      "type": "template",
+      "steps": []
+    }

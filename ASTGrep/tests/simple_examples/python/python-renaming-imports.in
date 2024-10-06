@@ -1,0 +1,11 @@
+from base64 import b64encode, something as invoke
+
+import base64 as xyz
+
+
+xyz.something("aaa")
+
+invoke("aaaa")
+
+def aaa():
+    invoke("aaaa")
