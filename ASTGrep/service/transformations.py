@@ -277,7 +277,10 @@ def dequote(config: dict, context: dict):
         return result.decode("utf-8")
     return result
 
+
 ascii_varname = re.compile(r"[a-zA-Z_][a-zA-Z0-9_]*$")
+
+
 def rename(config: dict, context: dict):
     prefix = config.get("prefix", "renabmed_during_deobfuscation")
     source = config.get("source", "VAR")

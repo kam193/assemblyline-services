@@ -3,14 +3,23 @@ import warnings
 
 import pytest
 import yaml
-from service.controller import ASTGrepDeobfuscationController
+from service.controller import ASTGrepDeobfuscationController, ASTGrepLSPController
 
 RULES_DIR = "./rules/"
 
 
-@pytest.fixture
+@pytest.fixture(scope="module")
 def deobfuscator():
     return ASTGrepDeobfuscationController(rules_dirs=[RULES_DIR], min_length_for_confirmed=5)
+
+
+@pytest.fixture(scope="module")
+def lsp_controller():
+    lsp = ASTGrepLSPController(rules_dir=[RULES_DIR])
+    try:
+        yield lsp
+    finally:
+        lsp.stop()
 
 
 @pytest.fixture
@@ -91,4 +100,26 @@ def test_all_extended_rules_have_simple_tests():
 )
 def test_real_samples(deobfuscate_example, example):
     """Tests on real samples"""
-    deobfuscate_example(example, warning_time=30)
+    check_confirmed = "NOCONFIRMATION" not in example
+    deobfuscate_example(example, check_confirmed=check_confirmed)
+
+
+@pytest.mark.skipif(
+    not os.path.exists("./tests/dangerous_examples"), reason="Samples are not accessible"
+)
+@pytest.mark.parametrize(
+    "example",
+    _list_examples("dangerous"),
+)
+def test_lsp_detects_real_samples(lsp_controller, example, deobfuscator):
+    """Tests on real samples"""
+    language = f"code/{example.split('/')[-2]}"
+    results = list(lsp_controller.process_file(f"{example}.in", language, retry=False))
+
+    extended_obfuscation = False
+    for result in results:
+        metadata = deobfuscator._metadata.get(result["check_id"], {})
+        if metadata.get("extended-obfuscation", False):
+            extended_obfuscation = True
+            break
+    assert extended_obfuscation is True, "Sample was not detected as potentially obfuscated"
