@@ -123,3 +123,12 @@ def test_lsp_detects_real_samples(lsp_controller, example, deobfuscator):
             extended_obfuscation = True
             break
     assert extended_obfuscation is True, "Sample was not detected as potentially obfuscated"
+
+
+@pytest.mark.parametrize(
+    "example",
+    _list_examples("other"),
+)
+def test_other_cases(deobfuscate_example, example):
+    """Test for every rule"""
+    deobfuscate_example(example)
