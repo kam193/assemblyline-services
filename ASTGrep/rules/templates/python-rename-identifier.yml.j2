@@ -4,6 +4,21 @@ rule:
   pattern: {{RENAMED}}
   kind: identifier
   not:
-    inside:
-      kind: aliased_import
+    any:
+      - inside:
+          kind: aliased_import
+          stopBy: end
+      - inside:
+          kind: import_statement
+          stopBy: end
+      - inside:
+          kind: import_from_statement
+          stopBy: end
+      - inside:
+          pattern: {{ORIGINAL}}
+          stopBy: end
+      - all:
+          - inside:
+              kind: attribute
+          - nthChild: 2
 fix: {{ORIGINAL}}

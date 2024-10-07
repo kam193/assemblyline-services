@@ -2,7 +2,11 @@ from base64 import b64encode, something as invoke
 
 import base64 as xyz
 
+import torch.nn as nn
+from torch.nn.parallel import DistributedDataParallel
 
+torch.nn()
+torch.nn()
 base64.something("aaa")
 
 something("aaaa")
