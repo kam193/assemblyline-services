@@ -81,6 +81,8 @@ AL_TO_SG_LANGUAGE = {
     "thrift": "Thrift",
 }
 
+CMD_TIMEOUT = 15
+
 
 class UnsupportedLanguageError(ValueError):
     pass
@@ -175,7 +177,6 @@ class ASTGrepScanController:
             cmd.append("--update-all")
 
         active_config = ["-c", config_file or self.config_file]
-        self.log.debug("SG CMD: %s", " ".join(cmd + active_config + [file_path]))
 
         with self._lock:
             result = subprocess.run(
@@ -240,7 +241,7 @@ class ASTGrepLSPController(ASTGrepScanController):
 
         self._lock = RLock()
         self._diagnostic_cond = threading.Condition(self._lock)
-        self.cli_timeout = 15
+        self.cli_timeout = CMD_TIMEOUT
 
     def _add_results(self, params):
         with self._diagnostic_cond:
@@ -284,7 +285,7 @@ class ASTGrepLSPController(ASTGrepScanController):
             method_callbacks={
                 "window/workDoneProgress/create": lambda _: dict(token="be-ignored"),
             },
-            timeout=10,
+            timeout=CMD_TIMEOUT,
         )
         self.client = LSPASTGrepClient(self.endpoint)
 
@@ -424,7 +425,7 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
         self._metadata = {}
         self.read_rules(rules_dirs)
         self.cli_timeout = cli_timeout
-        self.deobfuscation_timeout = 60
+        self.deobfuscation_timeout = 90
         self.config_file = "./rules/deobfuscation.sgconfig.yml"
         self.work_time = 0
         self.max_iterations = max_iterations

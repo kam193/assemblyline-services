@@ -2,3 +2,4 @@
 .randomnotes/
 .git/
 *.pyc
+tests/dangerous_examples/

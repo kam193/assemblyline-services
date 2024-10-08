@@ -19,6 +19,7 @@ from assemblyline_v4_service.common.result import (
 )
 
 from .controller import (
+    AL_TO_SG_LANGUAGE,
     LANGUAGE_TO_EXT,
     ASTGrepDeobfuscationController,
     ASTGrepLSPController,
@@ -30,6 +31,9 @@ from .helpers import configure_yaml
 configure_yaml()
 
 # RULES_DIR = os.path.join(UPDATES_DIR, "sg_rules")
+
+EXT_TO_FILE_TYPE = {ext[1:]: type_ for type_, ext in LANGUAGE_TO_EXT.items()}
+EXT_TO_FILE_TYPE["js"] = "code/javascript"
 
 SEVERITY_TO_HEURISTIC = {
     "INFO": 3,
@@ -72,15 +76,18 @@ class AssemblylineService(ServiceBase):
                                     continue
                                 metadata = yaml_doc.get("metadata", {})
                                 self.metadata_cache[yaml_doc.get("id")] = metadata
+                                self._sg_languages_to_scan.add(yaml_doc.get("language"))
 
     def __init__(self, config=None):
         super().__init__(config)
         self._active_rules_dir = None
         self._active_deobfuscation_rules_dir = None
         self.metadata_cache = {}
+        self._sg_languages_to_scan = set()
 
         self.use_lsp = self.config.get("USE_LANGUAGE_SERVER_PROTOCOL", True)
         self.extract_intermediate_layers = self.config.get("EXTRACT_INTERMEDIATE_LAYERS", False)
+        self.try_language_from_extension = self.config.get("TRY_LANGUAGE_FROM_EXTENSION", True)
         if self.use_lsp:
             self._astgrep = ASTGrepLSPController(self.log, RULES_DIR)
         else:
@@ -181,21 +188,15 @@ class AssemblylineService(ServiceBase):
                 # subsection.set_heuristic(heuristic, signature=rule_id, attack_id=attack_id)
             yield section
 
-    def execute(self, request: ServiceRequest) -> None:
-        if not self._astgrep or not self._astgrep.ready:
-            raise RecoverableError("AST-Grep isn't ready yet")
-
-        self._request = request
-        result = Result()
-        request.result = result
-
+    def _process_file(self, request: ServiceRequest, file_path, file_type):
+        main_section = ResultTextSection(f"Processing as {file_type}")
         try:
-            results = self._astgrep.process_file(request.file_path, request.file_type)
+            results = self._astgrep.process_file(file_path, file_type)
             request.set_service_context(self._astgrep.version)
             for result_section in self._process_results(results):
-                result.add_section(result_section)
+                main_section.add_subsection(result_section)
         except UnsupportedLanguageError:
-            self.log.warning(f"Unsupported language: {request.file_type}")
+            self.log.warning(f"Unsupported language: {file_type}")
             return
 
         if self._astgrep.last_results:
@@ -206,24 +207,22 @@ class AssemblylineService(ServiceBase):
         if self._should_deobfuscate:
             extracted_layers = []
             result_no = 1
-            for deobf_result, layer in self._deobfuscator.deobfuscate_file(
-                request.file_path, request.file_type
-            ):
-                path = f"{self.working_directory}/_deobfuscated_code_{result_no}{LANGUAGE_TO_EXT[request.file_type]}"
+            for deobf_result, layer in self._deobfuscator.deobfuscate_file(file_path, file_type):
+                path = f"{self.working_directory}/_deobfuscated_code_{result_no}{LANGUAGE_TO_EXT[file_type]}"
                 with open(path, "w+") as f:
                     f.write(deobf_result)
                 if layer != "#final-layer#":
                     extracted_layers.append(
                         (
                             path,
-                            f"_deobfuscated_code_{result_no}{LANGUAGE_TO_EXT[request.file_type]}",
+                            f"_deobfuscated_code_{result_no}{LANGUAGE_TO_EXT[file_type]}",
                             f"Deobfuscated code extracted by {layer}",
                         )
                     )
                 else:
                     request.add_extracted(
                         path,
-                        f"_deobfuscated_code_FINAL{LANGUAGE_TO_EXT[request.file_type]}",
+                        f"_deobfuscated_code_FINAL{LANGUAGE_TO_EXT[file_type]}",
                         "Final deobfuscation layer",
                     )
                 result_no += 1
@@ -234,7 +233,7 @@ class AssemblylineService(ServiceBase):
             )
             deobf_section.add_line(self._deobfuscator.status)
             deobf_section.set_heuristic(4 if self._deobfuscator.confirmed_obfuscation else 5)
-            result.add_section(deobf_section)
+            main_section.add_subsection(deobf_section)
 
             if extracted_layers:
                 for args in extracted_layers[:-10:-1]:
@@ -250,7 +249,48 @@ class AssemblylineService(ServiceBase):
                     "Only last 10 extracted layers and the final layer are shown"
                 )
                 layers_section.set_heuristic(6)
-                result.add_section(layers_section)
+                main_section.add_subsection(layers_section)
+
+        if main_section.subsections:
+            request.result.add_section(main_section)
+
+    def _should_scan_type(self, al_file_type: str) -> bool:
+        try:
+            sg_lang = AL_TO_SG_LANGUAGE.get(al_file_type.split("/")[1].lower())
+        except (KeyError, IndexError):
+            return False
+
+        return sg_lang in self._sg_languages_to_scan
+
+    def execute(self, request: ServiceRequest) -> None:
+        if not self._astgrep or not self._astgrep.ready:
+            raise RecoverableError("AST-Grep isn't ready yet")
+
+        self._request = request
+        result = Result()
+        request.result = result
+
+        if self._should_scan_type(request.file_type):
+            self._process_file(request, request.file_path, request.file_type)
+
+        if not self.try_language_from_extension:
+            return
+
+        file_ext = request.file_name.split(".")[-1]
+        try:
+            file_type = EXT_TO_FILE_TYPE[file_ext]
+            self.log.debug(f"File type from extension: {file_type}")
+        except KeyError:
+            return
+
+        # TODO: javascript vs jscript
+        if file_type != request.file_type and self._should_scan_type(file_type):
+            if all(
+                type_ in ["code/javascript", "code/jscript"]
+                for type_ in (request.file_type, file_type)
+            ):
+                return
+            self._process_file(request, request.file_path, file_type)
 
     def _cleanup(self) -> None:
         self._astgrep.cleanup()
