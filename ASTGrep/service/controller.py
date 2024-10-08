@@ -604,10 +604,10 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
                         "Error transforming template '%s' result: %r", result.get("ruleId"), exc
                     )
             elif type_ == "extract":
-                # if confirmed:
                 # Assume that extraction means obfuscation
-                self.confirmed_obfuscation = True
                 output, _ = self.transform(result)
+                if output and len(output) >= self.min_length_for_confirmed:
+                    self.confirmed_obfuscation = True
                 return output
         except Exception as exc:
             self.log.error("Error processing result for rule %s: %r", result.get("ruleId"), exc)
