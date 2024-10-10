@@ -56,7 +56,7 @@ Supported heuristics:
 
 - newly created domains (based on WHOIS data).
 
-# OOPreview
+### OOPreview
 
 Simple service that uses [OnlyOffice Document Builder](https://api.onlyoffice.com/docbuilder/basic)
 to generate documents previews, with the high compatibility with Microsoft Office formats. Supported
