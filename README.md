@@ -56,6 +56,12 @@ Supported heuristics:
 
 - newly created domains (based on WHOIS data).
 
+# OOPreview
+
+Simple service that uses [OnlyOffice Document Builder](https://api.onlyoffice.com/docbuilder/basic)
+to generate documents previews, with the high compatibility with Microsoft Office formats. Supported
+generating the preview for the first or all pages.
+
 ### PCAP Extractor
 
 This service list TCP flows from a pcap file using Tshark. If supported by Tshark, it can also extract files.
