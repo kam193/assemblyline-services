@@ -5,7 +5,6 @@ import os
 import sys
 
 sys.path.append("/opt/onlyoffice/documentbuilder/")
-
 import docbuilder
 
 builder = docbuilder.CDocBuilder()

@@ -1,6 +1,7 @@
 import os
 import sys
 import zipfile
+from contextlib import suppress
 
 from assemblyline.common.identify_defaults import type_to_extension
 from assemblyline_v4_service.common.base import ServiceBase
@@ -30,8 +31,9 @@ class AssemblylineService(ServiceBase):
         except KeyError:
             ext = "." + request.file_type.split("/")[-1]
 
-        input_path = os.path.join(self.working_directory, f"input{ext}")
-        input_path = f"/tmp/input{ext}"
+        input_path = os.path.join(self.working_directory, f"builder_input{ext}")
+        if os.path.exists(input_path):
+            os.remove(input_path)
         os.symlink(request.file_path, input_path)
 
         output_file = "image.png"
@@ -71,3 +73,7 @@ class AssemblylineService(ServiceBase):
 
         section.promote_as_screenshot()
         result.add_section(section)
+
+        with suppress(Exception):
+            os.remove(input_path)
+            os.remove(output_path)
