@@ -5,9 +5,16 @@ import base64 as xyz
 import torch.nn as nn
 from torch.nn.parallel import DistributedDataParallel
 
+from subprocess import run as run
+
+import numpy as np
+
 torch.nn()
 torch.nn()
 base64.something("aaa")
+
+run("aaa")
+np.array()
 
 something("aaaa")
 

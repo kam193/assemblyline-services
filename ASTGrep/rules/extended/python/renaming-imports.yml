@@ -11,6 +11,13 @@ rule:
     has:
       pattern: $RENAMED
       nthChild: 2
+      not:
+        pattern: $ORIGINAL
+
+constraints:
+  ORIGINAL:
+    not:
+      regex: numpy|pandas
 
 metadata:
   extended-obfuscation: yes
