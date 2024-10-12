@@ -1,6 +1,8 @@
 name: File-Similarity
 version: $SERVICE_TAG
-description: FIXME
+description: |
+  Comparing TLSH hashes to find similar files. It supports external lists in CSV as well as
+  files badlisted in the AssemblyLine system.
 enabled: true
 
 accepts: .* # All files
@@ -18,7 +20,6 @@ config:
   LOW_TLSH: 100
   MAX_IN_DEEP_SCAN: 20 # How many similar files find before stopping deep scan
   MAX_IN_SCAN: 5
-  # REFRESH_INTERVAL: 60 # How often to refresh the similarity database TODO: move to updater
 
 heuristics:
   - description: High similarity to known malware
@@ -64,7 +65,7 @@ update_config:
 dependencies:
   updates:
     container:
-      ram_mb: 256
+      ram_mb: 512
       allow_internet_access: true
       command: ["python", "-m", "service.updater"]
       image: ${REGISTRY}ghcr.io/kam193/assemblyline-service-file-similarity:$SERVICE_TAG

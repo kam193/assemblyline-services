@@ -1,6 +1,8 @@
 name: Network-Information
 version: $SERVICE_TAG
-description: FIXME
+description: |
+  This service is designed to get information about IPs and domains.
+  It supports IP lookups using MaxMind's MMDB files, and WHOIS lookups for domains.
 enabled: true
 
 accepts: .* # All files

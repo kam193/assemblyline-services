@@ -1,5 +1,8 @@
 # Simple-Downloader
 
+Very simple service to download URLs, without running a whole browser.
+In addition, it can extract URLs from directory listings as URI files allowing to download automatically download them.
+
 ## Request parameters
 
 | Name                             | Type | Description                                          | Default                |

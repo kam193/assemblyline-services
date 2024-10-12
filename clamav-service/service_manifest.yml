@@ -1,6 +1,8 @@
 name: ClamAV-Service
 version: $SERVICE_TAG
-description: Scans files using ClamAV antivirus
+description: |
+  Scans files using ClamAV antivirus. Note: more databases requires longer
+  timeout.
 enabled: true
 
 accepts: .*
@@ -8,7 +10,7 @@ rejects: empty
 stage: CORE
 category: Antivirus
 file_required: true
-timeout: 90
+timeout: 240
 
 # Any config key not starting with _ will be added to the clamd.conf file
 config:
@@ -50,6 +52,7 @@ docker_config:
   cpu_cores: 1.0
   ram_mb: 3072
   ram_mb_min: 1536
+  allow_internet_access: false
 
 update_config:
   update_interval_seconds: 7200 # 2 hours

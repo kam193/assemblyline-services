@@ -4,29 +4,30 @@ A set of custom services extending the capabilities of [AssemblyLine 4](https://
 They are created as a hobby project, so please do not expect production quality. They should work with the latest
 version of AssemblyLine 4.
 
+## Installation
+
+To install a service, copy the content of the appropriate `service_manifest.yml` and paste it in your AssemblyLine
+instance, in the *Administration* -> *Services* -> *Add a service* (green plus button) window. The service will be
+installed and ready to use, updates will be handles as any other service.
+
 ## Services
 
 ### ASAR Extractor
 
-Simple service extracting [ASAR Archives](https://www.electronjs.org/docs/latest/tutorial/asar-archives)
+Simple service extracting [ASAR archives](https://www.electronjs.org/docs/latest/tutorial/asar-archives)
 using official [asar tool](https://www.npmjs.com/package/@electron/asar) from Electron. By default, node modules
 are omitted from the extracted files, but it can be configured using submission parameters.
 
 ### ASTGrep
 
 Service using [AST-Grep](https://ast-grep.github.io/) to analyze the source code. Currently used only for
-obfuscation detection and deobfuscation. At the moment, only builtin rules are supported.
+obfuscation detection and deobfuscation. At the moment, only builtin rules are supported and the service is focused on Python code.
 
 ### ClamAV
 
 This service uses the ClamAV antivirus engine to scan files for viruses. It leverages the daemon mode to keep db
 definitions in memory and avoid reloading them for each scan. Support for Freshclam and directly downloading custom
 databases, both as AL-native update service. Both ClamAV and Freshclam can be fully configured.
-
-### Comodo AV (abandoned)
-
-A try to use the last version of Comodo AV engine for Linux. Because of the lack of pre-loading of the database,
-it's been abandoned. It may still work, though.
 
 ### File Similarity
 

@@ -1,6 +1,8 @@
 name: ASTGrep
 version: $SERVICE_TAG
-description: FIXME
+description: |
+  Service using AST-grep to analyze the source code to detect obfuscation and reverse it.
+  Currently focused on Python code.
 enabled: true
 
 accepts: code/*|text/*
@@ -26,12 +28,6 @@ config:
 #     type: list
 #     value: "auto"
 #     list: ["auto", "linux"]
-
-# -1000: safe
-# 0 - 299: informative
-# 300 - 699: suspicious
-# 700 - 999: highly suspicious
-# >= 1000: malicious
 
 heuristics:
   - description: Suspicious code pattern
@@ -77,21 +73,4 @@ docker_config:
   ram_mb: 1024
   ram_mb_min: 256
   allow_internet_access: false
-# update_config:
-#   update_interval_seconds: 86400 # 1 day
-#   generates_signatures: true
-#   signature_delimiter: custom
-#   custom_delimiter: "\n#SIGNATURE-DELIMITER#\n\n"
-#   wait_for_update: true
-#   sources: []
 
-# dependencies:
-#   updates:
-#     container:
-#       ram_mb: 512
-#       ram_mb_min: 128
-#       allow_internet_access: true
-#       command: ["python", "-m", "service.updater"]
-#       image: ${REGISTRY}ghcr.io/kam193/assemblyline-service-astgrep:$SERVICE_TAG
-#       ports: ["5003"]
-#     run_as_core: true

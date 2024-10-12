@@ -1,6 +1,8 @@
 name: PCAP-Extractor
 version: $SERVICE_TAG
-description: FIXME
+description: |
+  This service list TCP flows from a pcap
+  file using Tshark. If supported by Tshark, it can also extract files.
 enabled: true
 
 accepts: network/tcpdump
@@ -8,7 +10,7 @@ rejects: empty
 stage: CORE
 category: Static Analysis
 file_required: true
-timeout: 210
+timeout: 300
 is_external: false
 privileged: true
 
@@ -58,28 +60,5 @@ heuristics:
 docker_config:
   image: ${REGISTRY}ghcr.io/kam193/assemblyline-service-pcap-extractor:$SERVICE_TAG
   cpu_cores: 1.0
-  ram_mb: 1024
+  ram_mb: 1500
   allow_internet_access: false
-# update_config:
-#   update_interval_seconds: 7200 # 2 hours
-#   generates_signatures: false
-#   wait_for_update: true
-#   sources:
-
-# dependencies:
-#   updates:
-#     container:
-#       ram_mb: 3072
-#       allow_internet_access: true
-#       command: ["python", "-m", "service.updater"]
-#       image: ${REGISTRY}ghcr.io/kam193/assemblyline-service-pcap-extractor:$SERVICE_TAG
-#       ports: ["5003"]
-#       environment:
-#         - name: UPDATER_DIR
-#           value: /opt/clamav_db/
-#     volumes:
-#       updates:
-#         mount_path: /opt/clamav_db/
-#         capacity: 2147483648 # 2 GB
-#         storage_class: default
-#     run_as_core: True

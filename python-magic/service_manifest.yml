@@ -1,6 +1,10 @@
 name: Python-Magic
 version: $SERVICE_TAG
-description: FIXME
+description: |
+  Designed to help with analysis of Python artifacts. Supports extracting dependencies
+  from packages and marking suspicious (requires some update source), unpacking
+  PyInstaller executables (using pyinstxtractor-ng) and decompyling Python bytecode
+  (using Decompyle++).
 enabled: true
 
 accepts: executable/*|resource/pyc|archive/*

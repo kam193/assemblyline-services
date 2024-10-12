@@ -43,29 +43,5 @@ docker_config:
   cpu_cores: 0.5
   ram_mb: 768
   ram_mb_min: 256
-  allow_internet_access: true
+  allow_internet_access: false
 
-# update_config:
-#   update_interval_seconds: 7200 # 2 hours
-#   generates_signatures: false
-#   wait_for_update: true
-#   sources:
-
-# dependencies:
-#   updates:
-#     container:
-#       ram_mb: 3072
-#       ram_mb_min: 256
-#       allow_internet_access: true
-#       command: ["python", "-m", "service.updater"]
-#       image: ${REGISTRY}ghcr.io/kam193/assemblyline-service-oopreview:$SERVICE_TAG
-#       ports: ["5003"]
-#       environment:
-#         - name: UPDATER_DIR
-#           value: /opt/clamav_db/
-#     volumes:
-#       updates:
-#         mount_path: /opt/clamav_db/
-#         capacity: 2147483648 # 2 GB
-#         storage_class: default
-#     run_as_core: True

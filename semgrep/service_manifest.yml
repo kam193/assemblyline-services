@@ -1,6 +1,7 @@
 name: Semgrep
 version: $SERVICE_TAG
-description: FIXME
+description: |
+  Scan source code using Semgrep rules to look for suspicious patterns.
 enabled: true
 
 accepts: code/*
@@ -9,7 +10,7 @@ stage: CORE
 category: Static Analysis
 uses_tags: false
 file_required: true
-timeout: 90
+timeout: 120
 is_external: false
 
 config:
