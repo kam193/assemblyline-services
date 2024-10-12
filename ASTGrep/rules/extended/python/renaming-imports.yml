@@ -17,7 +17,7 @@ rule:
 constraints:
   ORIGINAL:
     not:
-      regex: numpy|pandas
+      regex: numpy|pandas|typing
 
 metadata:
   extended-obfuscation: yes
