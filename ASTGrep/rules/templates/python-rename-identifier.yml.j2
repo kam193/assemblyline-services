@@ -21,4 +21,15 @@ rule:
           - inside:
               kind: attribute
           - nthChild: 2
+      - inside:
+          kind: parameters
+          stopBy: end
+      - inside:
+          kind: function_definition
+          stopBy: end
+          has:
+            kind: parameters
+            has:
+              stopBy: end
+              pattern: {{RENAMED}}
 fix: {{ORIGINAL}}

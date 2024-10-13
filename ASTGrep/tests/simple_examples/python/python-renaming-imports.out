@@ -6,6 +6,8 @@ import torch.nn as nn
 from torch.nn.parallel import DistributedDataParallel
 
 from subprocess import run as run
+import matplotlib.pyplot as plt
+import bitcoin.core.script as script
 
 import numpy as np
 
@@ -13,8 +15,18 @@ torch.nn()
 torch.nn()
 base64.something("aaa")
 
+def function_with_renamed_parameter(self, serial_id: int, script: str, sats: int) -> None:
+    txout = CTxOut(sats, CScript(bytes.fromhex(script)))
+
+bitcoin.core.script = aa()
+
+def aa(self, other: str):
+    bitcoin.core.script(other)
+
 run("aaa")
 np.array()
+plt.plot()
+bitcoin.core.script.something("aaaa")
 
 something("aaaa")
 
