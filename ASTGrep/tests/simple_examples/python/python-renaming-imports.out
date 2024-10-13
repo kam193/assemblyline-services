@@ -32,3 +32,6 @@ something("aaaa")
 
 def aaa():
     something("aaaa")
+
+def script(other: str):
+    pass

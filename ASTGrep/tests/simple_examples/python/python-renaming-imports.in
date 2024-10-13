@@ -32,3 +32,6 @@ invoke("aaaa")
 
 def aaa():
     invoke("aaaa")
+
+def script(other: str):
+    pass
