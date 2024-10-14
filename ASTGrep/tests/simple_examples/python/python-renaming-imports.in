@@ -35,3 +35,10 @@ def aaa():
 
 def script(other: str):
     pass
+
+import RPi.GPIO as GPIO
+
+def func():
+    global GPIO
+    if GPIO is None:
+        pass

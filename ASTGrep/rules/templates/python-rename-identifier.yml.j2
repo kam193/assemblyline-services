@@ -34,4 +34,9 @@ rule:
               pattern: {{RENAMED}}
       - inside:
           kind: function_definition
+{% if "." in ORIGINAL %}
+{# Global cannot have . in it and it breaks the parser #}
+      - inside:
+            kind: global_statement
+{% endif %}
 fix: {{ORIGINAL}}
