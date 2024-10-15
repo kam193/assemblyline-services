@@ -6,13 +6,139 @@ language: Python
 rule:
   any:
     - pattern: $FUNC_NAME = $ORIGINAL_NAME
+      kind: assignment
+      has:
+        matches: original
+    - all:
+        - kind: identifier
+          inside:
+            kind: pattern_list
+            inside:
+              kind: assignment
+        - any:
+            - pattern: $FUNC_NAME
+              nthChild: 1
+              inside:
+                kind: pattern_list
+                inside:
+                  kind: assignment
+                  has:
+                    kind: expression_list
+                    has:
+                      nthChild: 1
+                      matches: original
+            - pattern: $FUNC_NAME
+              nthChild: 2
+              inside:
+                kind: pattern_list
+                inside:
+                  kind: assignment
+                  has:
+                    kind: expression_list
+                    has:
+                      nthChild: 2
+                      matches: original
+            - pattern: $FUNC_NAME
+              nthChild: 3
+              inside:
+                kind: pattern_list
+                inside:
+                  kind: assignment
+                  has:
+                    kind: expression_list
+                    has:
+                      nthChild: 3
+                      matches: original
+            - pattern: $FUNC_NAME
+              nthChild: 4
+              inside:
+                kind: pattern_list
+                inside:
+                  kind: assignment
+                  has:
+                    kind: expression_list
+                    has:
+                      nthChild: 4
+                      matches: original
+            - pattern: $FUNC_NAME
+              nthChild: 5
+              inside:
+                kind: pattern_list
+                inside:
+                  kind: assignment
+                  has:
+                    kind: expression_list
+                    has:
+                      nthChild: 5
+                      matches: original
+            - pattern: $FUNC_NAME
+              nthChild: 6
+              inside:
+                kind: pattern_list
+                inside:
+                  kind: assignment
+                  has:
+                    kind: expression_list
+                    has:
+                      nthChild: 6
+                      matches: original
+            - pattern: $FUNC_NAME
+              nthChild: 7
+              inside:
+                kind: pattern_list
+                inside:
+                  kind: assignment
+                  has:
+                    kind: expression_list
+                    has:
+                      nthChild: 7
+                      matches: original
+            - pattern: $FUNC_NAME
+              nthChild: 8
+              inside:
+                kind: pattern_list
+                inside:
+                  kind: assignment
+                  has:
+                    kind: expression_list
+                    has:
+                      nthChild: 8
+                      matches: original
+            - pattern: $FUNC_NAME
+              nthChild: 9
+              inside:
+                kind: pattern_list
+                inside:
+                  kind: assignment
+                  has:
+                    kind: expression_list
+                    has:
+                      nthChild: 9
+                      matches: original
+            - pattern: $FUNC_NAME
+              nthChild: 10
+              inside:
+                kind: pattern_list
+                inside:
+                  kind: assignment
+                  has:
+                    kind: expression_list
+                    has:
+                      nthChild: 10
+                      matches: original
 
-constraints:
-  ORIGINAL_NAME:
+utils:
+  original:
+    pattern: $ORIGINAL_NAME
     kind: identifier
     any:
       - pattern: eval
       - pattern: exec
+      - pattern: str
+      - pattern: map
+      - pattern: ord
+      - pattern: tuple
+      - pattern: type
 
 metadata:
   extended-obfuscation: yes

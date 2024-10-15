@@ -3,3 +3,10 @@ var2 = eval
 
 var2("123+5")
 var1("print('evil')")
+
+Calculate, Negative, _floor, Run, _round, _frame, _math = exec, str, tuple, map, ord, globals, type
+
+Calculate(aa)
+Run("b")
+_math("c")
+Run(aaa, b)

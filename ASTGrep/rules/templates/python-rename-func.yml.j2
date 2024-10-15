@@ -2,10 +2,10 @@ id: python-rename-func-{{TEMPLATE_COUNTER}}
 language: Python
 rule:
   any:
-    - pattern: ($F)($X)
-    - pattern: $F($X)
+    - pattern: ($F)($$$X)
+    - pattern: $F($$$X)
 constraints:
   F:
     kind: identifier
     pattern: {{FUNC_NAME}}
-fix: {{ORIGINAL_NAME}}($X)
+fix: {{ORIGINAL_NAME}}($$$X)
