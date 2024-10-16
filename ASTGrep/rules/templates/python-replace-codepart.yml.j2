@@ -1,0 +1,12 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/main/schemas/rule.json
+
+id: python-renaming-builtin
+message: Renaming builtin is often used as obfuscation method
+language: Python
+rule:
+  pattern: |
+    {{ PATTERN | indent(4) }}
+
+
+fix: |
+    {{ FIX }}

@@ -1,0 +1,57 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/main/schemas/rule.json
+
+id: python-horizon-noop-ifs
+message: Part of the if statement is a noop to hide the actual code
+language: Python
+rule:
+  kind: if_statement
+  pattern: $$$PATTERN
+  all:
+    - has:
+        matches: int_comparation
+        pattern: $IF_COMP
+    - has:
+        kind: elif_clause
+        all:
+          - has:
+             kind: comparison_operator
+             matches: int_comparation
+             pattern: $ELIF_COMP
+          - has:
+              kind: block
+              pattern: $$$ELIF_CODE
+
+    - has:
+        kind: block
+        pattern: $$$IF_CODE
+
+utils:
+  int_comparation:
+    kind: comparison_operator
+    # pattern: $A > $B
+    all:
+      - has:
+          nthChild: 1
+          kind: integer
+      - has:
+          nthChild: 2
+          kind: integer
+      - any:
+          - pattern: $_ > $_
+          - pattern: $_ < $_
+          - pattern: $_ >= $_
+          - pattern: $_ <= $_
+
+metadata:
+  extended-obfuscation: yes
+  confirmed-obfuscation: yes
+  template_file: python-replace-codepart.yml.j2
+  deobfuscate: |
+    {
+      "type": "template",
+      "steps": [
+        {"func": "math_eval", "source": "IF_COMP", "output": "IF_RESULT"},
+        {"func": "math_eval", "source": "ELIF_COMP", "output": "ELIF_RESULT"},
+        {"func": "noop_ifs", "output": "FIX"}
+      ]
+    }
