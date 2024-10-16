@@ -2,13 +2,15 @@ id: python-clean-exec-bytes
 message: Extract code executed by exec
 language: Python
 rule:
-  any:
-    - pattern:
-        context: exec(b"$DATA")
-        strictness: cst
-    - pattern:
-        context: exec(b'$DATA')
-        strictness: cst
+  all:
+    - kind: call
+    - any:
+      - pattern:
+          context: exec(b"$DATA")
+          strictness: cst
+      - pattern:
+          context: exec(b'$DATA')
+          strictness: cst
 
 metadata:
   extended-obfuscation: yes
@@ -33,7 +35,9 @@ rule:
     # - pattern: exec(b"$DATA")
     # - pattern: exec(b'$DATA')
     - pattern: exec("$DATA")
+      kind: call
     - pattern: exec('$DATA')
+      kind: call
 
 metadata:
   extended-obfuscation: yes
@@ -51,11 +55,13 @@ id: python-static-b64decode
 message: Decode static base64 strings
 language: Python
 rule:
-  any:
-    - pattern: base64.b64decode("$DATA")
-    - pattern: base64.b64decode('$DATA')
-    - pattern: b64decode("$DATA")
-    - pattern: b64decode('$DATA')
+  all:
+    - kind: call
+    - any:
+      - pattern: base64.b64decode("$DATA")
+      - pattern: base64.b64decode('$DATA')
+      - pattern: b64decode("$DATA")
+      - pattern: b64decode('$DATA')
 
 metadata:
   extended-obfuscation: yes
@@ -75,11 +81,13 @@ id: python-static-b64decode-bytes
 message: Decode static base64 strings
 language: Python
 rule:
-  any:
-    - pattern: base64.b64decode(b"$DATA")
-    - pattern: base64.b64decode(b'$DATA')
-    - pattern: b64decode(b"$DATA")
-    - pattern: b64decode(b'$DATA')
+  all:
+    - kind: call
+    - any:
+      - pattern: base64.b64decode(b"$DATA")
+      - pattern: base64.b64decode(b'$DATA')
+      - pattern: b64decode(b"$DATA")
+      - pattern: b64decode(b'$DATA')
 
 metadata:
   extended-obfuscation: yes
@@ -98,11 +106,13 @@ id: python-static-zlib-decompress
 message: Decompress static zlib strings
 language: Python
 rule:
-  any:
-    - pattern: zlib.decompress(b"$DATA")
-    - pattern: zlib.decompress(b'$DATA')
-    - pattern: decompress(b"$DATA")
-    - pattern: decompress(b'$DATA')
+  all:
+    - kind: call
+    - any:
+      - pattern: zlib.decompress(b"$DATA")
+      - pattern: zlib.decompress(b'$DATA')
+      - pattern: decompress(b"$DATA")
+      - pattern: decompress(b'$DATA')
 
 metadata:
   extended-obfuscation: yes

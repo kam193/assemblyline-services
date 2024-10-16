@@ -2,23 +2,30 @@ id: python-replace-static-exec
 message: Extract code executed by exec
 language: Python
 rule:
-  any:
-    - pattern: $FUNC("$DATA")
-    - pattern: $FUNC('$DATA')
-    - pattern: $FUNC(b"$DATA")
-    - pattern: $FUNC(b'$DATA')
-    - pattern: $FUNC("""$DATA""")
-    - pattern: $FUNC('''$DATA''')
-    - pattern: $FUNC(b"""$DATA""")
-    - pattern: $FUNC(b'''$DATA''')
+  all:
+    - kind: call
+      has:
+        kind: identifier
+        any:
+          - pattern: exec
+          - pattern: eval
+    - any:
+        - pattern: $FUNC("$DATA")
+        - pattern: $FUNC('$DATA')
+        - pattern: $FUNC(b"$DATA")
+        - pattern: $FUNC(b'$DATA')
+        - pattern: $FUNC("""$DATA""")
+        - pattern: $FUNC('''$DATA''')
+        - pattern: $FUNC(b"""$DATA""")
+        - pattern: $FUNC(b'''$DATA''')
 
 fix: $DATA
 
-constraints:
-  FUNC:
-    any:
-      - pattern: exec
-      - pattern: eval
+# constraints:
+#   FUNC:
+#     any:
+#       - pattern: exec
+#       - pattern: eval
 
 metadata:
   extended-obfuscation: yes

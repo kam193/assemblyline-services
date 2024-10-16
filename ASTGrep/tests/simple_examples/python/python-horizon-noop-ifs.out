@@ -5,3 +5,6 @@ print("Hello")
 if some:
     print("inner")
 do("world")
+
+
+pass

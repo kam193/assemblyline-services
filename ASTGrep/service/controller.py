@@ -670,6 +670,8 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
                             f.write("\n---\n")
                         first_template = False
                         f.write(template)
+                        if not self._escape_dollar and "{{{DOLLARPLACEHOLDER}}}" in template:
+                            self._escape_dollar = True
 
             if not apply_rule_dirs:
                 self.log.debug("No fixes to apply")

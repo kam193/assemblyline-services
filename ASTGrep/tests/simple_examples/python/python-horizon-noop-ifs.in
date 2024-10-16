@@ -10,3 +10,8 @@ if 5 > 3:
     do("world")
 elif 5 < 3:
     print("World")
+
+if 5 > 8:
+    print("Hello")
+elif 8 > 9:
+    print("World")

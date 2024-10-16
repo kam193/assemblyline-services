@@ -33,9 +33,11 @@ id: python-simple-builtin-getattr
 message: Uses getattr to obfuscate using a builtin function
 language: Python
 rule:
-  any:
-    - pattern: getattr(__import__($BUILTINS), $DATA)
-    - pattern: getattr(builtins, $DATA)
+  all:
+    - kind: call
+    - any:
+        - pattern: getattr(__import__($BUILTINS), $DATA)
+        - pattern: getattr(builtins, $DATA)
 
 constraints:
   BUILTINS:
@@ -65,10 +67,11 @@ rule:
   any:
     - pattern: $VAR
       kind: identifier
+      regex: "[^a-zA-Z_0-9]+"
 
-constraints:
-  VAR:
-    regex: "[^a-zA-Z_0-9]+"
+# constraints:
+#   VAR:
+#     regex: "[^a-zA-Z_0-9]+"
 
 metadata:
   extended-obfuscation: yes
@@ -79,5 +82,31 @@ metadata:
       "source": "VAR",
       "steps": [
         {"func": "rename", "prefix": "renamed_var"}
+      ]
+    }
+
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/main/schemas/rule.json
+
+id: python-import-encoded
+message: Import obfuscated module
+language: Python
+rule:
+  any:
+    - pattern: __import__($ARGS)
+      kind: call
+      has:
+        kind: argument_list
+        regex: ^\(['"]{1,3}(\\x[0-9a-fA-F][0-9a-fA-F]){1,}['"]{1,3}\)$
+    - pattern: globals()[$ARGS]
+
+metadata:
+  extended-obfuscation: yes
+  obfuscation-confirmed: yes
+  deobfuscate: |
+    {
+      "type": "fix-generate",
+      "steps": [
+        {"func": "dequote", "source": "ARGS"}
       ]
     }

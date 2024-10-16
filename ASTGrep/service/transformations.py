@@ -317,4 +317,4 @@ def noop_ifs(config: dict, context: dict):
         return context[code]
     else:
         code = config.get("else_code", "ELSE_CODE")
-        return context[code]
+        return context.get(code, "pass")

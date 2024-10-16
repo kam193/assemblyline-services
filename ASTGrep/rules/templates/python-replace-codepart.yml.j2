@@ -9,4 +9,4 @@ rule:
 
 
 fix: |
-    {{ FIX }}
+    {{ FIX | replace("$", "{{{DOLLARPLACEHOLDER}}}") }}
