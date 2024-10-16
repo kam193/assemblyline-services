@@ -172,7 +172,7 @@ def concat(config: dict, context: dict):
     return separator.join(context[source] for source in sources)
 
 
-MATH_ALLOWED = "0123456789/+-*^(). "
+MATH_ALLOWED = "0123456789/+-*^(). ><="
 
 
 def math_eval(config: dict, context: dict):
@@ -302,3 +302,19 @@ def rename(config: dict, context: dict):
             var_config = (new_name, False)
         context["cache"]["rename_cache"][source_value] = var_config
     return new_name
+
+
+def noop_ifs(config: dict, context: dict):
+    if_result = config.get("if_result", "IF_RESULT")
+    elif_result = config.get("elif_result", "ELIF_RESULT")
+    # else_result = config.get("else_result", "ELSE_RESULT")
+
+    if context[if_result]:
+        code = config.get("if_code", "IF_CODE")
+        return context[code]
+    elif context[elif_result]:
+        code = config.get("elif_code", "ELIF_CODE")
+        return context[code]
+    else:
+        code = config.get("else_code", "ELSE_CODE")
+        return context[code]
