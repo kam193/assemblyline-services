@@ -1,0 +1,8 @@
+class Square:
+    def _square(Round = -71032 / -64419, Divide = float, While = globals):
+        globals()[Round] = Divide
+
+        Divide()
+
+Square._square(Round="var1", Divide="value1")
+Square._square(Round='var2', Divide=b"value2")

@@ -2,12 +2,11 @@
 
 id: python-extra-length-comments
 message: Extremely long comments are used to obfuscate the code and prevent analysis
-severity: warning
+severity: info
 language: Python
 rule:
-  any:
-    - regex: ".{1000,}"
-      kind: comment
+  kind: comment
+  regex: "^.{1000,}"
 
 fix: ""
 

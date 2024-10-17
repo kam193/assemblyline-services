@@ -1,0 +1,4 @@
+def _square(Round = -71032 / -64419, Divide = float, While = globals):
+    While()[Round] = Divide
+
+    Divide()

@@ -1,0 +1,48 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/main/schemas/rule.json
+
+id: python-horizon-set-globals-through-class-method
+language: Python
+rule:
+  all:
+    - kind: assignment
+      pattern: globals()[$NAME_PAR] = $VALUE_PAR
+      inside:
+        kind: function_definition
+        stopBy: end
+        all:
+          - inside:
+              kind: class_definition
+              stopBy: end
+              has:
+                field: name
+                pattern: $CLASS_NAME
+          - has:
+              kind: parameters
+              all:
+                - has:
+                    # stopBy: end
+                    kind: default_parameter
+                    has:
+                      field: name
+                      pattern: $NAME_PAR
+                - has:
+                    # stopBy: end
+                    kind: default_parameter
+                    has:
+                      field: name
+                      pattern: $VALUE_PAR
+          - has:
+              field: name
+              pattern: $METHOD_NAME
+
+
+
+metadata:
+  extended-obfuscation: yes
+  confirmed-obfuscation: yes
+  template_file: python-horizon-replace-assigment.yml.j2
+  deobfuscate: |
+    {
+      "type": "template",
+      "steps": []
+    }

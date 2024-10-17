@@ -1,0 +1,38 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/main/schemas/rule.json
+
+id: python-horizon-default-parameter-builtin
+message: Obfuscator "horizon" uses default parameters to call builtins
+language: Python
+rule:
+  all:
+    - inside:
+        kind: call
+        inside:
+          kind: block
+          stopBy: end
+          inside:
+              kind: function_definition
+              has:
+                kind: parameters
+                has:
+                  kind: default_parameter
+                  all:
+                    - has:
+                        nthChild: 1
+                        pattern: $F
+                    - has:
+                        nthChild: 2
+                        matches: important_builtins
+    - kind: identifier
+      pattern: $F
+
+utils:
+  important_builtins:
+    kind: identifier
+    pattern: $BUILTIN
+    any:
+      - pattern: globals
+      - pattern: exec
+      - pattern: eval
+
+fix: $BUILTIN
