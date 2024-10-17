@@ -1,0 +1,39 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/main/schemas/rule.json
+
+id: python-getattr-import
+message: Uses getattr and import to obfuscate using a method
+language: Python
+rule:
+  kind: call
+  all:
+    - has:
+        field: function
+        pattern: getattr
+    - has:
+        kind: argument_list
+        all:
+          - has:
+              nthChild: 1
+              kind: call
+              all:
+                - has:
+                    field: function
+                    pattern: __import__
+                - has:
+                    stopBy: end
+                    kind: string_content
+                    pattern: $MODULE
+                    not:
+                        regex: builtins
+          - has:
+                nthChild: 2
+                has:
+                    stopBy: end
+                    kind: string_content
+                    pattern: $METHOD
+
+fix: $MODULE.$METHOD
+
+metadata:
+  extended-obfuscation: yes
+  confirmed-obfuscation: yes
