@@ -10,3 +10,6 @@ Calculate(aa)
 Run("b")
 _math("c")
 Run(aaa, b)
+
+def somefunc(var2 = var1):
+    pass

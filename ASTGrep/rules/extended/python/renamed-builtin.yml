@@ -139,6 +139,7 @@ utils:
       - pattern: ord
       - pattern: tuple
       - pattern: type
+      - pattern: globals
 
 metadata:
   extended-obfuscation: yes

@@ -10,3 +10,6 @@ exec(aa)
 map("b")
 type("c")
 map(aaa, b)
+
+def somefunc(var2 = exec):
+    pass
