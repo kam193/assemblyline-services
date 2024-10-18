@@ -1,0 +1,5 @@
+eval
+exec
+int
+lambda NMNNMMMNNMNNMNMMNMNMNNNM:int(NMNNMMMNNMNNMNMMNMNMNNNM + "aaaa")
+lambda (a, b):not_changed_yet(a, b)

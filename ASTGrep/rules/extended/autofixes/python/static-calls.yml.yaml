@@ -37,3 +37,36 @@ fix: $MODULE.$METHOD
 metadata:
   extended-obfuscation: yes
   confirmed-obfuscation: yes
+
+---
+
+# yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/main/schemas/rule.json
+
+id: python-lambda-pass-through-single-param
+message: Lambda passes data through to a function
+language: Python
+rule:
+  kind: lambda
+  all:
+    - has:
+        field: body
+        kind: call
+        all:
+          - has:
+              field: function
+              pattern: $FUNC
+          - has:
+              field: arguments
+              kind: argument_list
+              has:
+                nthChild: 1
+                pattern: $PARAM
+    - has:
+        field: parameters
+        pattern: $PARAM
+
+fix: $FUNC
+
+metadata:
+  extended-obfuscation: yes
+  confirmed-obfuscation: no

@@ -1,6 +1,6 @@
-func1 = lambda a: sth(a)
+func1 = sth
 func2 = lambda a: sth(a[1:4])
-func3 = lambda a: module.sth(a)
+func3 = module.sth
 
 sth("xxx")
 sth('234')
