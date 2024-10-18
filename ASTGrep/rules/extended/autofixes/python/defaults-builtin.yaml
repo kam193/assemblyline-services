@@ -1,7 +1,7 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/main/schemas/rule.json
 
-id: python-horizon-default-parameter-builtin
-message: Obfuscator "horizon" uses default parameters to call builtins
+id: python-hyperion-default-parameter-builtin
+message: Obfuscator "hyperion" uses default parameters to call builtins
 language: Python
 rule:
   all:

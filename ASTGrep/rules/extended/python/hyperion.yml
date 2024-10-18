@@ -1,6 +1,6 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/main/schemas/rule.json
 
-id: python-horizon-set-globals-through-class-method
+id: python-hyperion-set-globals-through-class-method
 language: Python
 rule:
   all:
@@ -40,7 +40,7 @@ rule:
 metadata:
   extended-obfuscation: yes
   confirmed-obfuscation: yes
-  template_file: python-horizon-replace-assigment.yml.j2
+  template_file: python-hyperion-replace-assigment.yml.j2
   deobfuscate: |
     {
       "type": "template",

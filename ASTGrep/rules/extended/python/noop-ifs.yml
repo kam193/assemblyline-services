@@ -1,6 +1,6 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/main/schemas/rule.json
 
-id: python-horizon-noop-ifs
+id: python-hyperion-noop-ifs
 message: Part of the if statement is a noop to hide the actual code
 language: Python
 rule:
