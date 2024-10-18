@@ -1,0 +1,5 @@
+class Square:
+    def _power(Invert = bool):
+        return globals()[Invert]
+
+Square._power(Invert='LLLLJJLLLILJIJJJIIJIII')

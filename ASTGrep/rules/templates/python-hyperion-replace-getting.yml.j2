@@ -1,0 +1,28 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/main/schemas/rule.json
+
+id: python-hyperion-replace-getting
+message: Replace getting variable through hyperion obfuscation class
+language: Python
+
+rule:
+  kind: call
+  all:
+    - has:
+        kind: attribute
+        pattern: {{CLASS_NAME}}.{{METHOD_NAME}}
+    - has:
+        kind: argument_list
+        all:
+          - has:
+              kind: keyword_argument
+              all:
+                - has:
+                    field: name
+                    pattern: {{NAME_PAR}}
+                - has:
+                    field: value
+                    has:
+                      kind: string_content
+                      pattern: $NAME
+
+fix: $NAME
