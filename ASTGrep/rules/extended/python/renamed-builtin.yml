@@ -5,7 +5,7 @@ message: Renaming builtin is often used as obfuscation method
 language: Python
 rule:
   any:
-    - pattern: $FUNC_NAME = $ORIGINAL_NAME
+    - pattern: $FUNC_NAME = $_
       kind: assignment
       has:
         matches: original
@@ -129,17 +129,24 @@ rule:
 
 utils:
   original:
+    any:
+      - matches: important_builtins
+      - kind: parenthesized_expression
+        has:
+
+          matches: important_builtins
+  important_builtins:
     pattern: $ORIGINAL_NAME
     kind: identifier
     any:
-      - pattern: eval
-      - pattern: exec
-      - pattern: str
-      - pattern: map
-      - pattern: ord
-      - pattern: tuple
-      - pattern: type
-      - pattern: globals
+          - pattern: eval
+          - pattern: exec
+          - pattern: str
+          - pattern: map
+          - pattern: ord
+          - pattern: tuple
+          - pattern: type
+          - pattern: globals
 
 metadata:
   extended-obfuscation: yes

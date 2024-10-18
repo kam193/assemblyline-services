@@ -5,19 +5,28 @@ rule:
   all:
     - kind: call
       has:
-        kind: identifier
+        # kqind: identifier
         any:
           - pattern: exec
           - pattern: eval
-    - any:
-        - pattern: $FUNC("$DATA")
-        - pattern: $FUNC('$DATA')
-        - pattern: $FUNC(b"$DATA")
-        - pattern: $FUNC(b'$DATA')
-        - pattern: $FUNC("""$DATA""")
-        - pattern: $FUNC('''$DATA''')
-        - pattern: $FUNC(b"""$DATA""")
-        - pattern: $FUNC(b'''$DATA''')
+          - pattern: (eval)
+          - pattern: (exec)
+    - has:
+        kind: argument_list
+        has:
+          kind: string
+          has:
+            kind: string_content
+            pattern: $DATA
+    # - any:
+    #     - pattern: $FUNC("$DATA")
+    #     - pattern: $FUNC('$DATA')
+    #     - pattern: $FUNC(b"$DATA")
+    #     - pattern: $FUNC(b'$DATA')
+    #     - pattern: $FUNC("""$DATA""")
+    #     - pattern: $FUNC('''$DATA''')
+    #     - pattern: $FUNC(b"""$DATA""")
+    #     - pattern: $FUNC(b'''$DATA''')
 
 fix: $DATA
 

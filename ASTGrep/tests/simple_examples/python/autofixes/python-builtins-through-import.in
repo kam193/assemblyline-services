@@ -1,0 +1,2 @@
+__import__('builtins').exec
+__import__(b'builtins').str

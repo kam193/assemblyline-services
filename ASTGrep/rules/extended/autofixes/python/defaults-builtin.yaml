@@ -11,18 +11,18 @@ rule:
           kind: block
           stopBy: end
           inside:
-              kind: function_definition
+            kind: function_definition
+            has:
+              kind: parameters
               has:
-                kind: parameters
-                has:
-                  kind: default_parameter
-                  all:
-                    - has:
-                        nthChild: 1
-                        pattern: $F
-                    - has:
-                        nthChild: 2
-                        matches: important_builtins
+                kind: default_parameter
+                all:
+                  - has:
+                      nthChild: 1
+                      pattern: $F
+                  - has:
+                      nthChild: 2
+                      matches: important_builtins
     - kind: identifier
       pattern: $F
 
@@ -34,5 +34,35 @@ utils:
       - pattern: globals
       - pattern: exec
       - pattern: eval
+
+fix: $BUILTIN
+
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/main/schemas/rule.json
+
+id: python-builtins-through-import
+message: Calling builtins through the import call
+language: Python
+rule:
+  kind: attribute
+  all:
+    - has:
+        field: object
+        kind: call
+        all:
+          - has:
+              field: function
+              pattern: __import__
+          - has:
+              field: arguments
+              has:
+                kind: string
+                has:
+                  kind: string_content
+                  regex: builtins
+    - has:
+        field: attribute
+        kind: identifier
+        pattern: $BUILTIN
 
 fix: $BUILTIN
