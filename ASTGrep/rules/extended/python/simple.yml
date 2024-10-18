@@ -33,18 +33,25 @@ id: python-simple-builtin-getattr
 message: Uses getattr to obfuscate using a builtin function
 language: Python
 rule:
+  kind: call
   all:
-    - kind: call
-    - any:
-        - pattern: getattr(__import__($BUILTINS), $DATA)
-        - pattern: getattr(builtins, $DATA)
-
-constraints:
-  BUILTINS:
-    kind: string
-    regex: '[Bb]?["'']+builtins["'']+'
-  DATA:
-    kind: string
+    - has:
+        field: function
+        pattern: getattr
+    - has:
+        kind: argument_list
+        all:
+          - has:
+              nthChild: 1
+              any:
+                - has:
+                    stopBy: end
+                    kind: string_content
+                    regex: builtins
+                - pattern: builtins
+          - has:
+                nthChild: 2
+                pattern: $DATA
 
 metadata:
   extended-obfuscation: yes
