@@ -1,0 +1,11 @@
+var1 = "aaa"
+var2 = "bbb"
+var3 = "ccc"
+
+func1('aaabbbccc')
+
+var4 = b"ddd"
+var5 = b"eee"
+var6 = b"fff"
+
+func2(b'dddeeefff')

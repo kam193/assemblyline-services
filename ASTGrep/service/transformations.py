@@ -187,6 +187,7 @@ def collect_var(config: dict, context: dict):
     source_var = config.get("source", "VAR")
     source_value = config.get("value", "VALUE")
     parse = config.get("parse", "no")
+    val = context[source_value]
 
     name = context[source_var]
     if parse == "python":
@@ -195,8 +196,9 @@ def collect_var(config: dict, context: dict):
             name = obj.id
         else:
             return {}
+        val = ast.literal_eval(val)
 
-    return {name: context[source_value]}
+    return {name: val}
 
 
 def py_ast_concat(config: dict, context: dict):
@@ -226,8 +228,12 @@ def py_ast_concat(config: dict, context: dict):
             for child in ast.iter_child_nodes(node):
                 stack.insert(0, child)
 
-    return "".join(result)
-
+    if len(result) == 0:
+        return ""
+    elif isinstance(result[0], str):
+        return "".join(result)
+    else:
+        return b"".join(result)
 
 def replace_in_match(config: dict, context: dict):
     source = config.get("source", "INPUT")

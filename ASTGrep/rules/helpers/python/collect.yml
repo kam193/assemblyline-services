@@ -4,9 +4,16 @@ id: python-collect-static-vars
 message: Collecting static variables
 language: Python
 rule:
-  any:
-    - pattern: $VAR = "$VALUE"
-    - pattern: $VAR = '$VALUE'
+  kind: assignment
+  all:
+    - has:
+        field: left
+        kind: identifier
+        pattern: $VAR
+    - has:
+        field: right
+        kind: string
+        pattern: $VALUE
 
 metadata:
   extended-obfuscation: yes
