@@ -6,9 +6,12 @@ severity: info
 language: Python
 rule:
   kind: comment
-  regex: "^.{1000,}"
+  regex: "^.{1000}"
+  precedes:
+    kind: comment
+    regex: "^.{1000}"
 
-fix: ""
+# fix: ""
 
 metadata:
   extended-obfuscation: yes

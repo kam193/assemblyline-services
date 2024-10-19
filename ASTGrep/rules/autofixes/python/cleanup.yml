@@ -43,11 +43,7 @@ id: python-static-comment
 message: Removing comments
 language: Python
 rule:
-  any:
-    - pattern:
-        context: "#$$$"
-        selector: comment
-        strictness: signature
+  kind: comment
 
 fix: ""
 
