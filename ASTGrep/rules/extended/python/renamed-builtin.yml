@@ -147,6 +147,12 @@ utils:
           - pattern: tuple
           - pattern: type
           - pattern: globals
+          - pattern: locals
+          - pattern: __import__
+          - pattern: compile
+          - pattern: getattr
+          - pattern: dir
+          - pattern: vars
 
 metadata:
   extended-obfuscation: yes

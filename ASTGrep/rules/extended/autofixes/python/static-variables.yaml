@@ -13,8 +13,8 @@ rule:
           has:
             stopBy: end
             pattern:
-                context: $VAR
-                kind: identifier
+              context: $VAR
+              kind: identifier
       follows:
         kind: expression_statement
         stopBy: end
@@ -28,6 +28,40 @@ constraints:
     kind: string
 
 fix: $FUNC($DATA)
+
+metadata:
+  extended-obfuscation: yes
+
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/main/schemas/rule.json
+
+id: python-set-variables-through-locals-globals
+message: Variable value is set using locals or globals function
+language: Python
+rule:
+  kind: assignment
+  all:
+    - has:
+        field: left
+        kind: subscript
+        all:
+          - has:
+              field: value
+              kind: call
+              any:
+                - pattern: globals()
+                - pattern: locals()
+                - pattern: vars()
+          - has:
+              field: subscript
+              has:
+                kind: string_content
+                pattern: $VARIABLE
+    - has:
+        field: right
+        pattern: $VALUE
+
+fix: $VARIABLE = $VALUE
 
 metadata:
   extended-obfuscation: yes
