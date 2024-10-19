@@ -5,19 +5,174 @@ language: Python
 message: Lambda is probably used to hide obfuscation, variant with slice
 rule:
   any:
-    - has:
-        pattern: "$FUNC = lambda $ARG: $ANY"
-        # stopBy: end
-        has:
-          stopBy: end
-          any:
-            - pattern: $CALL($ARG[$SLICE])
-            - pattern: $CALL($ARG)
-      kind: expression_statement
-
-    - pattern: "$FUNC = lambda $ARG: $ANY($ARG)"
+    - kind: assignment
+      all:
+        - has:
+            field: left
+            pattern: $FUNC
+        - has:
+            field: right
+            matches: lambda
+    - all:
+        - kind: identifier
+          inside:
+            kind: pattern_list
+            inside:
+              kind: assignment
+        - any:
+            - pattern: $FUNC
+              nthChild: 1
+              inside:
+                kind: pattern_list
+                inside:
+                  kind: assignment
+                  has:
+                    kind: expression_list
+                    has:
+                      nthChild: 1
+                      matches: lambda
+            - pattern: $FUNC
+              nthChild: 2
+              inside:
+                kind: pattern_list
+                inside:
+                  kind: assignment
+                  has:
+                    kind: expression_list
+                    has:
+                      nthChild: 2
+                      matches: lambda
+            - pattern: $FUNC
+              nthChild: 3
+              inside:
+                kind: pattern_list
+                inside:
+                  kind: assignment
+                  has:
+                    kind: expression_list
+                    has:
+                      nthChild: 3
+                      matches: lambda
+            - pattern: $FUNC
+              nthChild: 4
+              inside:
+                kind: pattern_list
+                inside:
+                  kind: assignment
+                  has:
+                    kind: expression_list
+                    has:
+                      nthChild: 4
+                      matches: lambda
+            - pattern: $FUNC
+              nthChild: 5
+              inside:
+                kind: pattern_list
+                inside:
+                  kind: assignment
+                  has:
+                    kind: expression_list
+                    has:
+                      nthChild: 5
+                      matches: lambda
+            - pattern: $FUNC
+              nthChild: 6
+              inside:
+                kind: pattern_list
+                inside:
+                  kind: assignment
+                  has:
+                    kind: expression_list
+                    has:
+                      nthChild: 6
+                      matches: lambda
+            - pattern: $FUNC
+              nthChild: 7
+              inside:
+                kind: pattern_list
+                inside:
+                  kind: assignment
+                  has:
+                    kind: expression_list
+                    has:
+                      nthChild: 7
+                      matches: lambda
+            - pattern: $FUNC
+              nthChild: 8
+              inside:
+                kind: pattern_list
+                inside:
+                  kind: assignment
+                  has:
+                    kind: expression_list
+                    has:
+                      nthChild: 8
+                      matches: lambda
+            - pattern: $FUNC
+              nthChild: 9
+              inside:
+                kind: pattern_list
+                inside:
+                  kind: assignment
+                  has:
+                    kind: expression_list
+                    has:
+                      nthChild: 9
+                      matches: lambda
+            - pattern: $FUNC
+              nthChild: 10
+              inside:
+                kind: pattern_list
+                inside:
+                  kind: assignment
+                  has:
+                    kind: expression_list
+                    has:
+                      nthChild: 10
+                      matches: lambda
 
 # TODO: detecting when lambda really was used for the obfuscation
+
+utils:
+  lambda:
+    any:
+      - kind: lambda
+        pattern: "lambda $ARG: $ANY"
+        has:
+          field: body
+          matches: inner_call
+      - kind: parenthesized_expression
+        has:
+          kind: lambda
+          pattern: "lambda $ARG: $ANY"
+          has:
+            field: body
+            matches: inner_call
+      - kind: lambda
+        pattern: "lambda: $ANY"
+      - kind: parenthesized_expression
+        has:
+          kind: lambda
+          pattern: "lambda: $ANY"
+
+  inner_call:
+    any:
+      - kind: call
+        has:
+          stopBy: end
+          field: arguments
+          has:
+            any:
+              - pattern: $ARG[$SLICE]
+              - pattern: $ARG
+      - kind: call
+        has:
+          field: function
+          pattern: $ARG
+      - kind: subscript
+        has:
+          field: value
+          pattern: $ARG
 
 metadata:
   extended-obfuscation: yes
@@ -27,6 +182,6 @@ metadata:
     {
       "type": "template",
       "steps": [
-        {"func": "substitute_var", "source": "ANY", "pattern": "ARG", "replacement": "$X", "output": "TPL_FIX"}
+        {"func": "substitute_var", "source": "ANY", "pattern": "ARG", "replacement": "$X", "ignore_missed": true, "output": "TPL_FIX"}
       ]
     }

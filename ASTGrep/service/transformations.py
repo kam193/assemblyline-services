@@ -247,14 +247,22 @@ def substitute_var(config: dict, context: dict):
     pattern = config.get("pattern", "PATTERN")
     language = config.get("language", "python")
     replacement = config.get("replacement", "REPLACEMENT")
+    ignore_missed = config.get("ignore_missed", False)
 
     if not replacement.startswith("$"):
         replacement = context[replacement]
 
+    try:
+        pattern_val = context[pattern]
+    except KeyError:
+        if ignore_missed:
+            return context[source]
+        raise
+
     sg = SgRoot(context[source], language)
     root = sg.root()
     ret = root.commit_edits(
-        [m.replace(replacement) for m in root.find_all(pattern=context[pattern], kind="identifier")]
+        [m.replace(replacement) for m in root.find_all(pattern=pattern_val, kind="identifier")]
     )
     return ret
 

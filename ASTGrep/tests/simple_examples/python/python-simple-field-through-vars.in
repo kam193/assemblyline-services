@@ -1,0 +1,2 @@
+vars(zlib)['\x64\x65\x63\x6f\x6d\x70\x72\x65\x73\x73']
+vars(obj1)[b'some_method']

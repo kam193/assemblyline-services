@@ -5,3 +5,23 @@ func3 = module.sth
 sth("xxx")
 sth('234')
 module.sth(16)
+
+_ = lambda __ : some_func("aaa").attribute("xy").final(__[:1])
+some_func("aaa").attribute("xy").final("bbb"[:1])
+
+x = (y)
+y(123)
+
+func4, func5 = sth4, (sth5)
+sth4("xxx4")
+sth5("xxx5")
+
+func6 = lambda: sth6
+sth6("xxx6")
+func6("xxx6")
+
+func7 = lambda a: a(sth)
+xxx7(sth)
+
+func8 = lambda a: a[key]
+xxx8[key]

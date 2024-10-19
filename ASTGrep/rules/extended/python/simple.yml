@@ -50,8 +50,8 @@ rule:
                     regex: builtins
                 - pattern: builtins
           - has:
-                nthChild: 2
-                pattern: $DATA
+              nthChild: 2
+              pattern: $DATA
 
 metadata:
   extended-obfuscation: yes
@@ -115,5 +115,35 @@ metadata:
       "type": "fix-generate",
       "steps": [
         {"func": "dequote", "source": "ARGS"}
+      ]
+    }
+
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/main/schemas/rule.json
+
+id: python-simple-field-through-vars
+message: Uses vars to obfuscate getting field from an object
+language: Python
+rule:
+  kind: subscript
+  all:
+    - has:
+        field: value
+        kind: call
+        pattern: vars($OBJECT)
+    - has:
+        field: subscript
+        kind: string
+        pattern: $FIELD
+
+metadata:
+  extended-obfuscation: yes
+  confirmed-obfuscation: yes
+  deobfuscate: |
+    {
+      "type": "fix-generate",
+      "steps": [
+        {"func": "dequote", "source": "FIELD"},
+        {"func": "concat", "sources": ["OBJECT", "FIELD"]}
       ]
     }

@@ -2,8 +2,13 @@ id: python-call-replace-{{TEMPLATE_COUNTER}}
 language: Python
 rule:
   any:
+  {% if ARG | default(false) %}
     - pattern: ($F)($X)
     - pattern: $F($X)
+  {% else %}
+    - pattern: $F()
+    - pattern: ($F)()
+  {% endif %}
 constraints:
   F:
     kind: identifier
