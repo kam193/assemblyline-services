@@ -137,23 +137,37 @@ utils:
   lambda:
     any:
       - kind: lambda
-        pattern: "lambda $ARG: $ANY"
-        has:
-          field: body
-          matches: inner_call
+        matches: lambda_raw
       - kind: parenthesized_expression
         has:
           kind: lambda
-          pattern: "lambda $ARG: $ANY"
-          has:
-            field: body
-            matches: inner_call
-      - kind: lambda
-        pattern: "lambda: $ANY"
-      - kind: parenthesized_expression
-        has:
-          kind: lambda
-          pattern: "lambda: $ANY"
+          matches: lambda_raw
+
+  lambda_raw:
+    kind: lambda
+    any:
+      - pattern: "lambda: $ANY"
+      - pattern: "lambda $ARG: $ANY"
+        all:
+          - has:
+              field: parameters
+              any:
+                - pattern: $ARG
+                  has:
+                    kind: identifier
+                - has:
+                    kind: tuple_pattern
+                    any:
+                      - all:
+                          - has:
+                              nthChild: 1
+                              pattern: $ARG1
+                          - has:
+                              nthChild: 2
+                              pattern: $ARG2
+          - has:
+              field: body
+              matches: inner_call
 
   inner_call:
     any:
@@ -173,6 +187,10 @@ utils:
         has:
           field: value
           pattern: $ARG
+      - kind: call
+        pattern: $ARG1($ARG2)
+      - kind: call
+        pattern: $ARG2($ARG1)
 
 metadata:
   extended-obfuscation: yes
@@ -182,6 +200,8 @@ metadata:
     {
       "type": "template",
       "steps": [
+        {"func": "substitute_var", "source": "ANY", "pattern": "ARG1", "replacement": "$X1", "ignore_missed": true, "output": "ANY"},
+        {"func": "substitute_var", "source": "ANY", "pattern": "ARG2", "replacement": "$X2", "ignore_missed": true, "output": "ANY"},
         {"func": "substitute_var", "source": "ANY", "pattern": "ARG", "replacement": "$X", "ignore_missed": true, "output": "TPL_FIX"}
       ]
     }

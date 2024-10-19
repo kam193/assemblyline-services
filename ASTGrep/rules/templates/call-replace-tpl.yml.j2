@@ -2,7 +2,10 @@ id: python-call-replace-{{TEMPLATE_COUNTER}}
 language: Python
 rule:
   any:
-  {% if ARG | default(false) %}
+  {% if ARG1 | default(false) and ARG2 | default(false) %}
+    - pattern: ($F)($X1, $X2)
+    - pattern: $F($X1, $X2)
+  {% elif ARG | default(false) %}
     - pattern: ($F)($X)
     - pattern: $F($X)
   {% else %}

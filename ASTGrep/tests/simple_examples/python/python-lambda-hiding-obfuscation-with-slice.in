@@ -25,3 +25,9 @@ func7(xxx7)
 
 func8 = lambda a: a[key]
 func8(xxx8)
+
+func9 = lambda(a, b): a(b)
+func10 = lambda(b, a): a(b)
+
+func9(x9, y9)
+func10(x10, y10)
