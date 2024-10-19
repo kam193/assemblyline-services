@@ -7,12 +7,7 @@ language: Python
 rule:
   kind: comment
   regex: "^.{1000}"
-  precedes:
-    kind: comment
-    regex: "^.{1000}"
-
-# fix: ""
 
 metadata:
   extended-obfuscation: yes
-  confirmed-obfuscation: yes
+  confirmed-obfuscation: no

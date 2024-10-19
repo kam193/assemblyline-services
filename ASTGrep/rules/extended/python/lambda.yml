@@ -151,25 +151,39 @@ utils:
         all:
           - has:
               field: parameters
-              any:
-                - pattern: $ARG
-                  has:
-                    kind: identifier
-                - has:
-                    kind: tuple_pattern
-                    any:
-                      - all:
-                          - has:
-                              nthChild: 1
-                              pattern: $ARG1
-                          - has:
-                              nthChild: 2
-                              pattern: $ARG2
+              pattern: $ARG
+              has:
+                kind: identifier
           - has:
               field: body
-              matches: inner_call
+              pattern: $A
+              matches: inner_call_single
+      - all:
+          - has:
+              field: parameters
+              any:
+                - has:
+                    kind: tuple_pattern
+                    all:
+                      - has:
+                          nthChild: 1
+                          pattern: $ARG1
+                      - has:
+                          nthChild: 2
+                          pattern: $ARG2
+                - all:
+                    - has:
+                        nthChild: 1
+                        pattern: $ARG1
+                    - has:
+                        nthChild: 2
+                        pattern: $ARG2
+          - has:
+              field: body
+              pattern: $ANY
+              matches: inner_call_double
 
-  inner_call:
+  inner_call_single:
     any:
       - kind: call
         has:
@@ -187,6 +201,9 @@ utils:
         has:
           field: value
           pattern: $ARG
+
+  inner_call_double:
+    any:
       - kind: call
         pattern: $ARG1($ARG2)
       - kind: call

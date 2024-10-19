@@ -235,6 +235,7 @@ def py_ast_concat(config: dict, context: dict):
     else:
         return b"".join(result)
 
+
 def replace_in_match(config: dict, context: dict):
     source = config.get("source", "INPUT")
     replace = config.get("match", "DATA")

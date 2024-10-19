@@ -31,3 +31,6 @@ func10 = lambda(b, a): a(b)
 
 x9(y9)
 y10(x10)
+
+func11 = lambda a, b: a(b)
+x11(y11)

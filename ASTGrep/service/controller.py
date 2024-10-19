@@ -432,6 +432,8 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
         self.min_length_for_confirmed = min_length_for_confirmed
         self.group_fixes = group_fixes
 
+        self._extract_tmp_rules_on_failure = None # "./tmp"
+
     def read_rules(self, rule_paths: list[str]):
         for rule_path in rule_paths:
             for root, _, files in os.walk(rule_path):
@@ -680,11 +682,17 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
             with open(os.path.join(tmpdir, "fixes.sgconfig.yml"), "w+") as f:
                 yaml.dump({"ruleDirs": list(apply_rule_dirs)}, f, Dumper=yaml.CSafeDumper)
 
-            self._execute_sg(
-                self._working_file,
-                autofix=True,
-                config_file=os.path.join(tmpdir, "fixes.sgconfig.yml"),
-            )
+            try:
+                self._execute_sg(
+                    self._working_file,
+                    autofix=True,
+                    config_file=os.path.join(tmpdir, "fixes.sgconfig.yml"),
+                )
+            except RuntimeError:
+                if self._extract_tmp_rules_on_failure:
+                    print("Copying...")
+                    shutil.copytree(tmpdir, self._extract_tmp_rules_on_failure, dirs_exist_ok=True)
+                raise
         if self._escape_dollar:
             subprocess.run(
                 ["sed", "-i", "s/{{{DOLLARPLACEHOLDER}}}/$/g", self._working_file],
