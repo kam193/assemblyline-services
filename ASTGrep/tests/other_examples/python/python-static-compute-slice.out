@@ -5,3 +5,5 @@
 
 b'not-a-string'[1:3]
 'cba'
+'mnmnmmnmmnmnnmnnnmn'
+'do_not_change'[::-_1]

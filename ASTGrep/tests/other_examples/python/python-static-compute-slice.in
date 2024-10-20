@@ -5,3 +5,5 @@
 
 b'not-a-string'[1:3]
 "abc"[::-1]
+'nmnnnmnnmnmmnmmnmnm'[::+-+-(-(+1_3_2_3_0_2_7_6_8+(-1_3_2_3_0_2_7_6_7)))]
+'do_not_change'[::-_1]
