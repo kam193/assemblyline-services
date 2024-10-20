@@ -1,0 +1,3 @@
+getattr(xxx,dir(__import__('builtins'))[dir(__import__('builtins')).index('bool')])
+
+getattr(__import__('builtins'),dir(__import__('builtins'))[dir(__import__('builtins')).index(aaa)])

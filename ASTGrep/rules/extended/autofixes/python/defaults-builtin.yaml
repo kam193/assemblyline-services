@@ -66,3 +66,28 @@ rule:
         pattern: $BUILTIN
 
 fix: $BUILTIN
+
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/main/schemas/rule.json
+
+id: python-get-name-through-dir
+message: Calling dir and index to obfuscate getting a function name
+language: Python
+rule:
+  kind: subscript
+  has:
+    field: value
+    kind: call
+    pattern: dir($OBJECT)
+  all:
+    - has:
+        field: subscript
+        # pattern: $S
+        pattern: dir($OBJECT).index($NAME)
+
+constraints:
+  NAME:
+    kind: string
+
+
+fix: $NAME

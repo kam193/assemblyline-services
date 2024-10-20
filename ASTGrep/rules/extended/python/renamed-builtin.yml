@@ -133,12 +133,14 @@ utils:
       - matches: important_builtins
       - kind: parenthesized_expression
         has:
-
           matches: important_builtins
   important_builtins:
     pattern: $ORIGINAL_NAME
-    kind: identifier
-    any:
+    all:
+      - any:
+          - kind: identifier
+          - kind: attribute
+      - any:
           - pattern: eval
           - pattern: exec
           - pattern: str
@@ -153,6 +155,13 @@ utils:
           - pattern: getattr
           - pattern: dir
           - pattern: vars
+          - pattern: bool
+          - pattern: float
+          - pattern: int
+          - pattern: str
+          # TODO: better patterns
+          # - pattern: "''.join"
+          - pattern: binascii.unhexlify
 
 metadata:
   extended-obfuscation: yes
