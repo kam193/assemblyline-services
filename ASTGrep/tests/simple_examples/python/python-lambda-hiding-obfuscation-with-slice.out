@@ -7,7 +7,7 @@ sth('234')
 module.sth(16)
 
 _ = lambda __ : some_func("aaa").attribute("xy").final(__[:1])
-some_func("aaa").attribute("xy").final("bbb"[:1])
+some_func("aaa").attribute("xy").final('b')
 
 x = (y)
 y(123)

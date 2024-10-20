@@ -4,9 +4,31 @@ id: python-static-compute-slice
 message: python-static-compute-slice
 language: Python
 rule:
-  any:
-    - pattern: '"$DATA"[$SLICE_START:$SLICE_END]'
-    - pattern: "'$DATA'[$SLICE_START:$SLICE_END]"
+  kind: subscript
+  all:
+    - has:
+        field: value
+        kind: string
+        all:
+          # bytestrings not supported yet
+          - not:
+              has:
+                kind: string_start
+                regex: "^(b|B)"
+          - has:
+              kind: string_content
+              pattern: $DATA
+    - has:
+        field: subscript
+        kind: slice
+        pattern: $SLICE
+        regex: ^[0-9:+\-\(\)\^\\* ]+$
+    - any:
+        - pattern: $_[$SLICE_START:$SLICE_END:$SLICE_STEP]
+        - pattern: $_[$SLICE_START:$SLICE_END]
+        - pattern: $_[:$SLICE_END]
+        - pattern: $_[::$SLICE_STEP]
+        - pattern: $_[:]
 
 metadata:
   extended-obfuscation: yes
@@ -17,6 +39,7 @@ metadata:
       "steps": [
         {"func": "math_eval", "source": "SLICE_START"},
         {"func": "math_eval", "source": "SLICE_END"},
+        {"func": "math_eval", "source": "SLICE_STEP"},
         {"func": "slice", "source": "DATA"},
         {"func": "quote", "source": "DATA"}
       ]

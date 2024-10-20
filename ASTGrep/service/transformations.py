@@ -30,7 +30,10 @@ def slice(config: dict, context: dict):
     source = config.get("source", "SLICE_SOURCE")
     start = context.get("SLICE_START", 0)
     end = context.get("SLICE_END")
-    return context[source][int(start) if start else None : int(end) if end else None]
+    step = context.get("SLICE_STEP")
+    return context[source][
+        int(start) if start else None : int(end) if end else None : int(step) if step else None
+    ]
 
 
 def aes(config: dict, context: dict):
@@ -177,6 +180,8 @@ MATH_ALLOWED = "0123456789/+-*^(). ><="
 
 def math_eval(config: dict, context: dict):
     source = config.get("source", "MATH_SOURCE")
+    if source not in context:
+        return None
     data = context[source]
     if not isinstance(data, str) or any(c not in MATH_ALLOWED for c in data):
         raise TransformationRejected("Not allowed chars found")
