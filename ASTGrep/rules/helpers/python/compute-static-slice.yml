@@ -46,33 +46,168 @@ metadata:
     }
 
 ---
-
 # yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/main/schemas/rule.json
-
 
 id: python-static-concat-args
 message: python-static-concat-args
 language: Python
 rule:
-  any:
-    - pattern:
-        context: $METHOD($ARGS)
-        # selector: argument_list
-
-constraints:
-  ARGS:
-    all:
-      - has:
-          any:
-            - kind: identifier
-            - kind: string
-      - has:
-          pattern: +
-      - not:
-          has:
+  kind: call
+  pattern: $METHOD($ARGS)
+  has:
+    field: arguments
+    pattern: $ALL_ARGS
+    kind: argument_list
+    has:
+      kind: binary_operator
+      all:
+        - has:
             any:
-              - kind: call
-              - kind: expression_statement
+              - kind: identifier
+              - kind: string
+        - has:
+            pattern: +
+        - not:
+            has:
+              any:
+                - kind: call
+                - kind: expression_statement
+        - not:
+            all:
+              - inside:
+                  stopBy: end
+                  kind: function_definition
+              - any:
+                  - inside:
+                      stopBy: end
+                      kind: function_definition
+                      has:
+                        field: parameters
+                        has:
+                          nthChild: 1
+                          kind: identifier
+                          pattern: $FUNC_ARGUMENT
+                    has:
+                      stopBy: end
+                      kind: identifier
+                      pattern: $FUNC_ARGUMENT
+                  - inside:
+                      stopBy: end
+                      kind: function_definition
+                      has:
+                        field: parameters
+                        has:
+                          nthChild: 2
+                          kind: identifier
+                          pattern: $FUNC_ARGUMENT
+                    has:
+                      stopBy: end
+                      kind: identifier
+                      pattern: $FUNC_ARGUMENT
+                  - inside:
+                      stopBy: end
+                      kind: function_definition
+                      has:
+                        field: parameters
+                        has:
+                          nthChild: 3
+                          kind: identifier
+                          pattern: $FUNC_ARGUMENT
+                    has:
+                      stopBy: end
+                      kind: identifier
+                      pattern: $FUNC_ARGUMENT
+                  - inside:
+                      stopBy: end
+                      kind: function_definition
+                      has:
+                        field: parameters
+                        has:
+                          nthChild: 4
+                          kind: identifier
+                          pattern: $FUNC_ARGUMENT
+                    has:
+                      stopBy: end
+                      kind: identifier
+                      pattern: $FUNC_ARGUMENT
+                  - inside:
+                      stopBy: end
+                      kind: function_definition
+                      has:
+                        field: parameters
+                        has:
+                          nthChild: 5
+                          kind: identifier
+                          pattern: $FUNC_ARGUMENT
+                    has:
+                      stopBy: end
+                      kind: identifier
+                      pattern: $FUNC_ARGUMENT
+                  - inside:
+                      stopBy: end
+                      kind: function_definition
+                      has:
+                        field: parameters
+                        has:
+                          nthChild: 6
+                          kind: identifier
+                          pattern: $FUNC_ARGUMENT
+                    has:
+                      stopBy: end
+                      kind: identifier
+                      pattern: $FUNC_ARGUMENT
+                  - inside:
+                      stopBy: end
+                      kind: function_definition
+                      has:
+                        field: parameters
+                        has:
+                          nthChild: 7
+                          kind: identifier
+                          pattern: $FUNC_ARGUMENT
+                    has:
+                      stopBy: end
+                      kind: identifier
+                      pattern: $FUNC_ARGUMENT
+                  - inside:
+                      stopBy: end
+                      kind: function_definition
+                      has:
+                        field: parameters
+                        has:
+                          nthChild: 8
+                          kind: identifier
+                          pattern: $FUNC_ARGUMENT
+                    has:
+                      stopBy: end
+                      kind: identifier
+                      pattern: $FUNC_ARGUMENT
+                  - inside:
+                      stopBy: end
+                      kind: function_definition
+                      has:
+                        field: parameters
+                        has:
+                          nthChild: 9
+                          kind: identifier
+                          pattern: $FUNC_ARGUMENT
+                    has:
+                      stopBy: end
+                      kind: identifier
+                      pattern: $FUNC_ARGUMENT
+                  - inside:
+                      stopBy: end
+                      kind: function_definition
+                      has:
+                        field: parameters
+                        has:
+                          nthChild: 10
+                          kind: identifier
+                          pattern: $FUNC_ARGUMENT
+                    has:
+                      stopBy: end
+                      kind: identifier
+                      pattern: $FUNC_ARGUMENT
 
 metadata:
   extended-obfuscation: yes
