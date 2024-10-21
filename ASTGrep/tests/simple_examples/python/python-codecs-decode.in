@@ -1,0 +1,2 @@
+codecs.decode("nnnnnnn", "rot_13")
+decode("nnnnnnn", "\x72\x6f\x74\x31\x33")

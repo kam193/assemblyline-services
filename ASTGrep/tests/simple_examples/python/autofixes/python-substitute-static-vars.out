@@ -1,0 +1,28 @@
+var1 = 1
+var2 = "aaaa"
+var3 = 1
+
+funcx("aaaa")
+funcx("aaaa", "aaaa")
+funcx('aaaaaaaa')
+[1]
+[1]
+
+func = 123
+
+
+def func(var1):
+    r = var1
+    return r
+
+def f2(var1):
+    x = var1 + var2
+    return var1
+
+var2 = 2
+
+
+x = 7
+for i in range(3):
+    x = i
+print(7)

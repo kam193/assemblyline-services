@@ -70,3 +70,29 @@ fix: $FUNC
 metadata:
   extended-obfuscation: yes
   confirmed-obfuscation: no
+
+---
+
+# yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/main/schemas/rule.json
+
+id: python-noop-str-actions
+message: str of string
+language: Python
+rule:
+  kind: call
+  all:
+    - has:
+        field: arguments
+        has:
+          kind: string
+          pattern: $VALUE
+    - has:
+        field: function
+        pattern: str
+
+# TODO: correctly handle bytes
+fix: $VALUE
+
+metadata:
+  extended-obfuscation: no
+  confirmed-obfuscation: no

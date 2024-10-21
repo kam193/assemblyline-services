@@ -111,7 +111,7 @@ rule:
               field: arguments
               has:
                 nthChild: 1
-                stopBy: end
+                # stopBy: end
                 kind: string
                 pattern: $CODE
 

@@ -1,7 +1,7 @@
 renamed_var_0 = 'abc'
 renamed_var_1 = 1
 
-renamed_var_2 = renamed_var_1 + renamed_var_0
+renamed_var_2 = 1 + 'abc'
 
 do_not_change = 17
 

@@ -1,0 +1,46 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/main/schemas/rule.json
+
+id: python-substitute-static-vars
+message: Substitute static variables
+language: Python
+rule:
+  kind: identifier
+  pattern: $VAR
+  inside:
+    stopBy: end
+    kind: expression_statement
+    follows:
+      stopBy: end
+      kind: expression_statement
+      has:
+        stopBy: end
+        kind: assignment
+        all:
+          - has:
+              field: left
+              kind: identifier
+              pattern: $VAR
+          - has:
+              field: right
+              pattern: $VALUE
+              any:
+                - kind: integer
+                - kind: string
+  not:
+    any:
+      - nthChild: 1
+        inside:
+          kind: assignment
+
+fix: $VALUE
+
+metadata:
+  extended-obfuscation: no
+  alone-unimportant: yes
+  # deobfuscate: |
+  #   {
+  #     "type": "context",
+  #     "steps": [
+  #       {"func": "collect_var", "parse": "python"}
+  #     ]
+  #   }

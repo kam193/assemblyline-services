@@ -160,3 +160,43 @@ metadata:
         {"func": "quote", "source": "DATA"}
       ]
     }
+
+---
+
+id: python-codecs-decode
+message: Decode static strings using codecs
+language: Python
+rule:
+  kind: call
+  has:
+    field: function
+    any:
+      - pattern: codecs.decode
+      - pattern: decode
+  all:
+    - has:
+        field: arguments
+        kind: argument_list
+        all:
+          - has:
+              nthChild: 1
+              kind: string
+              pattern: $DATA
+          - has:
+              nthChild: 2
+              kind: string
+              pattern: $ENCODING
+
+metadata:
+  extended-obfuscation: yes
+  # alone-unimportant: yes
+  deobfuscate: |
+    {
+      "type": "fix-generate",
+      "steps": [
+        {"func": "dequote", "source": "DATA"},
+        {"func": "dequote", "source": "ENCODING"},
+        {"func": "encode", "encoding": "ENCODING", "source": "DATA"},
+        {"func": "quote", "source": "DATA"}
+      ]
+    }

@@ -108,6 +108,8 @@ def encode(config: dict, context: dict):
         data = zlib.decompress(context[source])
     elif encoding == "base64-bytes":
         data = base64.b64decode(context[source])
+    else:
+        data = codecs.decode(context[source], encoding)
 
     if "output" not in config:
         context[source] = data
