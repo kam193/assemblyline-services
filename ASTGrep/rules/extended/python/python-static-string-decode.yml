@@ -125,3 +125,38 @@ metadata:
         {"func": "quote", "source": "DATA"}
       ]
     }
+
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/main/schemas/rule.json
+
+id: python-static-unhexlify
+message: Unhexlify strings
+language: Python
+rule:
+  kind: call
+  has:
+    field: function
+    any:
+      - pattern: unhexlify
+      - pattern: binascii.unhexlify
+  all:
+    - has:
+        field: arguments
+        has:
+          kind: string
+          has:
+            kind: string_content
+            pattern: $DATA
+
+metadata:
+  extended-obfuscation: yes
+  alone-unimportant: yes
+  deobfuscate: |
+    {
+      "type": "fix-generate",
+      "steps": [
+        {"func": "encode", "encoding": "py-bytes", "source": "DATA"},
+        {"func": "encode", "encoding": "unhexlify", "source": "DATA"},
+        {"func": "quote", "source": "DATA"}
+      ]
+    }

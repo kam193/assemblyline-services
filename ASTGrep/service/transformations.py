@@ -1,5 +1,6 @@
 import ast
 import base64
+import binascii
 import codecs
 import hashlib
 import re
@@ -75,6 +76,8 @@ def encode(config: dict, context: dict):
         data = bytes(context[source]).decode()
     elif encoding == "bytes":
         data = bytes(context[source])
+    elif encoding == "unhexlify":
+        data = binascii.unhexlify(context[source])
     elif encoding == "py-bytes":
         methods = [
             # lambda d: bytes.fromhex(d),
@@ -175,7 +178,7 @@ def concat(config: dict, context: dict):
     return separator.join(context[source] for source in sources)
 
 
-MATH_ALLOWED = "0123456789/+-*^(). ><="
+MATH_ALLOWED = "0123456789/+-*^(). ><=_"
 
 
 def math_eval(config: dict, context: dict):
@@ -185,7 +188,10 @@ def math_eval(config: dict, context: dict):
     data = context[source]
     if not isinstance(data, str) or any(c not in MATH_ALLOWED for c in data):
         raise TransformationRejected("Not allowed chars found")
-    return eval(data, {}, {})
+    try:
+        return eval(data, {}, {})
+    except Exception as exc:
+        raise TransformationRejected(f"Math eval failed: {exc}")
 
 
 def collect_var(config: dict, context: dict):

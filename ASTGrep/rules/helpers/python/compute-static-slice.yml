@@ -22,7 +22,9 @@ rule:
         field: subscript
         kind: slice
         pattern: $SLICE
-        regex: ^[0-9:+\-\(\)\^\\* ]+$
+        # number: ([:+\-\(\) ^*]+((0x|0X|0b|0B|0o|0O|[1-9])[0-9a-fA-F_]+)+
+        regex: ^[0-9:+\-\(\)\^\\* ]{1}[0-9:+\-\(\)\^\\* _]+$
+        #regex: ^([:+\-\(\) ^*]*((0x|0X|0b|0B|0o|0O|[1-9])[0-9a-fA-F_]*)[:\)]*)+$
     - any:
         - pattern: $_[$SLICE_START:$SLICE_END:$SLICE_STEP]
         - pattern: $_[$SLICE_START:$SLICE_END]
