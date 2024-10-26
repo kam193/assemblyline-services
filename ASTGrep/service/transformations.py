@@ -180,6 +180,40 @@ def concat(config: dict, context: dict):
     return separator.join(context[source] for source in sources)
 
 
+def str_concat(config: dict, context: dict):
+    left_op = config.get("left_op", "LEFT_OP")
+    right_op = config.get("right_op", "RIGHT_OP")
+
+    left = context[left_op]
+    right = context[right_op]
+
+    if type(left) is type(right):
+        return left + right
+
+    # for now, assume one is bytes and the other is str
+    if isinstance(left, str):
+        # check if it's just a string representation of a bytestring
+        try:
+            tmp = ast.literal_eval(left)
+        except Exception:
+            tmp = None
+        if isinstance(tmp, bytes):
+            left = tmp
+        else:
+            left = left.encode()
+    if isinstance(right, str):
+        # check if it's just a string representation of a bytestring
+        try:
+            tmp = ast.literal_eval(right)
+        except Exception:
+            tmp = None
+        if isinstance(tmp, bytes):
+            right = tmp
+        else:
+            right = right.encode()
+    return left + right
+
+
 MATH_ALLOWED = "0123456789/+-*^(). ><=_"
 
 
@@ -300,8 +334,9 @@ def literal_eval(config: dict, context: dict):
 
 def dequote(config: dict, context: dict):
     source = config.get("source", "DATA")
+    should_decode = config.get("decode", True)
     result = ast.literal_eval(context[source])
-    if isinstance(result, bytes):
+    if isinstance(result, bytes) and should_decode:
         return result.decode("utf-8")
     return result
 

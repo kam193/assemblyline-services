@@ -1,0 +1,38 @@
+id: python-concat-strings
+message: Concatenate strings
+language: Python
+rule:
+  # currently limit to the assigment only
+  kind: binary_operator
+  all:
+    - has:
+        field: operator
+        pattern: +
+    - has:
+        field: left
+        kind: string
+        pattern: $LEFT_OP
+        has:
+          kind: string_start
+          pattern: $LEFT_TYPE
+    - has:
+        field: right
+        kind: string
+        pattern: $RIGHT_OP
+        has:
+          kind: string_start
+          pattern: $RIGHT_TYPE
+
+metadata:
+  extended-obfuscation: no
+  alone-unimportant: yes
+  deobfuscate: |
+    {
+      "type": "fix-generate",
+      "steps": [
+        {"func": "dequote", "source": "LEFT_OP", "decode": false},
+        {"func": "dequote", "source": "RIGHT_OP", "decode": false},
+        {"func": "str_concat", "left_op": "LEFT_OP", "right_op": "RIGHT_OP", "output": "OUT"},
+        {"func": "quote", "source": "OUT"}
+      ]
+    }

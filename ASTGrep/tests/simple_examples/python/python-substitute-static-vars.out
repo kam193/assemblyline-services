@@ -16,7 +16,7 @@ def func(var1):
     return r
 
 def f2(var1):
-    x = var1 + var2
+    x = var1 + "aaaa"
     return var1
 
 var2 = 2

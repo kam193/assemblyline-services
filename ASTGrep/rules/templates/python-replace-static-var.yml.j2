@@ -1,0 +1,46 @@
+id: python-substitute-static-vars-{{TEMPLATE_COUNTER}}
+message: Substitute static variables
+language: Python
+rule:
+  kind: identifier
+  pattern: {{ VAR }}
+  not:
+    any:
+      - nthChild: 1
+        any:
+          - inside:
+              kind: assignment
+          - inside:
+              kind: keyword_argument
+          - inside:
+              kind: default_parameter
+          - inside:
+              kind: function_definition
+          - inside:
+              kind: class_definition
+          - inside:
+              kind: call # for now
+      - inside:
+          kind: parameters
+      - inside:
+          kind: lambda_parameters
+      - inside:
+          stopBy: end
+          kind: function_definition
+          has:
+            field: parameters
+            has:
+              stopBy: end
+              kind: identifier
+              pattern: {{ VAR }}
+      - inside:
+          stopBy: end
+          kind: lambda
+          has:
+            field: parameters
+            has:
+              stopBy: end
+              kind: identifier
+              pattern: {{ VAR }}
+
+fix: {{ VALUE | replace("$", "{{{DOLLARPLACEHOLDER}}}") | tojson }}
