@@ -107,6 +107,10 @@ rule:
         regex: ^\(['"]{1,3}(\\x[0-9a-fA-F][0-9a-fA-F]){1,}['"]{1,3}\)$
     - pattern: globals()[$ARGS]
 
+constraints:
+  ARGS:
+    kind: string
+
 metadata:
   extended-obfuscation: yes
   obfuscation-confirmed: yes
