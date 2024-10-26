@@ -49,9 +49,12 @@ rule:
                     kind: string_content
                     regex: builtins
                 - pattern: builtins
+          # TODO: what with case like:
+          # getattr(__import__(b"builtins"), str("aaa"))("print('hello')")
           - has:
               nthChild: 2
               pattern: $DATA
+              kind: string
 
 metadata:
   extended-obfuscation: yes

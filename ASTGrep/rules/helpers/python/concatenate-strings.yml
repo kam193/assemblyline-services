@@ -12,16 +12,14 @@ rule:
         field: left
         kind: string
         pattern: $LEFT_OP
-        has:
-          kind: string_start
-          pattern: $LEFT_TYPE
+        # exclude f-strings
+        regex: "^[bB\"']"
     - has:
         field: right
         kind: string
         pattern: $RIGHT_OP
-        has:
-          kind: string_start
-          pattern: $RIGHT_TYPE
+        # exclude f-strings
+        regex: "^[bB\"']"
 
 metadata:
   extended-obfuscation: no

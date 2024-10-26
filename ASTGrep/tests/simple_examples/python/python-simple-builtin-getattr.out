@@ -8,6 +8,7 @@ print('hel"lo')
 print('hello')
 print('hello')
 print('hello')
+getattr(__import__(b"builtins"), sth("aaa"))("print('hello')")
 
 
 saveFile = QAction(QIcon('pyfem/qt/img/save128.png'),'&Save', self )

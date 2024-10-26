@@ -19,20 +19,29 @@ rule:
           - inside:
               kind: class_definition
           - inside:
+              kind: augmented_assignment
+          - inside:
               kind: call # for now
       - inside:
           kind: parameters
       - inside:
           kind: lambda_parameters
       - inside:
+          kind: global_statement
+      - inside:
           stopBy: end
           kind: function_definition
           has:
             field: parameters
-            has:
-              stopBy: end
-              kind: identifier
-              pattern: {{ VAR }}
+            any:
+              - has:
+                  kind: identifier
+                  pattern: {{ VAR }}
+              - has:
+                  stopBy: end
+                  kind: identifier
+                  nthChild: 1
+                  pattern: {{ VAR }}
       - inside:
           stopBy: end
           kind: lambda
@@ -42,5 +51,25 @@ rule:
               stopBy: end
               kind: identifier
               pattern: {{ VAR }}
+# TODO: better way to detect if the variable is used in a loop
+# or if it is used in a condition that modifies the variable
+#      - inside:
+#          stopBy: end
+#          kind: if_statement
+#          has:
+#            kind: block
+#            has:
+#              stopBy: end
+#              kind: expression_statement
+#              all:
+#                - any:
+#                    - has:
+#                        kind: augmented_assignment
+#                    - has:
+#                        kind: assignment
+#                - has:
+#                    has:
+#                      field: left
+#                      pattern: {{ VAR }}
 
 fix: {{ VALUE | replace("$", "{{{DOLLARPLACEHOLDER}}}") | tojson }}

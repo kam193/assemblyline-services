@@ -425,14 +425,14 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
         self._metadata = {}
         self.read_rules(rules_dirs)
         self.cli_timeout = cli_timeout
-        self.deobfuscation_timeout = 90
+        self.deobfuscation_timeout = 120
         self.config_file = "./rules/deobfuscation.sgconfig.yml"
         self.work_time = 0
         self.max_iterations = max_iterations
         self.min_length_for_confirmed = min_length_for_confirmed
         self.group_fixes = group_fixes
 
-        self._extract_tmp_rules_on_failure = None # "./tmp"
+        self._extract_tmp_rules_on_failure = None  # "./tmp"
 
     def read_rules(self, rule_paths: list[str]):
         for rule_path in rule_paths:
@@ -708,9 +708,12 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
         self._extracted_cache = set()
         self.confirmed_obfuscation = False
         original_timestamp = last_timestamp = os.stat(self._working_file).st_mtime_ns
+        last_size = os.stat(self._working_file).st_size
+        file_size_not_changed = False
 
         start = time.monotonic()
         while time.monotonic() - start < self.deobfuscation_timeout:
+            iteration_start = time.monotonic()
             self._cleanup_status()
 
             for result in self._execute_sg(self._working_file):
@@ -749,10 +752,23 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
                         self._apply_rule(fix_rule)
 
             self._iterations += 1
+            iteration_time = time.monotonic() - iteration_start
+            self.log.debug("Iteration took %.3f seconds", iteration_time)
 
             if last_timestamp == os.stat(self._working_file).st_mtime_ns:
                 break
+            # TODO: better way to detect file changes
+            elif last_size == os.stat(self._working_file).st_size:
+                self.log.debug("File size did not change!")
+                if file_size_not_changed:
+                    self.log.debug("Second consecutive file size did not change, breaking")
+                    break
+                file_size_not_changed = True
+            else:
+                file_size_not_changed = False
+
             last_timestamp = os.stat(self._working_file).st_mtime_ns
+            last_size = os.stat(self._working_file).st_size
 
             if self.max_iterations and self._iterations >= self.max_iterations:
                 break

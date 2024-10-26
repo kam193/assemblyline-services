@@ -8,6 +8,7 @@ getattr(__import__("builtins"), "exec")("print('hel\"lo')")
 getattr(__import__('builtins'), 'exec')("print('hello')")
 getattr(__import__(b'builtins'), b'exec')("print('hello')")
 getattr(__import__(b"builtins"), b"exec")("print('hello')")
+getattr(__import__(b"builtins"), sth("aaa"))("print('hello')")
 
 # Example of false positives
 saveFile = QAction(QIcon('pyfem/qt/img/save128.png'),'&Save', self )

@@ -26,3 +26,16 @@ x = 7
 for i in range(3):
     x = i
 print(7)
+
+global var2
+var1 += "a"
+
+aaaa = 7
+def f(b, c, aaaa):
+    x=aaaa
+
+def f(b, c, aaaa=7):
+    x=aaaa
+
+def f(b, c, d=7):
+    x=7
