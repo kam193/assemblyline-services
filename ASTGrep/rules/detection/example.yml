@@ -47,3 +47,20 @@ metadata:
   extended-obfuscation: yes
   deobfuscate: |
     {}
+
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/main/schemas/rule.json
+
+id: python-eval-compile
+message: combination of eval and compile
+severity: info
+language: Python
+rule:
+  kind: call
+  any:
+    - pattern: eval(compile($$$))
+    - pattern: exec(compile($$$))
+
+metadata:
+  extended-obfuscation: yes
+  confirmed-obfuscation: no

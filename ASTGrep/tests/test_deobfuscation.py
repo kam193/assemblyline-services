@@ -132,3 +132,21 @@ def test_lsp_detects_real_samples(lsp_controller, example, deobfuscator):
 def test_other_cases(deobfuscate_example, example):
     """Test for every rule"""
     deobfuscate_example(example)
+
+
+@pytest.mark.parametrize(
+    "example",
+    _list_examples("detection"),
+)
+def test_lsp_detects_prepared_samples(lsp_controller, example, deobfuscator):
+    """Tests on prepared samples"""
+    language = f"code/{example.split('/')[-2]}"
+    results = list(lsp_controller.process_file(f"{example}.in", language, retry=False))
+
+    extended_obfuscation = False
+    for result in results:
+        metadata = deobfuscator._metadata.get(result["check_id"], {})
+        if metadata.get("extended-obfuscation", False):
+            extended_obfuscation = True
+            break
+    assert extended_obfuscation is True, "Sample was not detected as potentially obfuscated"
