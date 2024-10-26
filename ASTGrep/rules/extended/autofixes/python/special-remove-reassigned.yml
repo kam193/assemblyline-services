@@ -3,7 +3,7 @@
 id: python-special-remove-reassigned
 message: |
   Reasigment of a variable could be used to slow down deoobfuscation.
-  This rule should be enabled only if it's known to be like that.
+  Activated for long strings only
 severity: info
 language: Python
 rule:
@@ -18,6 +18,7 @@ rule:
       - has:
           field: right
           kind: string
+          regex: "^.{1000}" # activate rule only for long strings
   precedes:
     stopBy: end
     kind: expression_statement
@@ -31,8 +32,10 @@ rule:
         - has:
             field: right
             kind: string
+
 fix: ""
 
 metadata:
-  extended-obfuscation: yes
+  # extended-obfuscation: yes
   confirmed-obfuscation: no
+  alone-unimportant: yes
