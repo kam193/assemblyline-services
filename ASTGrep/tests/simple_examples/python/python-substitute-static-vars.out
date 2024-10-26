@@ -19,7 +19,7 @@ def f2(var1):
     x = var1 + "aaaa"
     return var1
 
-var2 = 2
+var20 = 2
 
 
 x = 7

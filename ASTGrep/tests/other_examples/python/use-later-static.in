@@ -1,0 +1,4 @@
+token = "hahaha not this"
+token = "correct value"
+
+print(token)

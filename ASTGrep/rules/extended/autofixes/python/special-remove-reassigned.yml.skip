@@ -1,0 +1,38 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/main/schemas/rule.json
+
+id: python-special-remove-reassigned
+message: |
+  Reasigment of a variable could be used to slow down deoobfuscation.
+  This rule should be enabled only if it's known to be like that.
+severity: info
+language: Python
+rule:
+  kind: expression_statement
+  has:
+    kind: assignment
+    all:
+      - has:
+          field: left
+          kind: identifier
+          pattern: $VAR
+      - has:
+          field: right
+          kind: string
+  precedes:
+    stopBy: end
+    kind: expression_statement
+    has:
+      kind: assignment
+      all:
+        - has:
+            field: left
+            kind: identifier
+            pattern: $VAR
+        - has:
+            field: right
+            kind: string
+fix: ""
+
+metadata:
+  extended-obfuscation: yes
+  confirmed-obfuscation: no

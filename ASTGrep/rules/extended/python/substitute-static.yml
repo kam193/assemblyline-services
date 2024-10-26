@@ -28,5 +28,7 @@ metadata:
   deobfuscate: |
     {
       "type": "template",
-      "steps": []
+      "steps": [],
+      "fix-key": "VAR",
+      "override-fix": true
     }

@@ -527,6 +527,14 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
         )
         return type_, extract, confirmed
 
+    def _get_fix_config(self, result: dict) -> dict:
+        rule_id = result.get("ruleId")
+        if rule_id not in self._rules_transformations:
+            return None, None
+        override_fix = self._rules_transformations[rule_id].get("override-fix", False)
+        fix_key = self._rules_transformations[rule_id].get("fix-key", None)
+        return override_fix, fix_key
+
     def _cleanup_status(self):
         self._generated_fixes = {}
         self._generated_templates = {}
@@ -595,10 +603,29 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
                     )
             elif type_ == "template":
                 match = result.get("text")
-                if match in self._generated_templates:
+                override_fix, fix_key = self._get_fix_config(result)
+                if fix_key:
+                    match = (
+                        result.get("metaVariables", {})
+                        .get("single", {})
+                        .get(fix_key, {})
+                        .get("text")
+                    )
+                if not match:
+                    self.log.error("No match for template %s", result.get("ruleId"))
                     return
+                if not override_fix and match in self._generated_templates:
+                    return
+                if match in self._generated_templates:
+                    self.log.debug(
+                        "Overriding template %s for rule %s (len: %d)",
+                        match,
+                        result.get("ruleId"),
+                        len(self._generated_templates[match]),
+                    )
                 try:
                     self._generated_templates[match], _ = self.transform_template(result)
+                    self.log.debug("Template %s transformed - len: %d", match, len(self._generated_templates[match]))
                     if confirmed:
                         self.confirmed_obfuscation = True
                 except Exception as exc:
