@@ -23,11 +23,9 @@ rule:
 
 metadata:
   extended-obfuscation: yes
-  # confirmed-obfuscation: yes
+  confirmed-obfuscation: yes
   deobfuscate: |
-    {
-      "confirmed-obfuscation": true
-    }
+    {}
 
 ---
 
@@ -47,8 +45,5 @@ rule:
 
 metadata:
   extended-obfuscation: yes
-  # confirmed-obfuscation: yes
   deobfuscate: |
-    {
-      "confirmed-obfuscation": true
-    }
+    {}

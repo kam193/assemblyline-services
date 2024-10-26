@@ -458,9 +458,11 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
                                         "type": "auto-fix"
                                     }
 
-                                if metadata.get("confirmed-deobfuscation", False):
+                                if metadata.get("confirmed-obfuscation", False):
+                                    if yaml_doc.get("id") not in self._rules_transformations:
+                                        self._rules_transformations[yaml_doc.get("id")] = {}
                                     self._rules_transformations[yaml_doc.get("id")][
-                                        "confirmed-deobfuscation"
+                                        "confirmed-obfuscation"
                                     ] = True
 
                                 if tpl := metadata.get("template_file"):
@@ -625,7 +627,11 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
                     )
                 try:
                     self._generated_templates[match], _ = self.transform_template(result)
-                    self.log.debug("Template %s transformed - len: %d", match, len(self._generated_templates[match]))
+                    self.log.debug(
+                        "Template %s transformed - len: %d",
+                        match,
+                        len(self._generated_templates[match]),
+                    )
                     if confirmed:
                         self.confirmed_obfuscation = True
                 except Exception as exc:

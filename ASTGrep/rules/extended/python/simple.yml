@@ -116,7 +116,7 @@ constraints:
 
 metadata:
   extended-obfuscation: yes
-  obfuscation-confirmed: yes
+  confirmed-obfuscation: yes
   deobfuscate: |
     {
       "type": "fix-generate",
