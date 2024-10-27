@@ -20,6 +20,7 @@ def f2(var1):
     return var1
 
 var20 = 2
+self.var20 = 2
 
 # TODO: this should be ignored
 x = 7
