@@ -28,7 +28,8 @@ rule:
           kind: lambda_parameters
       - inside:
           kind: global_statement
-      - inside:
+      - nthChild: 2
+        inside:
           kind: attribute
       - inside:
           stopBy: end

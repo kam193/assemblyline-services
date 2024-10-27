@@ -40,3 +40,6 @@ def f(b, c, aaaa=7):
 
 def f(b, c, d=7):
     x=7
+
+sth.aaaa()
+"aaaa".decode()
