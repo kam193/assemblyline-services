@@ -13,7 +13,9 @@ metadata:
   extended-obfuscation: yes
   confirmed-obfuscation: yes
   deobfuscate: |
-    {}
+    {
+      "type": "detection"
+    }
   # deobfuscate: |
   #   {
   #     "type": "fix-generate",

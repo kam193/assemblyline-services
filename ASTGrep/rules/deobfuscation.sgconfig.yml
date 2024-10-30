@@ -2,3 +2,4 @@ ruleDirs:
 - ./helpers
 - ./extended
 - ./autofixes
+- ./detection/confirmed

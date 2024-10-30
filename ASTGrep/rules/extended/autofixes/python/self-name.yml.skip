@@ -1,0 +1,39 @@
+id: python-keep-self-variable
+message: Keep 'self' named as self
+language: Python
+rule:
+  kind: identifier
+  pattern: $SELF_VAR
+  not:
+    regex: "self|cls"
+  any:
+    - inside:
+        stopBy: end
+        kind: block
+        inside:
+          kind: function_definition
+          has:
+            field: parameters
+            has:
+              nthChild: 1
+              pattern: $SELF_VAR
+          inside:
+            kind: block
+            inside:
+              kind: class_definition
+    # NOTE: this may interfere with further deobfuscation steps!
+    - nthChild: 1
+      inside:
+        kind: parameters
+        inside:
+          kind: function_definition
+          inside:
+            kind: block
+            inside:
+              kind: class_definition
+
+fix: "self"
+
+metadata:
+  confirmed-obfuscation: no
+  alone-unimportant: yes

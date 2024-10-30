@@ -1,0 +1,40 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/main/schemas/rule.json
+
+id: python-detect-exec-b64
+message: Very specific rule to detect executing b64 encoded strings in subprocesses
+language: Python
+rule:
+  kind: call
+  all:
+    - has:
+        field: function
+        pattern: $FUNC
+        any:
+          - pattern: subprocess.$_
+          - pattern: os.$_
+          - pattern: shlex.$_
+    - has:
+        field: arguments
+        has:
+          kind: list
+          has:
+            kind: call
+            stopBy: end
+            any:
+              - pattern:  base64.b64decode($CMD)
+              - pattern:  b64decode($CMD)
+
+metadata:
+  extended-obfuscation: yes
+  confirmed-obfuscation: yes
+  deobfuscate: |
+    {
+      "type": "detection"
+    }
+  # deobfuscate: |
+  #   {
+  #     "type": "fix-generate",
+  #     "steps": [
+  #       {"func": "concat", "sources": ["MODULE", "METHOD"]}
+  #     ]
+  #   }

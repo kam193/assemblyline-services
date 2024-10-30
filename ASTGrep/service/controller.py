@@ -644,6 +644,9 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
                 if output and len(output) >= self.min_length_for_confirmed:
                     self.confirmed_obfuscation = True
                 return output
+            elif type_ == "detection":
+                self.confirmed_obfuscation = True
+                return None
         except Exception as exc:
             self.log.error("Error processing result for rule %s: %r", result.get("ruleId"), exc)
             return None

@@ -3,3 +3,7 @@ from base64 import b64decode
 
 b'abc'
 b'abc'
+
+cmd = "YWJj"
+b'abc'
+subprocess.Popen([pycmd, '-c', 'abc'])
