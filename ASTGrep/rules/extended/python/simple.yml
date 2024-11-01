@@ -109,6 +109,17 @@ rule:
         kind: argument_list
         regex: ^\(['"]{1,3}(\\x[0-9a-fA-F][0-9a-fA-F]){1,}['"]{1,3}\)$
     - pattern: globals()[$ARGS]
+      has:
+        stopBy: end
+        kind: string_content
+        pattern: $ARGS_STRING
+      not:
+        inside:
+          kind: assignment
+          has:
+            field: right
+            pattern: $ARGS_STRING
+
 
 constraints:
   ARGS:
