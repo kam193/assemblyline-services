@@ -11,7 +11,7 @@ stage: CORE
 category: Static Analysis
 uses_tags: false
 file_required: true
-timeout: 120
+timeout: 150
 is_external: false
 
 config:
@@ -22,12 +22,11 @@ config:
   EXTRACT_INTERMEDIATE_LAYERS: false
   TRY_LANGUAGE_FROM_EXTENSION: true
 
-# submission_params:
-#   - default: "auto"
-#     name: platform
-#     type: list
-#     value: "auto"
-#     list: ["auto", "linux"]
+submission_params:
+  - default: true
+    name: reformat_deobfuscated_code
+    type: bool
+    value: true
 
 heuristics:
   - description: Suspicious code pattern

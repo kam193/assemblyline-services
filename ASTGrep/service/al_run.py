@@ -1,6 +1,7 @@
 import hashlib
 import json
 import os
+import subprocess
 import tempfile
 from collections import defaultdict
 from copy import copy
@@ -205,6 +206,7 @@ class AssemblylineService(ServiceBase):
             request.add_supplementary(f.name, "astgrep_raw_results.json", "AST-Grep Results")
 
         if self._should_deobfuscate:
+            reformat_code = request.get_param("reformat_deobfuscated_code")
             extracted_layers = []
             result_no = 1
             for deobf_result, layer in self._deobfuscator.deobfuscate_file(file_path, file_type):
@@ -220,10 +222,20 @@ class AssemblylineService(ServiceBase):
                         )
                     )
                 else:
+                    if reformat_code:
+                        try:
+                            subprocess.run(
+                                ["ruff", "format", "--no-cache", "--isolated", path],
+                                timeout=5,
+                                check=False,
+                            )
+                        except Exception:
+                            self.log.warning("Error reformatting deobfuscated code", exc_info=True)
                     request.add_extracted(
                         path,
                         f"_deobfuscated_code_FINAL{LANGUAGE_TO_EXT[file_type]}",
                         "Final deobfuscation layer",
+                        safelist_interface=self.api_interface,
                     )
                 result_no += 1
             deobf_section = ResultTextSection(

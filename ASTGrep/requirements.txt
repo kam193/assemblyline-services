@@ -4,3 +4,4 @@ pylspclient
 cryptography
 ast-grep-py
 jinja2
+ruff
