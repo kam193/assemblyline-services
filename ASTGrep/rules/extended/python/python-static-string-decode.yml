@@ -127,6 +127,31 @@ metadata:
     }
 
 ---
+id: python-static-lzma-decompress
+message: Decompress static zlib strings
+language: Python
+rule:
+  kind: call
+  pattern: lzma.decompress($DATA)
+  has:
+    field: arguments
+    has:
+      kind: string
+      pattern: $DATA
+
+metadata:
+  extended-obfuscation: yes
+  deobfuscate: |
+    {
+      "type": "fix-generate",
+      "steps": [
+        {"func": "dequote", "source": "DATA", "decode": false},
+        {"func": "encode", "encoding": "lzma-decompress", "source": "DATA"},
+        {"func": "quote", "source": "DATA"}
+      ]
+    }
+
+---
 # yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/main/schemas/rule.json
 
 id: python-static-unhexlify

@@ -3,6 +3,7 @@ import base64
 import binascii
 import codecs
 import hashlib
+import lzma
 import re
 import zlib
 
@@ -106,6 +107,8 @@ def encode(config: dict, context: dict):
         raise TransformationRejected("Cannot decode bytes")
     elif encoding == "zlib-decompress":
         data = zlib.decompress(context[source])
+    elif encoding == "lzma-decompress":
+        data = lzma.decompress(context[source])
     elif encoding == "base64-bytes":
         data = base64.b64decode(context[source])
     else:

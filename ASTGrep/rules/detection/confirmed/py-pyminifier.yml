@@ -1,0 +1,38 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/main/schemas/rule.json
+
+id: python-detect-exec-compressed
+message: Very specific rule to detect executing string from compressed data
+language: Python
+rule:
+  kind: call
+  all:
+    - has:
+        field: function
+        pattern: $FUNC
+        any:
+          # - pattern: subprocess.$_
+          # - pattern: os.$_
+          # - pattern: shlex.$_
+          - pattern: exec
+    - has:
+        field: arguments
+        has:
+          kind: call
+          any:
+            - pattern: lzma.decompress($$$)
+            - pattern: decompress($$$)
+            - pattern: zlib.decompress($$$)
+          has:
+            kind: call
+            stopBy: end
+            any:
+              - pattern:  base64.b64decode($CMD)
+              - pattern:  b64decode($CMD)
+
+metadata:
+  extended-obfuscation: yes
+  confirmed-obfuscation: yes
+  deobfuscate: |
+    {
+      "type": "detection"
+    }
