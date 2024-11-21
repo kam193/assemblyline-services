@@ -55,7 +55,11 @@ class UnsupportedLanguageError(ValueError):
     pass
 
 
-class SemgrepTimeoutError(TimeoutError):
+class SemgrepError(Exception):
+    pass
+
+
+class SemgrepTimeoutError(SemgrepError, TimeoutError):
     pass
 
 
@@ -67,6 +71,7 @@ class SemgrepScanController:
         self._lock = RLock()
         self._ready = False
         self.last_results = {}
+        self.error_info = None
         self.version = ""
         self.cli_timeout = 60
         self._rules_dir = rules_dir
@@ -139,9 +144,16 @@ class SemgrepScanController:
         elif result.returncode == 0:
             return {}, None
         else:
-            self.log.error("Error running semgrep (%d) %s", result.returncode, result.stdout)
-            raise RuntimeError(f"Error {result.returncode} running semgrep: {result.stdout[:250]}")
-            # return {}
+            self.error_info = result.stderr
+            self.log.error(
+                "Error running semgrep (%d) %s \n %s",
+                result.returncode,
+                result.stdout,
+                result.stderr,
+            )
+            raise SemgrepError(
+                f"Error {result.returncode} running semgrep: {result.stdout[:250]}, {result.stderr[:250]}"
+            )
 
     def process_file(self, file_path: str, file_type: str) -> Iterable[dict]:
         self._prepare_file_with_extension(file_path, file_type)
@@ -184,6 +196,7 @@ class SemgrepLSPController(SemgrepScanController):
     def _startup_values(self):
         self._is_initialized = False
         self.last_results = []
+        self.error_info = None
         self._current_uri = ""
         self._was_timeout = False
         self._ready = False
@@ -262,7 +275,7 @@ class SemgrepLSPController(SemgrepScanController):
                     "maxMemory": int(self._semgrep_config.get("max-memory")),
                     "maxTargetBytes": int(self._semgrep_config.get("max-target-bytes")),
                     "timeout": int(self._semgrep_config.get("timeout")),
-                    "timeoutThreshold": 3,
+                    "timeoutThreshold": int(self._semgrep_config.get("timeout-threshold")),
                     "onlyGitDirty": False,
                     "pro_intrafile": False,
                     "ci": False,
@@ -346,7 +359,7 @@ class SemgrepLSPController(SemgrepScanController):
         self._startup_values()
         self.load_rules([], "")
 
-    def process_file(self, file_path: str, file_type: str, retry: bool = True) -> Iterable[dict]:
+    def process_file(self, file_path: str, file_type: str, retry: bool = False) -> Iterable[dict]:
         self.wait_for_ready()
 
         try:
@@ -399,12 +412,6 @@ class SemgrepLSPController(SemgrepScanController):
             pass
         with suppress(Exception):
             self._shutdown()
-            if self._was_timeout:
-                self.log.info(
-                    "Server stdout: %s, stderr: %s",
-                    self._server_process.stdout.read(),
-                    self._server_process.stderr.read(),
-                )
             self.log.info("Semgrep server stopped")
 
     def cleanup(self):
@@ -417,29 +424,3 @@ class SemgrepLSPController(SemgrepScanController):
             self._reload_server()
         elif self._was_timeout:
             self._reload_server()
-
-
-# class SemgrepDeobfuscationController(SemgrepScanController):
-#     def __init__(self, logger: logging.Logger = None, rules_dir: str = None):
-#         super().__init__(logger, rules_dir)
-#         self._cli_config.remove("--no-autofix")
-#         self._cli_config.append("--autofix")
-
-#     def deobfuscate_file(self, file_path: str, file_type: str) -> Optional[str]:
-#         self._prepare_file_with_extension(file_path, file_type)
-#         iterations = 0
-#         changed = False
-#         while iterations < 10:
-#             results, rule_prefix = self._execute_semgrep(self._working_file)
-#             self.last_results = results
-#             self.version = results.get("version", "")
-#             if res_list := results.get("results", []):
-#                 # TODO: transform deobfuscation rules
-#                 changed = True
-#             else:
-#                 break
-#             iterations += 1
-
-#         if changed:
-#             return self._working_file
-#         return None

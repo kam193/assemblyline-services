@@ -15,15 +15,21 @@ is_external: false
 
 config:
   # Maximum system memory in MiB to use (...) when running a rule on a single file
-  SEMGREP_RAM_LIMIT_MB: "500"
+  SEMGREP_RAM_LIMIT_MB: "850"
   SEMGREP_RULE_TIMEOUT: "10"
+  # The maximum time to wait for results from Semgrep
   SEMGREP_CLI_TIMEOUT: 60
+  SEMGREP_LSP_TIMEOUT: 30
+  # Number of rules that can timeout before the file is skipped
+  SEMGREP_TIMEOUT_TRESHOLD: 10
   # Maximum size for a file to be scanned by Semgrep
   SEMGREP_MAX_TARGET_BYTES: 10000000 # 10MB
   # LSP keeps the semgrep process running in the background
   # reducing the startup time for subsequent requests
   # but may be less stable
   USE_LANGUAGE_SERVER_PROTOCOL: true
+  # if the LSP fails to scan the file, try to scan it with the CLI
+  FALLBACK_TO_SCAN: true
 
 # submission_params:
 #   - default: "auto"
@@ -74,7 +80,7 @@ heuristics:
 docker_config:
   image: ${REGISTRY}ghcr.io/kam193/assemblyline-service-semgrep:$SERVICE_TAG
   cpu_cores: 1.0
-  ram_mb: 1024
+  ram_mb: 1536
   ram_mb_min: 256
   allow_internet_access: false
 

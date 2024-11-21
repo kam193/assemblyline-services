@@ -19,10 +19,8 @@ from assemblyline_v4_service.common.result import (
 )
 
 from .controller import (
-    # SemgrepDeobfuscationController,
     SemgrepLSPController,
     SemgrepScanController,
-    SemgrepTimeoutError,
     UnsupportedLanguageError,
 )
 from .helpers import configure_yaml
@@ -53,26 +51,38 @@ MAX_LINE_SIZE = 5000
 
 class AssemblylineService(ServiceBase):
     def _load_config(self):
-        self._semgrep.cli_timeout = int(self.config.get("SEMGREP_CLI_TIMEOUT", 60))
-
-        self._semgrep.set_config("timeout", str(self.config.get("SEMGREP_RULE_TIMEOUT", 10)))
-        self._semgrep.set_config("max-memory", str(self.config.get("SEMGREP_RAM_LIMIT_MB", 500)))
-        self._semgrep.set_config(
-            "max-target-bytes", str(self.config.get("SEMGREP_MAX_TARGET_BYTES", 1000000))
-        )
+        semgreps = [self._semgrep]
+        if self.fallback_to_scan:
+            semgreps.append(self._fallback_semgrep)
+        for semgrep in semgreps:
+            if isinstance(semgrep, SemgrepLSPController):
+                semgrep.cli_timeout = int(self.config.get("SEMGREP_LSP_TIMEOUT", 30))
+            else:
+                semgrep.cli_timeout = int(self.config.get("SEMGREP_CLI_TIMEOUT", 60))
+            semgrep.set_config("timeout", str(self.config.get("SEMGREP_RULE_TIMEOUT", 10)))
+            semgrep.set_config("max-memory", str(self.config.get("SEMGREP_RAM_LIMIT_MB", 500)))
+            semgrep.set_config(
+                "max-target-bytes", str(self.config.get("SEMGREP_MAX_TARGET_BYTES", 1000000))
+            )
+            semgrep.set_config(
+                "timeout-threshold", str(self.config.get("SEMGREP_TIMEOUT_TRESHOLD", 10))
+            )
 
     def __init__(self, config=None):
         super().__init__(config)
         self._active_rules_dir = None
-        self._active_deobfuscation_rules_dir = None
         self.metadata_cache = {}
+        self._fallback_semgrep = None
+        self.fallback_to_scan = self.config.get("FALLBACK_TO_SCAN", True)
 
         self.use_lsp = self.config.get("USE_LANGUAGE_SERVER_PROTOCOL", True)
         if self.use_lsp:
             self._semgrep = SemgrepLSPController(self.log, RULES_DIR)
         else:
             self._semgrep = SemgrepScanController(self.log, RULES_DIR)
-        # self._deobfuscator = SemgrepDeobfuscationController(self.log, RULES_DIR)
+
+        if self.use_lsp and self.fallback_to_scan:
+            self._fallback_semgrep = SemgrepScanController(self.log, RULES_DIR)
         self._load_config()
 
     def start(self):
@@ -92,8 +102,6 @@ class AssemblylineService(ServiceBase):
             if self.use_lsp:
                 rule["id"] = f"{source_name}.{rule['id']}"
                 metadata[full_id] = rule.get("metadata", {})
-                if rule.get("fix") or rule.get("fix-regex"):
-                    metadata[full_id]["deobfuscation-trigger"] = True
             return rule
 
         def _dump_rules(
@@ -108,49 +116,32 @@ class AssemblylineService(ServiceBase):
         for source_file in self.rules_list:
             source_name = os.path.basename(source_file)
             rules = []
-            # deobfuscation_rules = []
             with open(source_file, "r") as f:
                 tmp_data = []
                 for line in f:
                     if "#SIGNATURE-DELIMITER" in line:
                         rule = _rebuild_rule(tmp_data)
                         rules.append(rule)
-                        # if rule.get("autofix") or rule.get("metadata", {}).get(
-                        #     "deobfuscation-trigger"
-                        # ):
-                        #     deobfuscation_rules.append(rule)
                         tmp_data = []
                     else:
                         tmp_data.append(line)
                 if tmp_data:
                     rule = _rebuild_rule(tmp_data)
                     rules.append(rule)
-                    # if rule.get("autofix") or rule.get("metadata", {}).get("deobfuscation-trigger"):
-                    #     deobfuscation_rules.append(rule)
             new_file = _dump_rules(rules, new_rules_dir, source_name)
             files.append(new_file)
-            # if deobfuscation_rules:
-            #     deobfuscation_files.append(
-            #         _dump_rules(deobfuscation_rules, new_deobfuscation_rules_dir, source_name)
-            #     )
 
         self.log.debug(self.rules_list)
         new_prefix = ".".join(new_rules_dir.name.split("/"))
 
         with RULES_LOCK:
             self._active_rules_dir, old_rules_dir = new_rules_dir, self._active_rules_dir
-            # self._active_deobfuscation_rules_dir, old_deobfuscation_rules_dir = (
-            #     new_deobfuscation_rules_dir,
-            #     self._active_deobfuscation_rules_dir,
-            # )
             self.metadata_cache = metadata
             if old_rules_dir:
                 old_rules_dir.cleanup()
-            # if old_deobfuscation_rules_dir:
-            #     old_deobfuscation_rules_dir.cleanup()
             self._semgrep.load_rules(files, new_prefix)
-            # deobfuscation_prefix = ".".join(new_deobfuscation_rules_dir.name.split("/"))
-            # self._deobfuscator.load_rules(deobfuscation_files, deobfuscation_prefix)
+            if self._fallback_semgrep:
+                self._fallback_semgrep.load_rules(files, new_prefix)
 
     def _get_code_hash(self, code: str):
         code = code or ""
@@ -197,8 +188,6 @@ class AssemblylineService(ServiceBase):
         if self.use_lsp and line_no:
             lines = self._read_lines(line_no)
 
-        self._should_deobfuscate = False
-
         for rule_id, matches in result_by_rule.items():
             extra = matches[0].get("extra", {})
             message = extra.get("message", "").replace("\n\n", "\n")
@@ -209,9 +198,6 @@ class AssemblylineService(ServiceBase):
             metadata = self.metadata_cache.get(rule_id, {})
             title = metadata.get("title", metadata.get("name", message[:100]))
             attack_id = metadata.get("attack_id")
-
-            is_deobfuscation = metadata.get("deobfuscation-trigger", False)
-            self._should_deobfuscate = self._should_deobfuscate or is_deobfuscation
 
             section = ResultTextSection(
                 title,
@@ -238,24 +224,43 @@ class AssemblylineService(ServiceBase):
                 # subsection.set_heuristic(heuristic, signature=rule_id, attack_id=attack_id)
             yield section
 
+    def _run_semgrep(self, semgrep: SemgrepScanController):
+        result = Result()
+        self._request.set_service_context(f"Semgrep™ OSS {semgrep.version}")
+
+        # TODO: better tests if we should retry by default
+        results = semgrep.process_file(self._request.file_path, self._request.file_type)
+        for result_section in self._process_results(results):
+            result.add_section(result_section)
+
+        if semgrep.last_results:
+            with tempfile.NamedTemporaryFile("w", delete=False) as f:
+                json.dump(semgrep.last_results, f, indent=2)
+            self._request.add_supplementary(
+                f.name, "semgrep_raw_results.json", "Semgrep™ OSS Results"
+            )
+
+        return result
+
     def execute(self, request: ServiceRequest) -> None:
         if not self._semgrep or not self._semgrep.ready:
             raise RecoverableError("Semgrep isn't ready yet")
 
         self._request = request
         result = Result()
-        request.result = result
-
-        request.set_service_context(f"Semgrep™ OSS {self._semgrep.version}")
         try:
-            # TODO: better tests if we should retry by default
-            results = self._semgrep.process_file(request.file_path, request.file_type, retry=False)
-            for result_section in self._process_results(results):
-                result.add_section(result_section)
+            try:
+                result = self._run_semgrep(self._semgrep)
+            except TimeoutError:
+                if self.fallback_to_scan:
+                    self.log.info("Falling back to CLI scan")
+                    result = self._run_semgrep(self._fallback_semgrep)
+                else:
+                    raise
         except UnsupportedLanguageError:
-            self.log.warning(f"Unsupported language: {request.file_type}")
+            self.log.warning(f"Unsupported language: {self._request.file_type}")
             return
-        except SemgrepTimeoutError:
+        except TimeoutError:
             err_section = ResultTextSection("Failed to process file")
             err_section.add_line(
                 "Timeout reached while processing file. The file may be too large, too complex"
@@ -263,26 +268,9 @@ class AssemblylineService(ServiceBase):
             )
             err_section.set_heuristic(5)
             result.add_section(err_section)
-            return
-
-        if self._semgrep.last_results:
-            with tempfile.NamedTemporaryFile("w", delete=False) as f:
-                json.dump(self._semgrep.last_results, f, indent=2)
-            request.add_supplementary(f.name, "semgrep_raw_results.json", "Semgrep™ OSS Results")
-
-        # Not implemented.
-        # if self._should_deobfuscate:
-        #     deobfuscated_path = self._deobfuscator.deobfuscate_file(
-        #         request.file_path, request.file_type
-        #     )
-        #     if deobfuscated_path:
-        #         request.add_extracted(deobfuscated_path, "_deobfuscated_code", "Deobfuscated file")
-        #         deobf_section = ResultTextSection("Obfuscation found")
-        #         deobf_section.add_line(
-        #             "Obfuscation was detected in the file. Extracted deobfuscated code."
-        #         )
-        #         deobf_section.set_heuristic(4)
-        #         result.add_section(deobf_section)
+            return result
+        finally:
+            self._request.result = result
 
     def _cleanup(self) -> None:
         self._semgrep.cleanup()
