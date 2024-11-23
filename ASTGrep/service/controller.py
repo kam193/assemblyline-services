@@ -620,17 +620,15 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
                     return
                 if match in self._generated_templates:
                     self.log.debug(
-                        "Overriding template %s for rule %s (len: %d)",
+                        "Overriding template %s for rule %s",
                         match,
                         result.get("ruleId"),
-                        len(self._generated_templates[match]),
                     )
                 try:
                     self._generated_templates[match], _ = self.transform_template(result)
                     self.log.debug(
-                        "Template %s transformed - len: %d",
+                        "Template %s transformed",
                         match,
-                        len(self._generated_templates[match]),
                     )
                     if confirmed:
                         self.confirmed_obfuscation = True
@@ -726,7 +724,6 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
                 )
             except RuntimeError:
                 if self._extract_tmp_rules_on_failure:
-                    print("Copying...")
                     shutil.copytree(tmpdir, self._extract_tmp_rules_on_failure, dirs_exist_ok=True)
                 raise
         if self._escape_dollar:

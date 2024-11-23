@@ -159,7 +159,8 @@ utils:
           - pattern: bool
           - pattern: float
           - pattern: int
-          - pattern: str
+          - pattern: bytes
+          - pattern: list
           # TODO: better patterns
           # - pattern: "''.join"
           - pattern: binascii.unhexlify

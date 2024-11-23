@@ -1,1 +1,2 @@
 str("aaaa")
+str(x, "someencoding")

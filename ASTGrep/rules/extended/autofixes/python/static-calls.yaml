@@ -84,6 +84,7 @@ rule:
     - has:
         field: arguments
         has:
+          nthChild: 1
           kind: string
           pattern: $VALUE
     - has:
@@ -92,6 +93,38 @@ rule:
 
 # TODO: correctly handle bytes
 fix: $VALUE
+
+metadata:
+  extended-obfuscation: no
+  confirmed-obfuscation: no
+
+---
+
+# yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/main/schemas/rule.json
+
+id: python-str-with-explicit-default-encoding
+message: str with explicit given UTF-8 encoding
+language: Python
+rule:
+  kind: call
+  all:
+    - has:
+        field: arguments
+        all:
+          - has:
+              nthChild: 1
+              pattern: $VALUE
+          - has:
+              nthChild: 2
+              kind: string
+              has:
+                  kind: string_content
+                  regex: "[uU][tT][fF][-]{0,1}8"
+    - has:
+        field: function
+        pattern: str
+
+fix: str($VALUE)
 
 metadata:
   extended-obfuscation: no

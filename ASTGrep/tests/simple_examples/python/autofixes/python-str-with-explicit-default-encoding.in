@@ -1,0 +1,3 @@
+str(x, "someencoding")
+str("aaaa", "utf8")
+str(x, "UtF-8")
