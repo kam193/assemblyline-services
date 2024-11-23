@@ -6,41 +6,47 @@ language: Python
 rule:
   kind: if_statement
   pattern: $$$PATTERN
-  all:
-    - has:
-        matches: int_comparation
-        pattern: $IF_COMP
-    - has:
-        kind: elif_clause
-        all:
-          - has:
-             kind: comparison_operator
-             matches: int_comparation
-             pattern: $ELIF_COMP
-          - has:
-              kind: block
-              pattern: $$$ELIF_CODE
-
-    - has:
-        kind: block
-        pattern: $$$IF_CODE
+  any:
+    - all:
+        - matches: elif
+        - matches: if
+    - matches: if
+      not:
+        has:
+          kind: elif_clause
+  has:
+    kind: block
+    pattern: $$$IF_CODE
 
 utils:
   int_comparation:
     kind: comparison_operator
-    # pattern: $A > $B
-    all:
-      - has:
-          nthChild: 1
-          kind: integer
-      - has:
-          nthChild: 2
-          kind: integer
-      - any:
-          - pattern: $_ > $_
-          - pattern: $_ < $_
-          - pattern: $_ >= $_
-          - pattern: $_ <= $_
+    not:
+      has:
+        not:
+          any:
+            - pattern: "<"
+            - pattern: ">"
+            - pattern: ">="
+            - pattern: "<="
+            - pattern: "=="
+            - kind: integer
+  elif:
+    has:
+      kind: elif_clause
+      all:
+        - has:
+            kind: comparison_operator
+            matches: int_comparation
+            pattern: $ELIF_COMP
+        - has:
+            kind: block
+            pattern: $$$ELIF_CODE
+  if:
+    has:
+      field: condition
+      matches: int_comparation
+      pattern: $IF_COMP
 
 metadata:
   extended-obfuscation: yes

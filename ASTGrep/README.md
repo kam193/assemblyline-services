@@ -30,3 +30,29 @@ options:
   --max-iterations MAX_ITERATIONS
                         Maximum iterations
 ```
+
+TODO:
+
+Renaming ambiguous variables (?)
+
+# ruleid: python-obfuscation-ambiguous-variable-name
+(
+    OO0oo0O0oOoO0OoooO,
+    JLLLIJJILJLILIJLLLJI,
+    O0000OOOO000ooO00OoO,
+    OoO0OoooO0OOOO000OooOO0,
+    IIlIllllIlIIlllIIl,
+) = 1, 2, 3, 4, 5
+
+# ruleid: python-obfuscation-ambiguous-variable-name
+lambda nnnnnmmmnnmnmmnmnnnm: aaa
+
+# ruleid: python-obfuscation-ambiguous-variable-name
+__4319848022592 = 52015194899669
+
+pattern-either:
+            - pattern-regex: "[1lI]{10,}"
+            - pattern-regex: "[0Oo]{10,}"
+            - pattern-regex: "[mn]{10,}"
+            - pattern-regex: "[IJl]{10,}"
+            - pattern-regex: "_{1,}[0-9]{10,}"
