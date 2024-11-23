@@ -1,0 +1,34 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/main/schemas/rule.json
+
+id: python-useless-if
+message: Detects conditional expressions that always return the same value
+language: Python
+rule:
+  kind: conditional_expression
+  all:
+    - has:
+        nthChild: 1
+        any:
+          - has:
+              kind: identifier
+              pattern: $VALUE
+          - kind: identifier
+            pattern: $VALUE
+    - has:
+        nthChild: 3
+        any:
+          - has:
+              kind: identifier
+              pattern: $VALUE
+          - kind: identifier
+            pattern: $VALUE
+
+fix: $VALUE
+
+metadata:
+  extended-obfuscation: yes
+  confirmed-obfuscation: yes
+  deobfuscate: |
+    {
+      "type": "auto-fix"
+    }
