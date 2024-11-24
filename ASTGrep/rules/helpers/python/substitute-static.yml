@@ -1,18 +1,26 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/main/schemas/rule.json
 
-id: python-renaming-builtin
-message: Renaming builtin is often used as obfuscation method
+id: python-substitute-static-vars
+message: Substitute static variables
 language: Python
 rule:
+  not:
+    inside:
+      kind: function_definition
+      stopBy: end
   any:
-    - pattern: $FUNC_NAME = $_
-      kind: assignment
-      has:
-        field: right
-        matches: original
+    - all:
+        - kind: assignment
+        - has:
+            field: left
+            kind: identifier
+            pattern: $VAR
+        - has:
+            field: right
+            matches: static
     - all:
         - kind: identifier
-          pattern: $FUNC_NAME
+          pattern: $VAR
           inside:
             any:
               - kind: pattern_list
@@ -36,7 +44,7 @@ rule:
                     field: right
                     has:
                       nthChild: 1
-                      matches: original
+                      matches: static
             - nthChild: 2
               inside:
                 inside:
@@ -44,7 +52,7 @@ rule:
                     field: right
                     has:
                       nthChild: 2
-                      matches: original
+                      matches: static
             - nthChild: 3
               inside:
                 inside:
@@ -52,7 +60,7 @@ rule:
                     field: right
                     has:
                       nthChild: 3
-                      matches: original
+                      matches: static
             - nthChild: 4
               inside:
                 inside:
@@ -60,7 +68,7 @@ rule:
                     field: right
                     has:
                       nthChild: 4
-                      matches: original
+                      matches: static
             - nthChild: 5
               inside:
                 inside:
@@ -68,7 +76,7 @@ rule:
                     field: right
                     has:
                       nthChild: 5
-                      matches: original
+                      matches: static
             - nthChild: 6
               inside:
                 inside:
@@ -76,7 +84,7 @@ rule:
                     field: right
                     has:
                       nthChild: 6
-                      matches: original
+                      matches: static
             - nthChild: 7
               inside:
                 inside:
@@ -84,7 +92,7 @@ rule:
                     field: right
                     has:
                       nthChild: 7
-                      matches: original
+                      matches: static
             - nthChild: 8
               inside:
                 inside:
@@ -92,7 +100,7 @@ rule:
                     field: right
                     has:
                       nthChild: 8
-                      matches: original
+                      matches: static
             - nthChild: 9
               inside:
                 inside:
@@ -100,7 +108,7 @@ rule:
                     field: right
                     has:
                       nthChild: 9
-                      matches: original
+                      matches: static
             - nthChild: 10
               inside:
                 inside:
@@ -108,7 +116,7 @@ rule:
                     field: right
                     has:
                       nthChild: 10
-                      matches: original
+                      matches: static
             - nthChild: 11
               inside:
                 inside:
@@ -116,7 +124,7 @@ rule:
                     field: right
                     has:
                       nthChild: 11
-                      matches: original
+                      matches: static
             - nthChild: 12
               inside:
                 inside:
@@ -124,7 +132,7 @@ rule:
                     field: right
                     has:
                       nthChild: 12
-                      matches: original
+                      matches: static
             - nthChild: 13
               inside:
                 inside:
@@ -132,7 +140,7 @@ rule:
                     field: right
                     has:
                       nthChild: 13
-                      matches: original
+                      matches: static
             - nthChild: 14
               inside:
                 inside:
@@ -140,7 +148,7 @@ rule:
                     field: right
                     has:
                       nthChild: 14
-                      matches: original
+                      matches: static
             - nthChild: 15
               inside:
                 inside:
@@ -148,7 +156,7 @@ rule:
                     field: right
                     has:
                       nthChild: 15
-                      matches: original
+                      matches: static
             - nthChild: 16
               inside:
                 inside:
@@ -156,7 +164,7 @@ rule:
                     field: right
                     has:
                       nthChild: 16
-                      matches: original
+                      matches: static
             - nthChild: 17
               inside:
                 inside:
@@ -164,7 +172,7 @@ rule:
                     field: right
                     has:
                       nthChild: 17
-                      matches: original
+                      matches: static
             - nthChild: 18
               inside:
                 inside:
@@ -172,7 +180,7 @@ rule:
                     field: right
                     has:
                       nthChild: 18
-                      matches: original
+                      matches: static
             - nthChild: 19
               inside:
                 inside:
@@ -180,7 +188,7 @@ rule:
                     field: right
                     has:
                       nthChild: 19
-                      matches: original
+                      matches: static
             - nthChild: 20
               inside:
                 inside:
@@ -188,7 +196,7 @@ rule:
                     field: right
                     has:
                       nthChild: 20
-                      matches: original
+                      matches: static
             - nthChild: 21
               inside:
                 inside:
@@ -196,7 +204,7 @@ rule:
                     field: right
                     has:
                       nthChild: 21
-                      matches: original
+                      matches: static
             - nthChild: 22
               inside:
                 inside:
@@ -204,7 +212,7 @@ rule:
                     field: right
                     has:
                       nthChild: 22
-                      matches: original
+                      matches: static
             - nthChild: 23
               inside:
                 inside:
@@ -212,7 +220,7 @@ rule:
                     field: right
                     has:
                       nthChild: 23
-                      matches: original
+                      matches: static
             - nthChild: 24
               inside:
                 inside:
@@ -220,7 +228,7 @@ rule:
                     field: right
                     has:
                       nthChild: 24
-                      matches: original
+                      matches: static
             - nthChild: 25
               inside:
                 inside:
@@ -228,7 +236,7 @@ rule:
                     field: right
                     has:
                       nthChild: 25
-                      matches: original
+                      matches: static
             - nthChild: 26
               inside:
                 inside:
@@ -236,7 +244,7 @@ rule:
                     field: right
                     has:
                       nthChild: 26
-                      matches: original
+                      matches: static
             - nthChild: 27
               inside:
                 inside:
@@ -244,7 +252,7 @@ rule:
                     field: right
                     has:
                       nthChild: 27
-                      matches: original
+                      matches: static
             - nthChild: 28
               inside:
                 inside:
@@ -252,7 +260,7 @@ rule:
                     field: right
                     has:
                       nthChild: 28
-                      matches: original
+                      matches: static
             - nthChild: 29
               inside:
                 inside:
@@ -260,7 +268,7 @@ rule:
                     field: right
                     has:
                       nthChild: 29
-                      matches: original
+                      matches: static
             - nthChild: 30
               inside:
                 inside:
@@ -268,7 +276,7 @@ rule:
                     field: right
                     has:
                       nthChild: 30
-                      matches: original
+                      matches: static
             - nthChild: 31
               inside:
                 inside:
@@ -276,7 +284,7 @@ rule:
                     field: right
                     has:
                       nthChild: 31
-                      matches: original
+                      matches: static
             - nthChild: 32
               inside:
                 inside:
@@ -284,7 +292,7 @@ rule:
                     field: right
                     has:
                       nthChild: 32
-                      matches: original
+                      matches: static
             - nthChild: 33
               inside:
                 inside:
@@ -292,7 +300,7 @@ rule:
                     field: right
                     has:
                       nthChild: 33
-                      matches: original
+                      matches: static
             - nthChild: 34
               inside:
                 inside:
@@ -300,7 +308,7 @@ rule:
                     field: right
                     has:
                       nthChild: 34
-                      matches: original
+                      matches: static
             - nthChild: 35
               inside:
                 inside:
@@ -308,7 +316,7 @@ rule:
                     field: right
                     has:
                       nthChild: 35
-                      matches: original
+                      matches: static
             - nthChild: 36
               inside:
                 inside:
@@ -316,7 +324,7 @@ rule:
                     field: right
                     has:
                       nthChild: 36
-                      matches: original
+                      matches: static
             - nthChild: 37
               inside:
                 inside:
@@ -324,7 +332,7 @@ rule:
                     field: right
                     has:
                       nthChild: 37
-                      matches: original
+                      matches: static
             - nthChild: 38
               inside:
                 inside:
@@ -332,7 +340,7 @@ rule:
                     field: right
                     has:
                       nthChild: 38
-                      matches: original
+                      matches: static
             - nthChild: 39
               inside:
                 inside:
@@ -340,7 +348,7 @@ rule:
                     field: right
                     has:
                       nthChild: 39
-                      matches: original
+                      matches: static
             - nthChild: 40
               inside:
                 inside:
@@ -348,7 +356,7 @@ rule:
                     field: right
                     has:
                       nthChild: 40
-                      matches: original
+                      matches: static
             - nthChild: 41
               inside:
                 inside:
@@ -356,7 +364,7 @@ rule:
                     field: right
                     has:
                       nthChild: 41
-                      matches: original
+                      matches: static
             - nthChild: 42
               inside:
                 inside:
@@ -364,7 +372,7 @@ rule:
                     field: right
                     has:
                       nthChild: 42
-                      matches: original
+                      matches: static
             - nthChild: 43
               inside:
                 inside:
@@ -372,7 +380,7 @@ rule:
                     field: right
                     has:
                       nthChild: 43
-                      matches: original
+                      matches: static
             - nthChild: 44
               inside:
                 inside:
@@ -380,7 +388,7 @@ rule:
                     field: right
                     has:
                       nthChild: 44
-                      matches: original
+                      matches: static
             - nthChild: 45
               inside:
                 inside:
@@ -388,7 +396,7 @@ rule:
                     field: right
                     has:
                       nthChild: 45
-                      matches: original
+                      matches: static
             - nthChild: 46
               inside:
                 inside:
@@ -396,7 +404,7 @@ rule:
                     field: right
                     has:
                       nthChild: 46
-                      matches: original
+                      matches: static
             - nthChild: 47
               inside:
                 inside:
@@ -404,7 +412,7 @@ rule:
                     field: right
                     has:
                       nthChild: 47
-                      matches: original
+                      matches: static
             - nthChild: 48
               inside:
                 inside:
@@ -412,7 +420,7 @@ rule:
                     field: right
                     has:
                       nthChild: 48
-                      matches: original
+                      matches: static
             - nthChild: 49
               inside:
                 inside:
@@ -420,7 +428,7 @@ rule:
                     field: right
                     has:
                       nthChild: 49
-                      matches: original
+                      matches: static
             - nthChild: 50
               inside:
                 inside:
@@ -428,7 +436,7 @@ rule:
                     field: right
                     has:
                       nthChild: 50
-                      matches: original
+                      matches: static
             - nthChild: 51
               inside:
                 inside:
@@ -436,7 +444,7 @@ rule:
                     field: right
                     has:
                       nthChild: 51
-                      matches: original
+                      matches: static
             - nthChild: 52
               inside:
                 inside:
@@ -444,7 +452,7 @@ rule:
                     field: right
                     has:
                       nthChild: 52
-                      matches: original
+                      matches: static
             - nthChild: 53
               inside:
                 inside:
@@ -452,7 +460,7 @@ rule:
                     field: right
                     has:
                       nthChild: 53
-                      matches: original
+                      matches: static
             - nthChild: 54
               inside:
                 inside:
@@ -460,7 +468,7 @@ rule:
                     field: right
                     has:
                       nthChild: 54
-                      matches: original
+                      matches: static
             - nthChild: 55
               inside:
                 inside:
@@ -468,7 +476,7 @@ rule:
                     field: right
                     has:
                       nthChild: 55
-                      matches: original
+                      matches: static
             - nthChild: 56
               inside:
                 inside:
@@ -476,7 +484,7 @@ rule:
                     field: right
                     has:
                       nthChild: 56
-                      matches: original
+                      matches: static
             - nthChild: 57
               inside:
                 inside:
@@ -484,7 +492,7 @@ rule:
                     field: right
                     has:
                       nthChild: 57
-                      matches: original
+                      matches: static
             - nthChild: 58
               inside:
                 inside:
@@ -492,7 +500,7 @@ rule:
                     field: right
                     has:
                       nthChild: 58
-                      matches: original
+                      matches: static
             - nthChild: 59
               inside:
                 inside:
@@ -500,7 +508,7 @@ rule:
                     field: right
                     has:
                       nthChild: 59
-                      matches: original
+                      matches: static
             - nthChild: 60
               inside:
                 inside:
@@ -508,7 +516,7 @@ rule:
                     field: right
                     has:
                       nthChild: 60
-                      matches: original
+                      matches: static
             - nthChild: 61
               inside:
                 inside:
@@ -516,7 +524,7 @@ rule:
                     field: right
                     has:
                       nthChild: 61
-                      matches: original
+                      matches: static
             - nthChild: 62
               inside:
                 inside:
@@ -524,7 +532,7 @@ rule:
                     field: right
                     has:
                       nthChild: 62
-                      matches: original
+                      matches: static
             - nthChild: 63
               inside:
                 inside:
@@ -532,7 +540,7 @@ rule:
                     field: right
                     has:
                       nthChild: 63
-                      matches: original
+                      matches: static
             - nthChild: 64
               inside:
                 inside:
@@ -540,7 +548,7 @@ rule:
                     field: right
                     has:
                       nthChild: 64
-                      matches: original
+                      matches: static
             - nthChild: 65
               inside:
                 inside:
@@ -548,7 +556,7 @@ rule:
                     field: right
                     has:
                       nthChild: 65
-                      matches: original
+                      matches: static
             - nthChild: 66
               inside:
                 inside:
@@ -556,7 +564,7 @@ rule:
                     field: right
                     has:
                       nthChild: 66
-                      matches: original
+                      matches: static
             - nthChild: 67
               inside:
                 inside:
@@ -564,7 +572,7 @@ rule:
                     field: right
                     has:
                       nthChild: 67
-                      matches: original
+                      matches: static
             - nthChild: 68
               inside:
                 inside:
@@ -572,7 +580,7 @@ rule:
                     field: right
                     has:
                       nthChild: 68
-                      matches: original
+                      matches: static
             - nthChild: 69
               inside:
                 inside:
@@ -580,7 +588,7 @@ rule:
                     field: right
                     has:
                       nthChild: 69
-                      matches: original
+                      matches: static
             - nthChild: 70
               inside:
                 inside:
@@ -588,7 +596,7 @@ rule:
                     field: right
                     has:
                       nthChild: 70
-                      matches: original
+                      matches: static
             - nthChild: 71
               inside:
                 inside:
@@ -596,7 +604,7 @@ rule:
                     field: right
                     has:
                       nthChild: 71
-                      matches: original
+                      matches: static
             - nthChild: 72
               inside:
                 inside:
@@ -604,7 +612,7 @@ rule:
                     field: right
                     has:
                       nthChild: 72
-                      matches: original
+                      matches: static
             - nthChild: 73
               inside:
                 inside:
@@ -612,7 +620,7 @@ rule:
                     field: right
                     has:
                       nthChild: 73
-                      matches: original
+                      matches: static
             - nthChild: 74
               inside:
                 inside:
@@ -620,7 +628,7 @@ rule:
                     field: right
                     has:
                       nthChild: 74
-                      matches: original
+                      matches: static
             - nthChild: 75
               inside:
                 inside:
@@ -628,7 +636,7 @@ rule:
                     field: right
                     has:
                       nthChild: 75
-                      matches: original
+                      matches: static
             - nthChild: 76
               inside:
                 inside:
@@ -636,7 +644,7 @@ rule:
                     field: right
                     has:
                       nthChild: 76
-                      matches: original
+                      matches: static
             - nthChild: 77
               inside:
                 inside:
@@ -644,7 +652,7 @@ rule:
                     field: right
                     has:
                       nthChild: 77
-                      matches: original
+                      matches: static
             - nthChild: 78
               inside:
                 inside:
@@ -652,7 +660,7 @@ rule:
                     field: right
                     has:
                       nthChild: 78
-                      matches: original
+                      matches: static
             - nthChild: 79
               inside:
                 inside:
@@ -660,7 +668,7 @@ rule:
                     field: right
                     has:
                       nthChild: 79
-                      matches: original
+                      matches: static
             - nthChild: 80
               inside:
                 inside:
@@ -668,7 +676,7 @@ rule:
                     field: right
                     has:
                       nthChild: 80
-                      matches: original
+                      matches: static
             - nthChild: 81
               inside:
                 inside:
@@ -676,7 +684,7 @@ rule:
                     field: right
                     has:
                       nthChild: 81
-                      matches: original
+                      matches: static
             - nthChild: 82
               inside:
                 inside:
@@ -684,7 +692,7 @@ rule:
                     field: right
                     has:
                       nthChild: 82
-                      matches: original
+                      matches: static
             - nthChild: 83
               inside:
                 inside:
@@ -692,7 +700,7 @@ rule:
                     field: right
                     has:
                       nthChild: 83
-                      matches: original
+                      matches: static
             - nthChild: 84
               inside:
                 inside:
@@ -700,7 +708,7 @@ rule:
                     field: right
                     has:
                       nthChild: 84
-                      matches: original
+                      matches: static
             - nthChild: 85
               inside:
                 inside:
@@ -708,7 +716,7 @@ rule:
                     field: right
                     has:
                       nthChild: 85
-                      matches: original
+                      matches: static
             - nthChild: 86
               inside:
                 inside:
@@ -716,7 +724,7 @@ rule:
                     field: right
                     has:
                       nthChild: 86
-                      matches: original
+                      matches: static
             - nthChild: 87
               inside:
                 inside:
@@ -724,7 +732,7 @@ rule:
                     field: right
                     has:
                       nthChild: 87
-                      matches: original
+                      matches: static
             - nthChild: 88
               inside:
                 inside:
@@ -732,7 +740,7 @@ rule:
                     field: right
                     has:
                       nthChild: 88
-                      matches: original
+                      matches: static
             - nthChild: 89
               inside:
                 inside:
@@ -740,7 +748,7 @@ rule:
                     field: right
                     has:
                       nthChild: 89
-                      matches: original
+                      matches: static
             - nthChild: 90
               inside:
                 inside:
@@ -748,7 +756,7 @@ rule:
                     field: right
                     has:
                       nthChild: 90
-                      matches: original
+                      matches: static
             - nthChild: 91
               inside:
                 inside:
@@ -756,7 +764,7 @@ rule:
                     field: right
                     has:
                       nthChild: 91
-                      matches: original
+                      matches: static
             - nthChild: 92
               inside:
                 inside:
@@ -764,7 +772,7 @@ rule:
                     field: right
                     has:
                       nthChild: 92
-                      matches: original
+                      matches: static
             - nthChild: 93
               inside:
                 inside:
@@ -772,7 +780,7 @@ rule:
                     field: right
                     has:
                       nthChild: 93
-                      matches: original
+                      matches: static
             - nthChild: 94
               inside:
                 inside:
@@ -780,7 +788,7 @@ rule:
                     field: right
                     has:
                       nthChild: 94
-                      matches: original
+                      matches: static
             - nthChild: 95
               inside:
                 inside:
@@ -788,7 +796,7 @@ rule:
                     field: right
                     has:
                       nthChild: 95
-                      matches: original
+                      matches: static
             - nthChild: 96
               inside:
                 inside:
@@ -796,7 +804,7 @@ rule:
                     field: right
                     has:
                       nthChild: 96
-                      matches: original
+                      matches: static
             - nthChild: 97
               inside:
                 inside:
@@ -804,7 +812,7 @@ rule:
                     field: right
                     has:
                       nthChild: 97
-                      matches: original
+                      matches: static
             - nthChild: 98
               inside:
                 inside:
@@ -812,7 +820,7 @@ rule:
                     field: right
                     has:
                       nthChild: 98
-                      matches: original
+                      matches: static
             - nthChild: 99
               inside:
                 inside:
@@ -820,7 +828,7 @@ rule:
                     field: right
                     has:
                       nthChild: 99
-                      matches: original
+                      matches: static
             - nthChild: 100
               inside:
                 inside:
@@ -828,7 +836,7 @@ rule:
                     field: right
                     has:
                       nthChild: 100
-                      matches: original
+                      matches: static
             - nthChild: 101
               inside:
                 inside:
@@ -836,7 +844,7 @@ rule:
                     field: right
                     has:
                       nthChild: 101
-                      matches: original
+                      matches: static
             - nthChild: 102
               inside:
                 inside:
@@ -844,7 +852,7 @@ rule:
                     field: right
                     has:
                       nthChild: 102
-                      matches: original
+                      matches: static
             - nthChild: 103
               inside:
                 inside:
@@ -852,7 +860,7 @@ rule:
                     field: right
                     has:
                       nthChild: 103
-                      matches: original
+                      matches: static
             - nthChild: 104
               inside:
                 inside:
@@ -860,7 +868,7 @@ rule:
                     field: right
                     has:
                       nthChild: 104
-                      matches: original
+                      matches: static
             - nthChild: 105
               inside:
                 inside:
@@ -868,7 +876,7 @@ rule:
                     field: right
                     has:
                       nthChild: 105
-                      matches: original
+                      matches: static
             - nthChild: 106
               inside:
                 inside:
@@ -876,7 +884,7 @@ rule:
                     field: right
                     has:
                       nthChild: 106
-                      matches: original
+                      matches: static
             - nthChild: 107
               inside:
                 inside:
@@ -884,7 +892,7 @@ rule:
                     field: right
                     has:
                       nthChild: 107
-                      matches: original
+                      matches: static
             - nthChild: 108
               inside:
                 inside:
@@ -892,7 +900,7 @@ rule:
                     field: right
                     has:
                       nthChild: 108
-                      matches: original
+                      matches: static
             - nthChild: 109
               inside:
                 inside:
@@ -900,7 +908,7 @@ rule:
                     field: right
                     has:
                       nthChild: 109
-                      matches: original
+                      matches: static
             - nthChild: 110
               inside:
                 inside:
@@ -908,7 +916,7 @@ rule:
                     field: right
                     has:
                       nthChild: 110
-                      matches: original
+                      matches: static
             - nthChild: 111
               inside:
                 inside:
@@ -916,7 +924,7 @@ rule:
                     field: right
                     has:
                       nthChild: 111
-                      matches: original
+                      matches: static
             - nthChild: 112
               inside:
                 inside:
@@ -924,7 +932,7 @@ rule:
                     field: right
                     has:
                       nthChild: 112
-                      matches: original
+                      matches: static
             - nthChild: 113
               inside:
                 inside:
@@ -932,7 +940,7 @@ rule:
                     field: right
                     has:
                       nthChild: 113
-                      matches: original
+                      matches: static
             - nthChild: 114
               inside:
                 inside:
@@ -940,7 +948,7 @@ rule:
                     field: right
                     has:
                       nthChild: 114
-                      matches: original
+                      matches: static
             - nthChild: 115
               inside:
                 inside:
@@ -948,7 +956,7 @@ rule:
                     field: right
                     has:
                       nthChild: 115
-                      matches: original
+                      matches: static
             - nthChild: 116
               inside:
                 inside:
@@ -956,7 +964,7 @@ rule:
                     field: right
                     has:
                       nthChild: 116
-                      matches: original
+                      matches: static
             - nthChild: 117
               inside:
                 inside:
@@ -964,7 +972,7 @@ rule:
                     field: right
                     has:
                       nthChild: 117
-                      matches: original
+                      matches: static
             - nthChild: 118
               inside:
                 inside:
@@ -972,7 +980,7 @@ rule:
                     field: right
                     has:
                       nthChild: 118
-                      matches: original
+                      matches: static
             - nthChild: 119
               inside:
                 inside:
@@ -980,7 +988,7 @@ rule:
                     field: right
                     has:
                       nthChild: 119
-                      matches: original
+                      matches: static
             - nthChild: 120
               inside:
                 inside:
@@ -988,56 +996,26 @@ rule:
                     field: right
                     has:
                       nthChild: 120
-                      matches: original
-
+                      matches: static
 
 utils:
-  original:
+  static:
+    pattern: $VALUE
     any:
-      - matches: important_builtins
-      - kind: parenthesized_expression
-        has:
-          matches: important_builtins
-  important_builtins:
-    pattern: $ORIGINAL_NAME
-    all:
-      - any:
-          - kind: identifier
-          - kind: attribute
-      - any:
-          - pattern: eval
-          - pattern: exec
-          - pattern: str
-          - pattern: map
-          - pattern: ord
-          - pattern: tuple
-          - pattern: type
-          - pattern: globals
-          - pattern: locals
-          - pattern: __import__
-          - pattern: compile
-          - pattern: getattr
-          - pattern: dir
-          - pattern: vars
-          - pattern: bool
-          - pattern: float
-          - pattern: int
-          - pattern: bytes
-          - pattern: list
-          - pattern: pow
-          - pattern: round
-          - pattern: range
-          - pattern: open
-          # TODO: better patterns
-          # - pattern: "''.join"
-          - pattern: binascii.unhexlify
+      - kind: integer
+      - kind: "true"
+      - kind: "false"
+      - kind: float
+      - kind: string
 
 metadata:
-  extended-obfuscation: yes
-  confirmed-obfuscation: no
-  template_file: python-rename-func.yml.j2
+  extended-obfuscation: no
+  alone-unimportant: yes
+  template_file: python-replace-static-var.yml.j2
   deobfuscate: |
     {
       "type": "template",
-      "steps": []
+      "steps": [],
+      "fix-key": "VAR",
+      "override-fix": true
     }

@@ -217,7 +217,7 @@ def str_concat(config: dict, context: dict):
     return left + right
 
 
-MATH_ALLOWED = "0123456789/+-*^(). ><=_~"
+MATH_ALLOWED = "0123456789/+-*^(). ><=_~ \t"
 
 
 def math_eval(config: dict, context: dict):

@@ -28,6 +28,10 @@ rule:
           kind: lambda_parameters
       - inside:
           kind: global_statement
+      - inside:
+          inside:
+            kind: assignment
+            field: left
       - nthChild: 2
         inside:
           kind: attribute
