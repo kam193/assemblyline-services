@@ -1017,5 +1017,8 @@ metadata:
       "type": "template",
       "steps": [],
       "fix-key": "VAR",
-      "override-fix": true
+      "override-fix": true,
+      "persistent": true,
+      "persistent-key": "VAR",
+      "persistent-value": "VALUE"
     }

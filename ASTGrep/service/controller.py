@@ -532,10 +532,16 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
     def _get_fix_config(self, result: dict) -> dict:
         rule_id = result.get("ruleId")
         if rule_id not in self._rules_transformations:
-            return None, None
+            return None, None, None, None
         override_fix = self._rules_transformations[rule_id].get("override-fix", False)
         fix_key = self._rules_transformations[rule_id].get("fix-key", None)
-        return override_fix, fix_key
+        if self._rules_transformations[rule_id].get("persistent", False):
+            persistent_key = self._rules_transformations[rule_id].get("persistent-key", None)
+            persistent_value = self._rules_transformations[rule_id].get("persistent-value", None)
+        else:
+            persistent_key = None
+            persistent_value = None
+        return override_fix, fix_key, persistent_key, persistent_value
 
     def _cleanup_status(self):
         self._generated_fixes = {}
@@ -544,6 +550,20 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
         self._run_auto_fixes = False
         self._global_variable_context = {}
         self._global_cache = {}
+
+    def _delete_persistent_rule(self, rule_id: str, key: str):
+        hash_key = hash((rule_id, key))
+        with suppress(Exception):
+            os.remove(os.path.join(self._persistent_rules_dir.name, f"{hash_key}.yaml"))
+
+    def _save_persistent_rule(self, rule_id: str, key: str, value: str, rule_data: str):
+        hash_key = hash((rule_id, key))
+        self._persistent_rules[(rule_id, key)] = value
+        self.log.debug("Saving persistent rule (%s, %s)", rule_id, key)
+        with open(os.path.join(self._persistent_rules_dir.name, f"{hash_key}.yaml"), "w+") as f:
+            f.write(rule_data)
+        if "{{{DOLLARPLACEHOLDER}}}" in rule_data:
+            self._persistent_escape_dollar = True
 
     def _process_result(self, result: dict, secondary=False):
         if not result:
@@ -605,7 +625,9 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
                     )
             elif type_ == "template":
                 match = result.get("text")
-                override_fix, fix_key = self._get_fix_config(result)
+                override_fix, fix_key, persistent_key, persistent_value = self._get_fix_config(
+                    result
+                )
                 if fix_key:
                     match = (
                         result.get("metaVariables", {})
@@ -616,20 +638,41 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
                 if not match:
                     self.log.error("No match for template %s", result.get("ruleId"))
                     return
-                if not override_fix and match in self._generated_templates:
-                    return
-                if match in self._generated_templates:
-                    self.log.debug(
-                        "Overriding template %s for rule %s",
-                        match,
-                        result.get("ruleId"),
+
+                # persistent means that the rule is generated only once and kept in all iterations
+                if persistent_key:
+                    p_key = (
+                        result.get("metaVariables", {})
+                        .get("single", {})
+                        .get(persistent_key, {})
+                        .get("text")
                     )
+                    p_value = (
+                        result.get("metaVariables", {})
+                        .get("single", {})
+                        .get(persistent_value, {})
+                        .get("text")
+                    )
+                    if (result.get("ruleId"), p_key) in self._persistent_rules:
+                        current_value = self._persistent_rules[(result.get("ruleId"), p_key)]
+                        if current_value == p_value:
+                            # no changes - nothing to do
+                            return
+                else:
+                    if not override_fix and match in self._generated_templates:
+                        return
+                    if match in self._generated_templates:
+                        self.log.debug(
+                            "Overriding template %s for rule %s",
+                            match,
+                            result.get("ruleId"),
+                        )
                 try:
-                    self._generated_templates[match], _ = self.transform_template(result)
-                    self.log.debug(
-                        "Template %s transformed",
-                        match,
-                    )
+                    template, _ = self.transform_template(result)
+                    if not persistent_key:
+                        self._generated_templates[match] = template
+                    else:
+                        self._save_persistent_rule(result.get("ruleId"), p_key, p_value, template)
                     if confirmed:
                         self.confirmed_obfuscation = True
                 except Exception as exc:
@@ -714,12 +757,12 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
                         if not self._escape_dollar and "{{{DOLLARPLACEHOLDER}}}" in template:
                             self._escape_dollar = True
 
+            if self._persistent_rules:
+                apply_rule_dirs.add(self._persistent_rules_dir.name)
+
             if not apply_rule_dirs:
                 self.log.debug("No fixes to apply")
                 return
-
-            if self._persistent_rules:
-                apply_rule_dirs.add(self._persistent_rules_dir.name)
 
             with open(os.path.join(tmpdir, "fixes.sgconfig.yml"), "w+") as f:
                 yaml.dump({"ruleDirs": list(apply_rule_dirs)}, f, Dumper=yaml.CSafeDumper)
@@ -734,7 +777,7 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
                 if self._extract_tmp_rules_on_failure:
                     shutil.copytree(tmpdir, self._extract_tmp_rules_on_failure, dirs_exist_ok=True)
                 raise
-        if self._escape_dollar:
+        if self._escape_dollar or self._persistent_escape_dollar:
             subprocess.run(
                 ["sed", "-i", "s/{{{DOLLARPLACEHOLDER}}}/$/g", self._working_file],
                 check=True,
@@ -757,7 +800,8 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
         #     but requires also persistent keeping them in the context, as well as
         #     supporting the overwriting of them
         self._persistent_rules_dir = tempfile.TemporaryDirectory(prefix="astgrep_rules_")
-        self._persistent_rules = dict()
+        self._persistent_rules = dict()  # (rule name, key) -> value
+        self._persistent_escape_dollar = False
 
         start = time.monotonic()
         while time.monotonic() - start < self.deobfuscation_timeout:

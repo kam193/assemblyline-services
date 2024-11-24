@@ -25,6 +25,17 @@ utils:
           inside:
             matches: allowed_kinds
             stopBy: end
+      - not:
+          kind: unary_operator
+          all:
+            - has:
+                field: operator
+                pattern: "-"
+            - has:
+                field: argument
+                any:
+                  - kind: integer
+                  - kind: float
       - has:
           pattern: $_
   allowed_kinds:
