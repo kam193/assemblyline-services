@@ -663,6 +663,11 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
             if fix == match:
                 continue
             self._fix_number += 1
+            if isinstance(fix, float):
+                # ensure rounding is predictable
+                fix = f"{fix:.5f}"
+            elif not isinstance(fix, str):
+                fix = str(fix)
             if "$" in fix:
                 fix = fix.replace("$", "{{{DOLLARPLACEHOLDER}}}")
                 self._escape_dollar = True
@@ -713,6 +718,9 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
                 self.log.debug("No fixes to apply")
                 return
 
+            if self._persistent_rules:
+                apply_rule_dirs.add(self._persistent_rules_dir.name)
+
             with open(os.path.join(tmpdir, "fixes.sgconfig.yml"), "w+") as f:
                 yaml.dump({"ruleDirs": list(apply_rule_dirs)}, f, Dumper=yaml.CSafeDumper)
 
@@ -743,6 +751,13 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
         original_timestamp = last_timestamp = os.stat(self._working_file).st_mtime_ns
         last_size = os.stat(self._working_file).st_size
         file_size_not_changed = False
+
+        # TODO:
+        #   - replacing static variables could be part of the persistent rules
+        #     but requires also persistent keeping them in the context, as well as
+        #     supporting the overwriting of them
+        self._persistent_rules_dir = tempfile.TemporaryDirectory(prefix="astgrep_rules_")
+        self._persistent_rules = dict()
 
         start = time.monotonic()
         while time.monotonic() - start < self.deobfuscation_timeout:
@@ -819,6 +834,8 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
             self.status += "\n - Confirmed obfuscation."
         if self.work_time > self.deobfuscation_timeout:
             self.status += "\n - Timeout exceeded, potentially not all fixes applied."
+
+        self._persistent_rules_dir.cleanup()
 
     def _build_context(self, result: dict) -> dict:
         context = {

@@ -1,0 +1,56 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/main/schemas/rule.json
+
+id: python-static-math-expression
+message: Evaluating static expressions
+language: Python
+rule:
+  matches: original
+
+utils:
+  original:
+    pattern: $EXPRESSION
+    all:
+      - matches: allowed_kinds
+      - not:
+          has:
+            pattern: $_
+            stopBy: end
+            not:
+              any:
+                - matches: allowed_kinds
+                - inside:
+                    field: operator
+                    pattern: $A
+      - not:
+          inside:
+            matches: allowed_kinds
+            stopBy: end
+      - has:
+          pattern: $_
+  allowed_kinds:
+    any:
+      - kind: binary_operator
+      - kind: unary_operator
+      - kind: parenthesized_expression
+      # - kind: not_operator # TODO: handle this safely - requires changes in the eval validation
+      - kind: integer
+      - kind: float
+      - kind: integer
+      - kind: comparison_operator
+      # - pattern: "-"
+      # - pattern: "+"
+      # - pattern: "*"
+      # - pattern: "/"
+      # - pattern: "~"
+      # - pattern: "^"
+
+metadata:
+  extended-obfuscation: no
+  confirmed-obfuscation: no
+  deobfuscate: |
+    {
+      "type": "fix-generate",
+      "steps": [
+        {"func": "math_eval", "source": "EXPRESSION"}
+      ]
+    }

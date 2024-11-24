@@ -1,4 +1,4 @@
-def _square(Round = -71032 / -64419, Divide = float, While = globals):
+def _square(Round = 1.10266, Divide = float, While = globals):
     globals()[Round] = Divide
 
     Divide()

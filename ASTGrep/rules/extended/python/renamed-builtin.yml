@@ -149,6 +149,846 @@ rule:
                     has:
                       nthChild: 15
                       matches: original
+            - nthChild: 16
+              inside:
+                inside:
+                  has:
+                    field: right
+                    has:
+                      nthChild: 16
+                      matches: original
+            - nthChild: 17
+              inside:
+                inside:
+                  has:
+                    field: right
+                    has:
+                      nthChild: 17
+                      matches: original
+            - nthChild: 18
+              inside:
+                inside:
+                  has:
+                    field: right
+                    has:
+                      nthChild: 18
+                      matches: original
+            - nthChild: 19
+              inside:
+                inside:
+                  has:
+                    field: right
+                    has:
+                      nthChild: 19
+                      matches: original
+            - nthChild: 20
+              inside:
+                inside:
+                  has:
+                    field: right
+                    has:
+                      nthChild: 20
+                      matches: original
+            # - nthChild: 21
+            #   inside:
+            #     inside:
+            #       has:
+            #         field: right
+            #         has:
+            #           nthChild: 21
+            #           matches: original
+            # - nthChild: 22
+            #   inside:
+            #     inside:
+            #       has:
+            #         field: right
+            #         has:
+            #           nthChild: 22
+            #           matches: original
+            # - nthChild: 23
+            #   inside:
+            #     inside:
+            #       has:
+            #         field: right
+            #         has:
+            #           nthChild: 23
+            #           matches: original
+            # - nthChild: 24
+            #   inside:
+            #     inside:
+            #       has:
+            #         field: right
+            #         has:
+            #           nthChild: 24
+            #           matches: original
+            # - nthChild: 25
+            #   inside:
+            #     inside:
+            #       has:
+            #         field: right
+            #         has:
+            #           nthChild: 25
+            #           matches: original
+            # - nthChild: 26
+            #   inside:
+            #     inside:
+            #       has:
+            #         field: right
+            #         has:
+            #           nthChild: 26
+            #           matches: original
+            # - nthChild: 27
+            #   inside:
+            #     inside:
+            #       has:
+            #         field: right
+            #         has:
+            #           nthChild: 27
+            #           matches: original
+            # - nthChild: 28
+            #   inside:
+            #     inside:
+            #       has:
+            #         field: right
+            #         has:
+            #           nthChild: 28
+            #           matches: original
+            # - nthChild: 29
+            #   inside:
+            #     inside:
+            #       has:
+            #         field: right
+            #         has:
+            #           nthChild: 29
+            #           matches: original
+            # - nthChild: 30
+            #   inside:
+            #     inside:
+            #       has:
+            #         field: right
+            #         has:
+            #           nthChild: 30
+            #           matches: original
+            # - nthChild: 31
+            #   inside:
+            #     inside:
+            #       has:
+            #         field: right
+            #         has:
+            #           nthChild: 31
+            #           matches: original
+            # - nthChild: 32
+            #   inside:
+            #     inside:
+            #       has:
+            #         field: right
+            #         has:
+            #           nthChild: 32
+            #           matches: original
+            # - nthChild: 33
+            #   inside:
+            #     inside:
+            #       has:
+            #         field: right
+            #         has:
+            #           nthChild: 33
+            #           matches: original
+            # - nthChild: 34
+            #   inside:
+            #     inside:
+            #       has:
+            #         field: right
+            #         has:
+            #           nthChild: 34
+            #           matches: original
+            # - nthChild: 35
+            #   inside:
+            #     inside:
+            #       has:
+            #         field: right
+            #         has:
+            #           nthChild: 35
+            #           matches: original
+            # - nthChild: 36
+            #   inside:
+            #     inside:
+            #       has:
+            #         field: right
+            #         has:
+            #           nthChild: 36
+            #           matches: original
+            # - nthChild: 37
+            #   inside:
+            #     inside:
+            #       has:
+            #         field: right
+            #         has:
+            #           nthChild: 37
+            #           matches: original
+            # - nthChild: 38
+            #   inside:
+            #     inside:
+            #       has:
+            #         field: right
+            #         has:
+            #           nthChild: 38
+            #           matches: original
+            # - nthChild: 39
+            #   inside:
+            #     inside:
+            #       has:
+            #         field: right
+            #         has:
+            #           nthChild: 39
+            #           matches: original
+            # - nthChild: 40
+            #   inside:
+            #     inside:
+            #       has:
+            #         field: right
+            #         has:
+            #           nthChild: 40
+            #           matches: original
+            # - nthChild: 41
+            #   inside:
+            #     inside:
+            #       has:
+            #         field: right
+            #         has:
+            #           nthChild: 41
+            #           matches: original
+            # - nthChild: 42
+            #   inside:
+            #     inside:
+            #       has:
+            #         field: right
+            #         has:
+            #           nthChild: 42
+            #           matches: original
+            # - nthChild: 43
+            #   inside:
+            #     inside:
+            #       has:
+            #         field: right
+            #         has:
+            #           nthChild: 43
+            #           matches: original
+            # - nthChild: 44
+            #   inside:
+            #     inside:
+            #       has:
+            #         field: right
+            #         has:
+            #           nthChild: 44
+            #           matches: original
+            # - nthChild: 45
+            #   inside:
+            #     inside:
+            #       has:
+            #         field: right
+            #         has:
+            #           nthChild: 45
+            #           matches: original
+            # - nthChild: 46
+            #   inside:
+            #     inside:
+            #       has:
+            #         field: right
+            #         has:
+            #           nthChild: 46
+            #           matches: original
+            # - nthChild: 47
+            #   inside:
+            #     inside:
+            #       has:
+            #         field: right
+            #         has:
+            #           nthChild: 47
+            #           matches: original
+            # - nthChild: 48
+            #   inside:
+            #     inside:
+            #       has:
+            #         field: right
+            #         has:
+            #           nthChild: 48
+            #           matches: original
+            # - nthChild: 49
+            #   inside:
+            #     inside:
+            #       has:
+            #         field: right
+            #         has:
+            #           nthChild: 49
+            #           matches: original
+            # - nthChild: 50
+            #   inside:
+            #     inside:
+            #       has:
+            #         field: right
+            #         has:
+            #           nthChild: 50
+            #           matches: original
+            # - nthChild: 51
+            #   inside:
+            #     inside:
+            #       has:
+            #         field: right
+            #         has:
+            #           nthChild: 51
+            #           matches: original
+            # - nthChild: 52
+            #   inside:
+            #     inside:
+            #       has:
+            #         field: right
+            #         has:
+            #           nthChild: 52
+            #           matches: original
+            # - nthChild: 53
+            #   inside:
+            #     inside:
+            #       has:
+            #         field: right
+            #         has:
+            #           nthChild: 53
+            #           matches: original
+            # - nthChild: 54
+            #   inside:
+            #     inside:
+            #       has:
+            #         field: right
+            #         has:
+            #           nthChild: 54
+            #           matches: original
+            # - nthChild: 55
+            #   inside:
+            #     inside:
+            #       has:
+            #         field: right
+            #         has:
+            #           nthChild: 55
+            #           matches: original
+            # - nthChild: 56
+            #   inside:
+            #     inside:
+            #       has:
+            #         field: right
+            #         has:
+            #           nthChild: 56
+            #           matches: original
+            # - nthChild: 57
+            #   inside:
+            #     inside:
+            #       has:
+            #         field: right
+            #         has:
+            #           nthChild: 57
+            #           matches: original
+            # - nthChild: 58
+            #   inside:
+            #     inside:
+            #       has:
+            #         field: right
+            #         has:
+            #           nthChild: 58
+            #           matches: original
+            # - nthChild: 59
+            #   inside:
+            #     inside:
+            #       has:
+            #         field: right
+            #         has:
+            #           nthChild: 59
+            #           matches: original
+            # - nthChild: 60
+            #   inside:
+            #     inside:
+            #       has:
+            #         field: right
+            #         has:
+            #           nthChild: 60
+            #           matches: original
+            # - nthChild: 61
+            #   inside:
+            #     inside:
+            #       has:
+            #         field: right
+            #         has:
+            #           nthChild: 61
+            #           matches: original
+            # - nthChild: 62
+            #   inside:
+            #     inside:
+            #       has:
+            #         field: right
+            #         has:
+            #           nthChild: 62
+            #           matches: original
+            # - nthChild: 63
+            #   inside:
+            #     inside:
+            #       has:
+            #         field: right
+            #         has:
+            #           nthChild: 63
+            #           matches: original
+            # - nthChild: 64
+            #   inside:
+            #     inside:
+            #       has:
+            #         field: right
+            #         has:
+            #           nthChild: 64
+            #           matches: original
+            # - nthChild: 65
+            #   inside:
+            #     inside:
+            #       has:
+            #         field: right
+            #         has:
+            #           nthChild: 65
+            #           matches: original
+            # - nthChild: 66
+            #   inside:
+            #     inside:
+            #       has:
+            #         field: right
+            #         has:
+            #           nthChild: 66
+            #           matches: original
+            # - nthChild: 67
+            #   inside:
+            #     inside:
+            #       has:
+            #         field: right
+            #         has:
+            #           nthChild: 67
+            #           matches: original
+            # - nthChild: 68
+            #   inside:
+            #     inside:
+            #       has:
+            #         field: right
+            #         has:
+            #           nthChild: 68
+            #           matches: original
+            # - nthChild: 69
+            #   inside:
+            #     inside:
+            #       has:
+            #         field: right
+            #         has:
+            #           nthChild: 69
+            #           matches: original
+            # - nthChild: 70
+            #   inside:
+            #     inside:
+            #       has:
+            #         field: right
+            #         has:
+            #           nthChild: 70
+            #           matches: original
+            # - nthChild: 71
+            #   inside:
+            #     inside:
+            #       has:
+            #         field: right
+            #         has:
+            #           nthChild: 71
+            #           matches: original
+            # - nthChild: 72
+            #   inside:
+            #     inside:
+            #       has:
+            #         field: right
+            #         has:
+            #           nthChild: 72
+            #           matches: original
+            # - nthChild: 73
+            #   inside:
+            #     inside:
+            #       has:
+            #         field: right
+            #         has:
+            #           nthChild: 73
+            #           matches: original
+            # - nthChild: 74
+            #   inside:
+            #     inside:
+            #       has:
+            #         field: right
+            #         has:
+            #           nthChild: 74
+            #           matches: original
+            # - nthChild: 75
+            #   inside:
+            #     inside:
+            #       has:
+            #         field: right
+            #         has:
+            #           nthChild: 75
+            #           matches: original
+            # - nthChild: 76
+            #   inside:
+            #     inside:
+            #       has:
+            #         field: right
+            #         has:
+            #           nthChild: 76
+            #           matches: original
+            # - nthChild: 77
+            #   inside:
+            #     inside:
+            #       has:
+            #         field: right
+            #         has:
+            #           nthChild: 77
+            #           matches: original
+            # - nthChild: 78
+            #   inside:
+            #     inside:
+            #       has:
+            #         field: right
+            #         has:
+            #           nthChild: 78
+            #           matches: original
+            # - nthChild: 79
+            #   inside:
+            #     inside:
+            #       has:
+            #         field: right
+            #         has:
+            #           nthChild: 79
+            #           matches: original
+            # - nthChild: 80
+            #   inside:
+            #     inside:
+            #       has:
+            #         field: right
+            #         has:
+            #           nthChild: 80
+            #           matches: original
+            # - nthChild: 81
+            #   inside:
+            #     inside:
+            #       has:
+            #         field: right
+            #         has:
+            #           nthChild: 81
+            #           matches: original
+            # - nthChild: 82
+            #   inside:
+            #     inside:
+            #       has:
+            #         field: right
+            #         has:
+            #           nthChild: 82
+            #           matches: original
+            # - nthChild: 83
+            #   inside:
+            #     inside:
+            #       has:
+            #         field: right
+            #         has:
+            #           nthChild: 83
+            #           matches: original
+            # - nthChild: 84
+            #   inside:
+            #     inside:
+            #       has:
+            #         field: right
+            #         has:
+            #           nthChild: 84
+            #           matches: original
+            # - nthChild: 85
+            #   inside:
+            #     inside:
+            #       has:
+            #         field: right
+            #         has:
+            #           nthChild: 85
+            #           matches: original
+            # - nthChild: 86
+            #   inside:
+            #     inside:
+            #       has:
+            #         field: right
+            #         has:
+            #           nthChild: 86
+            #           matches: original
+            # - nthChild: 87
+            #   inside:
+            #     inside:
+            #       has:
+            #         field: right
+            #         has:
+            #           nthChild: 87
+            #           matches: original
+            # - nthChild: 88
+            #   inside:
+            #     inside:
+            #       has:
+            #         field: right
+            #         has:
+            #           nthChild: 88
+            #           matches: original
+            # - nthChild: 89
+            #   inside:
+            #     inside:
+            #       has:
+            #         field: right
+            #         has:
+            #           nthChild: 89
+            #           matches: original
+            # - nthChild: 90
+            #   inside:
+            #     inside:
+            #       has:
+            #         field: right
+            #         has:
+            #           nthChild: 90
+            #           matches: original
+            # - nthChild: 91
+            #   inside:
+            #     inside:
+            #       has:
+            #         field: right
+            #         has:
+            #           nthChild: 91
+            #           matches: original
+            # - nthChild: 92
+            #   inside:
+            #     inside:
+            #       has:
+            #         field: right
+            #         has:
+            #           nthChild: 92
+            #           matches: original
+            # - nthChild: 93
+            #   inside:
+            #     inside:
+            #       has:
+            #         field: right
+            #         has:
+            #           nthChild: 93
+            #           matches: original
+            # - nthChild: 94
+            #   inside:
+            #     inside:
+            #       has:
+            #         field: right
+            #         has:
+            #           nthChild: 94
+            #           matches: original
+            # - nthChild: 95
+            #   inside:
+            #     inside:
+            #       has:
+            #         field: right
+            #         has:
+            #           nthChild: 95
+            #           matches: original
+            # - nthChild: 96
+            #   inside:
+            #     inside:
+            #       has:
+            #         field: right
+            #         has:
+            #           nthChild: 96
+            #           matches: original
+            # - nthChild: 97
+            #   inside:
+            #     inside:
+            #       has:
+            #         field: right
+            #         has:
+            #           nthChild: 97
+            #           matches: original
+            # - nthChild: 98
+            #   inside:
+            #     inside:
+            #       has:
+            #         field: right
+            #         has:
+            #           nthChild: 98
+            #           matches: original
+            # - nthChild: 99
+            #   inside:
+            #     inside:
+            #       has:
+            #         field: right
+            #         has:
+            #           nthChild: 99
+            #           matches: original
+            # - nthChild: 100
+            #   inside:
+            #     inside:
+            #       has:
+            #         field: right
+            #         has:
+            #           nthChild: 100
+            #           matches: original
+            # - nthChild: 101
+            #   inside:
+            #     inside:
+            #       has:
+            #         field: right
+            #         has:
+            #           nthChild: 101
+            #           matches: original
+            # - nthChild: 102
+            #   inside:
+            #     inside:
+            #       has:
+            #         field: right
+            #         has:
+            #           nthChild: 102
+            #           matches: original
+            # - nthChild: 103
+            #   inside:
+            #     inside:
+            #       has:
+            #         field: right
+            #         has:
+            #           nthChild: 103
+            #           matches: original
+            # - nthChild: 104
+            #   inside:
+            #     inside:
+            #       has:
+            #         field: right
+            #         has:
+            #           nthChild: 104
+            #           matches: original
+            # - nthChild: 105
+            #   inside:
+            #     inside:
+            #       has:
+            #         field: right
+            #         has:
+            #           nthChild: 105
+            #           matches: original
+            # - nthChild: 106
+            #   inside:
+            #     inside:
+            #       has:
+            #         field: right
+            #         has:
+            #           nthChild: 106
+            #           matches: original
+            # - nthChild: 107
+            #   inside:
+            #     inside:
+            #       has:
+            #         field: right
+            #         has:
+            #           nthChild: 107
+            #           matches: original
+            # - nthChild: 108
+            #   inside:
+            #     inside:
+            #       has:
+            #         field: right
+            #         has:
+            #           nthChild: 108
+            #           matches: original
+            # - nthChild: 109
+            #   inside:
+            #     inside:
+            #       has:
+            #         field: right
+            #         has:
+            #           nthChild: 109
+            #           matches: original
+            # - nthChild: 110
+            #   inside:
+            #     inside:
+            #       has:
+            #         field: right
+            #         has:
+            #           nthChild: 110
+            #           matches: original
+            # - nthChild: 111
+            #   inside:
+            #     inside:
+            #       has:
+            #         field: right
+            #         has:
+            #           nthChild: 111
+            #           matches: original
+            # - nthChild: 112
+            #   inside:
+            #     inside:
+            #       has:
+            #         field: right
+            #         has:
+            #           nthChild: 112
+            #           matches: original
+            # - nthChild: 113
+            #   inside:
+            #     inside:
+            #       has:
+            #         field: right
+            #         has:
+            #           nthChild: 113
+            #           matches: original
+            # - nthChild: 114
+            #   inside:
+            #     inside:
+            #       has:
+            #         field: right
+            #         has:
+            #           nthChild: 114
+            #           matches: original
+            # - nthChild: 115
+            #   inside:
+            #     inside:
+            #       has:
+            #         field: right
+            #         has:
+            #           nthChild: 115
+            #           matches: original
+            # - nthChild: 116
+            #   inside:
+            #     inside:
+            #       has:
+            #         field: right
+            #         has:
+            #           nthChild: 116
+            #           matches: original
+            # - nthChild: 117
+            #   inside:
+            #     inside:
+            #       has:
+            #         field: right
+            #         has:
+            #           nthChild: 117
+            #           matches: original
+            # - nthChild: 118
+            #   inside:
+            #     inside:
+            #       has:
+            #         field: right
+            #         has:
+            #           nthChild: 118
+            #           matches: original
+            # - nthChild: 119
+            #   inside:
+            #     inside:
+            #       has:
+            #         field: right
+            #         has:
+            #           nthChild: 119
+            #           matches: original
+            # - nthChild: 120
+            #   inside:
+            #     inside:
+            #       has:
+            #         field: right
+            #         has:
+            #           nthChild: 120
+            #           matches: original
 
 
 utils:
