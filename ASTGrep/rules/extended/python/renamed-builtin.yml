@@ -12,121 +12,144 @@ rule:
         matches: original
     - all:
         - kind: identifier
+          pattern: $FUNC_NAME
           inside:
-            kind: pattern_list
-            inside:
-              kind: assignment
-        - any:
-            - pattern: $FUNC_NAME
-              nthChild: 1
-              inside:
-                kind: pattern_list
-                inside:
+            any:
+              - kind: pattern_list
+              - kind: tuple_pattern
+            all:
+              - inside:
+                  kind: assignment
+                  field: left
+              - inside:
                   kind: assignment
                   has:
-                    kind: expression_list
+                    field: right
+                    any:
+                      - kind: expression_list
+                      - kind: tuple
+        - any:
+            - nthChild: 1
+              inside:
+                inside:
+                  has:
+                    field: right
                     has:
                       nthChild: 1
                       matches: original
-            - pattern: $FUNC_NAME
-              nthChild: 2
+            - nthChild: 2
               inside:
-                kind: pattern_list
                 inside:
-                  kind: assignment
                   has:
-                    kind: expression_list
+                    field: right
                     has:
                       nthChild: 2
                       matches: original
-            - pattern: $FUNC_NAME
-              nthChild: 3
+            - nthChild: 3
               inside:
-                kind: pattern_list
                 inside:
-                  kind: assignment
                   has:
-                    kind: expression_list
+                    field: right
                     has:
                       nthChild: 3
                       matches: original
-            - pattern: $FUNC_NAME
-              nthChild: 4
+            - nthChild: 4
               inside:
-                kind: pattern_list
                 inside:
-                  kind: assignment
                   has:
-                    kind: expression_list
+                    field: right
                     has:
                       nthChild: 4
                       matches: original
-            - pattern: $FUNC_NAME
-              nthChild: 5
+            - nthChild: 5
               inside:
-                kind: pattern_list
                 inside:
-                  kind: assignment
                   has:
-                    kind: expression_list
+                    field: right
                     has:
                       nthChild: 5
                       matches: original
-            - pattern: $FUNC_NAME
-              nthChild: 6
+            - nthChild: 6
               inside:
-                kind: pattern_list
                 inside:
-                  kind: assignment
                   has:
-                    kind: expression_list
+                    field: right
                     has:
                       nthChild: 6
                       matches: original
-            - pattern: $FUNC_NAME
-              nthChild: 7
+            - nthChild: 7
               inside:
-                kind: pattern_list
                 inside:
-                  kind: assignment
                   has:
-                    kind: expression_list
+                    field: right
                     has:
                       nthChild: 7
                       matches: original
-            - pattern: $FUNC_NAME
-              nthChild: 8
+            - nthChild: 8
               inside:
-                kind: pattern_list
                 inside:
-                  kind: assignment
                   has:
-                    kind: expression_list
+                    field: right
                     has:
                       nthChild: 8
                       matches: original
-            - pattern: $FUNC_NAME
-              nthChild: 9
+            - nthChild: 9
               inside:
-                kind: pattern_list
                 inside:
-                  kind: assignment
                   has:
-                    kind: expression_list
+                    field: right
                     has:
                       nthChild: 9
                       matches: original
-            - pattern: $FUNC_NAME
-              nthChild: 10
+            - nthChild: 10
               inside:
-                kind: pattern_list
                 inside:
-                  kind: assignment
                   has:
-                    kind: expression_list
+                    field: right
                     has:
                       nthChild: 10
                       matches: original
+            - nthChild: 11
+              inside:
+                inside:
+                  has:
+                    field: right
+                    has:
+                      nthChild: 11
+                      matches: original
+            - nthChild: 12
+              inside:
+                inside:
+                  has:
+                    field: right
+                    has:
+                      nthChild: 12
+                      matches: original
+            - nthChild: 13
+              inside:
+                inside:
+                  has:
+                    field: right
+                    has:
+                      nthChild: 13
+                      matches: original
+            - nthChild: 14
+              inside:
+                inside:
+                  has:
+                    field: right
+                    has:
+                      nthChild: 14
+                      matches: original
+            - nthChild: 15
+              inside:
+                inside:
+                  has:
+                    field: right
+                    has:
+                      nthChild: 15
+                      matches: original
+
 
 utils:
   original:

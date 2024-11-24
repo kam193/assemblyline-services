@@ -16,3 +16,8 @@ def somefunc(var2 = exec):
 
 O0O0o0oOOO0oOOoo0000o00O = binascii.unhexlify
 binascii.unhexlify()
+
+(var3, var4) = (exec, eval)
+
+123+5
+123+5
