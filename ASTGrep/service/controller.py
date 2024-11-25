@@ -112,6 +112,7 @@ class ASTGrepScanController:
         self._working_file = ""
         self._cli_config = []
         self.current_language = ""
+        self._sg_process_time = 0
 
         self.workspace = tempfile.TemporaryDirectory("sg_workspace")
 
@@ -178,6 +179,7 @@ class ASTGrepScanController:
 
         active_config = ["-c", config_file or self.config_file]
 
+        start_time = time.monotonic()
         with self._lock:
             result = subprocess.run(
                 cmd + active_config + [file_path],
@@ -185,6 +187,7 @@ class ASTGrepScanController:
                 text=True,
                 timeout=self.cli_timeout,
             )
+        self._sg_process_time += time.monotonic() - start_time
 
         # Something was found
         if result.returncode <= 1 and not autofix:
@@ -680,7 +683,6 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
                         "Error transforming template '%s' result: %r", result.get("ruleId"), exc
                     )
             elif type_ == "extract":
-                # Assume that extraction means obfuscation
                 output, _ = self.transform(result)
                 if output and len(output) >= self.min_length_for_confirmed:
                     self.confirmed_obfuscation = True
@@ -795,6 +797,8 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
         last_size = os.stat(self._working_file).st_size
         file_size_not_changed = False
 
+        self._sg_process_time = 0.0
+
         # TODO:
         #   - replacing static variables could be part of the persistent rules
         #     but requires also persistent keeping them in the context, as well as
@@ -872,7 +876,8 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
             yield open(self._working_file).read(), "#final-layer#"
 
         self.status = (
-            f"Deobfuscation done in {self.work_time:.3f} seconds ({self._iterations} iterations)."
+            f"Deobfuscation done in {self.work_time:.3f} seconds ({self._iterations} iterations,"
+            f" {self._sg_process_time:.3f} AST-Grep time)."
         )
         if self.confirmed_obfuscation:
             self.status += "\n - Confirmed obfuscation."
