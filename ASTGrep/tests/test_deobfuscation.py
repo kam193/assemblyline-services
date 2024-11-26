@@ -1,9 +1,14 @@
 import os
+import time
 import warnings
 
 import pytest
 import yaml
-from service.controller import ASTGrepDeobfuscationController, ASTGrepLSPController
+from service.controller import (
+    ASTGrepDeobfuscationController,
+    ASTGrepLSPController,
+    ASTGrepScanController,
+)
 
 RULES_DIR = "./rules/"
 
@@ -16,10 +21,36 @@ def deobfuscator():
 @pytest.fixture(scope="module")
 def lsp_controller():
     lsp = ASTGrepLSPController(rules_dir=[RULES_DIR])
+
+    wait_start = time.monotonic()
+    while not lsp.ready and time.monotonic() - wait_start < 10:
+        time.sleep(1)
+    if not lsp.ready:
+        raise RuntimeError("LSP did not start")
     try:
         yield lsp
     finally:
         lsp.stop()
+
+
+@pytest.fixture(scope="module")
+def scan_controller():
+    scan = ASTGrepScanController(rules_dir=[RULES_DIR])
+    return scan
+
+
+def detect_sample(controller, example, deobfuscator):
+    language = f"code/{example.split('/')[-2]}"
+    results = list(controller.process_file(f"{example}.in", language, retry=False))
+
+    extended_obfuscation = False
+    for result in results:
+        rule_id = result.get("ruleId", result.get("check_id"))
+        metadata = deobfuscator._metadata.get(rule_id, {})
+        if metadata.get("extended-obfuscation", False):
+            extended_obfuscation = True
+            break
+    assert extended_obfuscation is True, "Sample was not detected as potentially obfuscated"
 
 
 @pytest.fixture
@@ -113,16 +144,7 @@ def test_real_samples(deobfuscate_example, example):
 )
 def test_lsp_detects_real_samples(lsp_controller, example, deobfuscator):
     """Tests on real samples"""
-    language = f"code/{example.split('/')[-2]}"
-    results = list(lsp_controller.process_file(f"{example}.in", language, retry=False))
-
-    extended_obfuscation = False
-    for result in results:
-        metadata = deobfuscator._metadata.get(result["check_id"], {})
-        if metadata.get("extended-obfuscation", False):
-            extended_obfuscation = True
-            break
-    assert extended_obfuscation is True, "Sample was not detected as potentially obfuscated"
+    detect_sample(lsp_controller, example, deobfuscator)
 
 
 @pytest.mark.parametrize(
@@ -140,13 +162,13 @@ def test_other_cases(deobfuscate_example, example):
 )
 def test_lsp_detects_prepared_samples(lsp_controller, example, deobfuscator):
     """Tests on prepared samples"""
-    language = f"code/{example.split('/')[-2]}"
-    results = list(lsp_controller.process_file(f"{example}.in", language, retry=False))
+    detect_sample(lsp_controller, example, deobfuscator)
 
-    extended_obfuscation = False
-    for result in results:
-        metadata = deobfuscator._metadata.get(result["check_id"], {})
-        if metadata.get("extended-obfuscation", False):
-            extended_obfuscation = True
-            break
-    assert extended_obfuscation is True, "Sample was not detected as potentially obfuscated"
+
+@pytest.mark.parametrize(
+    "example",
+    _list_examples("detection"),
+)
+def test_scan_detects_prepared_samples(scan_controller, example, deobfuscator):
+    """Tests on prepared samples"""
+    detect_sample(scan_controller, example, deobfuscator)

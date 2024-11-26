@@ -91,8 +91,10 @@ class AssemblylineService(ServiceBase):
         self.try_language_from_extension = self.config.get("TRY_LANGUAGE_FROM_EXTENSION", True)
         if self.use_lsp:
             self._astgrep = ASTGrepLSPController(self.log, RULES_DIR)
+            self._fallback_astgrep = ASTGrepScanController(self.log, RULES_DIR)
         else:
             self._astgrep = ASTGrepScanController(self.log, RULES_DIR)
+            self._fallback_astgrep = None
         self._deobfuscator = ASTGrepDeobfuscationController(self.log, RULES_DIR)
         self._read_rules()
 
@@ -189,20 +191,22 @@ class AssemblylineService(ServiceBase):
                 # subsection.set_heuristic(heuristic, signature=rule_id, attack_id=attack_id)
             yield section
 
-    def _process_file(self, request: ServiceRequest, file_path, file_type):
+    def _process_file(
+        self, request: ServiceRequest, file_path, file_type, artgrep: ASTGrepScanController
+    ):
         main_section = ResultTextSection(f"Processing as {file_type}")
         try:
-            results = self._astgrep.process_file(file_path, file_type)
-            request.set_service_context(self._astgrep.version)
+            results = artgrep.process_file(file_path, file_type)
+            request.set_service_context(artgrep.version)
             for result_section in self._process_results(results):
                 main_section.add_subsection(result_section)
         except UnsupportedLanguageError:
             self.log.warning(f"Unsupported language: {file_type}")
             return
 
-        if self._astgrep.last_results:
+        if artgrep.last_results:
             with tempfile.NamedTemporaryFile("w", delete=False) as f:
-                json.dump(self._astgrep.last_results, f, indent=2)
+                json.dump(artgrep.last_results, f, indent=2)
             request.add_supplementary(f.name, "astgrep_raw_results.json", "AST-Grep Results")
 
         if self._should_deobfuscate:
@@ -274,6 +278,16 @@ class AssemblylineService(ServiceBase):
 
         return sg_lang in self._sg_languages_to_scan
 
+    def process_with_fallback(self, request: ServiceRequest, file_path, file_type):
+        try:
+            self._process_file(request, file_path, file_type, self._astgrep)
+        except TimeoutError:
+            self.log.warning(f"Timeout while processing {file_type}")
+            if self._fallback_astgrep:
+                self._process_file(request, file_path, file_type, self._fallback_astgrep)
+            else:
+                raise
+
     def execute(self, request: ServiceRequest) -> None:
         if not self._astgrep or not self._astgrep.ready:
             raise RecoverableError("AST-Grep isn't ready yet")
@@ -283,7 +297,7 @@ class AssemblylineService(ServiceBase):
         request.result = result
 
         if self._should_scan_type(request.file_type):
-            self._process_file(request, request.file_path, request.file_type)
+            self.process_with_fallback(request, request.file_path, request.file_type)
 
         if not self.try_language_from_extension:
             return
@@ -302,7 +316,7 @@ class AssemblylineService(ServiceBase):
                 for type_ in (request.file_type, file_type)
             ):
                 return
-            self._process_file(request, request.file_path, file_type)
+            self.process_with_fallback(request, request.file_path, file_type)
 
     def _cleanup(self) -> None:
         self._astgrep.cleanup()

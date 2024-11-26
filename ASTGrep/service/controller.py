@@ -157,7 +157,7 @@ class ASTGrepScanController:
         if copy:
             shutil.copyfile(file_path, self._working_file)
         else:
-            os.symlink(file_path, self._working_file)
+            os.symlink(os.path.abspath(file_path), self._working_file)
 
     def load_rules(self, rule_paths: list[str], rule_id_prefix: str):
         new_rules = []
@@ -202,7 +202,7 @@ class ASTGrepScanController:
 
         return {}
 
-    def process_file(self, file_path: str, file_type: str) -> Iterable[dict]:
+    def process_file(self, file_path: str, file_type: str, retry: bool = True) -> Iterable[dict]:
         self._prepare_file_with_extension(file_path, file_type)
         results = self._execute_sg(self._working_file)
         self.last_results = results
@@ -284,6 +284,17 @@ class ASTGrepLSPController(ASTGrepScanController):
                 "$/progress": lambda _: None,
                 "textDocument/publishDiagnostics": self._add_results,
                 "window/logMessage": self._handle_message,
+                # JsonRpcEndpoint does not understand rcp_id = 0 and thinks it's a notification :)
+                "workspace/workspaceFolders": lambda _: self.endpoint.json_rpc_endpoint.send_request(
+                    {
+                        "id": 0,
+                        "method": "workspace/workspaceFolders",
+                        "params": None,
+                        "jsonrpc": "2.0",
+                        "result": None,
+                        "error": None,
+                    }
+                ),
             },
             method_callbacks={
                 "window/workDoneProgress/create": lambda _: dict(token="be-ignored"),
