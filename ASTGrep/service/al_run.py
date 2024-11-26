@@ -91,7 +91,9 @@ class AssemblylineService(ServiceBase):
         self.try_language_from_extension = self.config.get("TRY_LANGUAGE_FROM_EXTENSION", True)
         if self.use_lsp:
             self._astgrep = ASTGrepLSPController(self.log, RULES_DIR)
-            self._fallback_astgrep = ASTGrepScanController(self.log, RULES_DIR)
+            # Preparation for fallback
+            self._fallback_astgrep = None
+            # self._fallback_astgrep = ASTGrepScanController(self.log, RULES_DIR)
         else:
             self._astgrep = ASTGrepScanController(self.log, RULES_DIR)
             self._fallback_astgrep = None
