@@ -384,3 +384,14 @@ def noop_ifs(config: dict, context: dict):
     else:
         code = config.get("else_code", "ELSE_CODE")
         return context.get(code, "pass")
+
+
+def join_chr_xor(config: dict, context: dict) -> str:
+    data_list = config.get("source", "DATA")
+    xor_num = config.get("xor", "XOR_NUM")
+
+    xor_value = context[xor_num]
+    if not isinstance(xor_value, int):
+        xor_value = int(xor_value)
+
+    return "".join(chr(i ^ xor_value) for i in context[data_list])

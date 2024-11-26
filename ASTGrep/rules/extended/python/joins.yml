@@ -1,0 +1,63 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/main/schemas/rule.json
+
+id: python-static-join-numbers-with-xor-and-chr
+message: Evaluating static expressions
+language: Python
+rule:
+  kind: call
+  all:
+    # TODO: support for bytes!
+    - has: # look for: "".join
+        field: function
+        all:
+          - has:
+              kind: identifier
+              pattern: join
+          - has:
+              field: object
+              kind: string
+              not:  # TODO: join with other strings!
+                has:
+                  kind: string_content
+    - has:
+        field: arguments
+        kind: argument_list
+        has:
+          nthChild: 1
+          kind: list_comprehension # TODO: generators
+          pattern: "[chr($I ^ $XOR_NUM) for $I in [$$$NUMBERS]]"
+          all:
+            # Only static integers
+            - has:
+                kind: for_in_clause
+                has:
+                  field: right
+                  not:
+                    has:
+                      pattern: $_
+                      not:
+                        kind: integer
+            # match the XOR_NUM
+            - has:
+                kind: call
+                has:
+                  field: arguments
+                  has:
+                    has:
+                      field: right
+                      pattern: $XOR_NUM
+                      kind: integer
+
+
+metadata:
+  extended-obfuscation: yes
+  confirmed-obfuscation: no
+  deobfuscate: |
+    {
+      "type": "fix-generate",
+      "steps": [
+        {"func": "encode_list", "source": "NUMBERS", "output": "NUMBERS"},
+        {"func": "join_chr_xor", "source": "NUMBERS", "xor": "XOR_NUM", "output": "STRING"},
+        {"func": "quote", "source": "STRING"}
+      ]
+    }
