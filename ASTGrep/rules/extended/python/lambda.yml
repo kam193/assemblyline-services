@@ -201,6 +201,14 @@ utils:
         has:
           field: value
           pattern: $ARG
+      # static values
+      - kind: "true"
+      - kind: "false"
+      - kind: integer
+      - kind: string
+      # return directly the argument
+      - kind: identifier
+        pattern: $ARG
 
   inner_call_double:
     any:

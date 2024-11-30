@@ -34,3 +34,9 @@ func10(x10, y10)
 
 func11 = lambda a, b: a(b)
 func11(x11, y11)
+
+l1Il111I = lambda I11lI111: True
+l1Il111I("aa")
+
+I11I1III = lambda I11lI111: I11lI111
+I11I1III(123)
