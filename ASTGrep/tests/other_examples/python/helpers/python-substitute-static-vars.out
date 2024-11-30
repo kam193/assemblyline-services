@@ -48,3 +48,19 @@ var4, var5 = 1, "a"
 (var6, var7) = 8, True
 
 [1, "a", 8, True]
+
+while 7:
+    pass
+
+if a == 7:
+    pass
+
+var8 = 9
+while var8:
+    pass
+    var8 -= 1
+
+var9 = 9
+while 9:
+   pass
+   c = 3

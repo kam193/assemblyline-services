@@ -202,6 +202,32 @@ class ASTGrepScanController:
 
         return {}
 
+    def _stream_sg(self, file_path: str, config_file: str = None):
+        cmd = ["sg", "scan"] + self._cli_config + ["--json=stream"]
+        active_config = ["-c", config_file or self.config_file]
+
+        start_time = time.monotonic()
+        with self._lock:
+            p = subprocess.Popen(
+                cmd + active_config + [file_path],
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+            )
+        # When streaming, there is effectively no timeout
+        while p.poll() is None:
+            for line in iter(p.stdout.readline, ""):
+                yield json.loads(line)
+        self._sg_process_time += time.monotonic() - start_time
+
+        if p.returncode > 1:
+            self.log.error("Error running sg (%d) %s, %s", p.returncode, p.stdout, p.stderr)
+            raise RuntimeError(
+                f"Error {p.returncode} running sg: {p.stdout.read()[:250]}, {p.stderr.read()[:250]}"
+            )
+
+        return
+
     def process_file(self, file_path: str, file_type: str, retry: bool = True) -> Iterable[dict]:
         self._prepare_file_with_extension(file_path, file_type)
         results = self._execute_sg(self._working_file)
@@ -446,7 +472,7 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
         self.min_length_for_confirmed = min_length_for_confirmed
         self.group_fixes = group_fixes
 
-        self._extract_tmp_rules_on_failure = None  # "./tmp"
+        self._extract_tmp_rules_on_failure = False  # "./tmp"
 
     def read_rules(self, rule_paths: list[str]):
         for rule_path in rule_paths:
@@ -736,9 +762,6 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
             }
 
     def _batch_apply_fixes(self):
-        # if not self._generated_fixes:
-        #     return
-
         apply_rule_dirs = set()
         self._fix_number = 0
         self._escape_dollar = False
@@ -789,6 +812,11 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
             except RuntimeError:
                 if self._extract_tmp_rules_on_failure:
                     shutil.copytree(tmpdir, self._extract_tmp_rules_on_failure, dirs_exist_ok=True)
+                    shutil.copytree(
+                        self._persistent_rules_dir.name,
+                        self._extract_tmp_rules_on_failure,
+                        dirs_exist_ok=True,
+                    )
                 raise
         if self._escape_dollar or self._persistent_escape_dollar:
             subprocess.run(

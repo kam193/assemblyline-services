@@ -23,11 +23,49 @@ rule:
           - inside:
               kind: call # for now
       - inside:
+          stopBy: end
+          any:
+            - kind: import_statement
+            - kind: import_from_statement
+            - kind: function_definition
+              has:
+                field: parameters
+                any:
+                  - has:
+                      kind: identifier
+                      pattern: {{ VAR }}
+                  - has:
+                      stopBy: end
+                      kind: identifier
+                      nthChild: 1
+                      pattern: {{ VAR }}
+            - kind: lambda
+              has:
+                field: parameters
+                has:
+                  stopBy: end
+                  kind: identifier
+                  pattern: {{ VAR }}
+            - kind: assignment
+              has:
+                field: left
+                pattern: {{ VAR }}
+      - inside:
           kind: parameters
       - inside:
           kind: lambda_parameters
       - inside:
           kind: global_statement
+      - inside:
+          kind: while_statement
+          has:
+              stopBy: end
+              any:
+                - kind: assignment
+                - kind: augmented_assignment
+              has:
+                field: left
+                pattern: {{ VAR }}
       - inside:
           inside:
             kind: assignment
@@ -35,29 +73,6 @@ rule:
       - nthChild: 2
         inside:
           kind: attribute
-      - inside:
-          stopBy: end
-          kind: function_definition
-          has:
-            field: parameters
-            any:
-              - has:
-                  kind: identifier
-                  pattern: {{ VAR }}
-              - has:
-                  stopBy: end
-                  kind: identifier
-                  nthChild: 1
-                  pattern: {{ VAR }}
-      - inside:
-          stopBy: end
-          kind: lambda
-          has:
-            field: parameters
-            has:
-              stopBy: end
-              kind: identifier
-              pattern: {{ VAR }}
 # TODO: better way to detect if the variable is used in a loop
 # or if it is used in a condition that modifies the variable
 #      - inside:

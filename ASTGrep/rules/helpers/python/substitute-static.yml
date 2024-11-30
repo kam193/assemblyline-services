@@ -6,8 +6,10 @@ language: Python
 rule:
   not:
     inside:
-      kind: function_definition
       stopBy: end
+      any:
+        - kind: function_definition
+        - kind: except_clause
   any:
     - all:
         - kind: assignment
@@ -1007,6 +1009,7 @@ utils:
       - kind: "false"
       - kind: float
       - kind: string
+      - kind: "none"
 
 metadata:
   extended-obfuscation: no

@@ -1,0 +1,200 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/main/schemas/rule.json
+
+id: python-function-returns-always-static-value
+message: Function is always returning a static value
+language: Python
+rule:
+  kind: function_definition
+  not:
+    # TODO: spearated case
+    inside:
+      kind: class_definition
+      stopBy: end
+  all:
+    - has:
+        field: name
+        pattern: $FUNC
+    - has:
+        field: body
+        has:
+          nthChild: 1
+          kind: return_statement
+          has:
+            nthChild: 1
+            pattern: $TPL_FIX
+            any:
+              - kind: "true"
+              - kind: "false"
+              - kind: integer
+              - kind: float
+              - kind: string
+
+metadata:
+  extended-obfuscation: yes
+  confirmed-obfuscation: no
+  template_file: call-replace-tpl.yml.j2
+  TPL_ANY_CALL: "true"
+  deobfuscate: |
+    {
+      "type": "template",
+      "steps": [],
+      "override-fix": true,
+      "persistent": true,
+      "persistent-key": "FUNC",
+      "persistent-value": "TPL_FIX"
+    }
+
+---
+
+id: python-staticmethod-returns-always-static-value
+message: Static method is always returning a static value
+language: Python
+rule:
+  kind: function_definition
+  all:
+    - inside:
+        kind: decorated_definition
+        has:
+          has:
+            kind: identifier
+            pattern: staticmethod
+    - inside:
+        kind: class_definition
+        stopBy: end
+        has:
+          field: name
+          pattern: $CLASS_NAME
+    - has:
+        field: name
+        pattern: $FUNC
+    - has:
+        field: body
+        has:
+          nthChild: 1
+          kind: return_statement
+          has:
+            nthChild: 1
+            pattern: $TPL_FIX
+            any:
+              - kind: "true"
+              - kind: "false"
+              - kind: integer
+              - kind: float
+              - kind: string
+
+metadata:
+  extended-obfuscation: yes
+  confirmed-obfuscation: no
+  template_file: call-replace-tpl.yml.j2
+  TPL_ANY_CALL: "true"
+  deobfuscate: |
+    {
+      "type": "template",
+      "steps": [
+        {"func": "concat", "sources": ["CLASS_NAME", "FUNC"], "separator": ".", "output": "FUNC"}
+      ],
+      "override-fix": true,
+      "persistent": true,
+      "persistent-key": "FUNC",
+      "persistent-value": "TPL_FIX"
+    }
+
+---
+
+id: python-staticmethod-returns-always-the-argument
+message: Static method is always returning the given argument
+language: Python
+rule:
+  kind: function_definition
+  all:
+    - inside:
+        kind: decorated_definition
+        has:
+          has:
+            kind: identifier
+            pattern: staticmethod
+    - inside:
+        kind: class_definition
+        stopBy: end
+        has:
+          field: name
+          pattern: $CLASS_NAME
+    - has:
+        field: name
+        pattern: $FUNC
+    - has:
+        field: parameters
+        has:
+          kind: identifier
+          pattern: $ARG
+    - has:
+        field: body
+        has:
+          nthChild: 1
+          kind: return_statement
+          has:
+            nthChild: 1
+            pattern: $ARG
+
+metadata:
+  extended-obfuscation: yes
+  confirmed-obfuscation: yes
+  template_file: call-replace-tpl.yml.j2
+  TPL_FIX: $X
+  deobfuscate: |
+    {
+      "type": "template",
+      "steps": [
+        {"func": "concat", "sources": ["CLASS_NAME", "FUNC"], "separator": ".", "output": "FUNC"}
+      ],
+      "override-fix": true,
+      "persistent": true,
+      "persistent-key": "FUNC",
+      "persistent-value": "ARG"
+    }
+
+---
+
+# yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/main/schemas/rule.json
+
+id: python-function-returns-always-the-argument
+message: Function is always returning the given argument
+language: Python
+rule:
+  kind: function_definition
+  not:
+    inside:
+      kind: class_definition
+      stopBy: end
+  all:
+    - has:
+        field: name
+        pattern: $FUNC
+    - has:
+        field: parameters
+        has:
+          kind: identifier
+          pattern: $ARG
+    - has:
+        field: body
+        has:
+          nthChild: 1
+          kind: return_statement
+          has:
+            nthChild: 1
+            pattern: $ARG
+
+metadata:
+  extended-obfuscation: yes
+  confirmed-obfuscation: yes
+  template_file: call-replace-tpl.yml.j2
+  TPL_FIX: $X
+  deobfuscate: |
+    {
+      "type": "template",
+      "steps": [],
+      "override-fix": true,
+      "persistent": true,
+      "persistent-key": "FUNC",
+      "persistent-value": "ARG"
+    }

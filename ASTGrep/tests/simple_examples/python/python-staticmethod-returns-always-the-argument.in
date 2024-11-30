@@ -1,0 +1,6 @@
+class lI1lI1l1lI1l1lll1II:
+    @staticmethod
+    def llIIIIl1(llIllllI):
+        return llIllllI
+
+lI1lI1l1lI1l1lll1II.llIIIIl1(123)

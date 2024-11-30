@@ -8,12 +8,18 @@ rule:
   {% elif ARG | default(false) %}
     - pattern: ($F)($X)
     - pattern: $F($X)
+  {% elif TPL_ANY_CALL | default(false) %}
+    - pattern: $F($$$)
   {% else %}
     - pattern: $F()
     - pattern: ($F)()
   {% endif %}
 constraints:
   F:
+{% if "." in FUNC %}
+    kind: attribute
+{% else %}
     kind: identifier
+{% endif %}
     pattern: {{FUNC}}
-fix: {{TPL_FIX}}
+fix: {{ TPL_FIX | tojson }}
