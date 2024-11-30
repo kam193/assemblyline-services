@@ -999,6 +999,486 @@ rule:
                     has:
                       nthChild: 120
                       matches: static
+            - nthChild: 121
+              inside:
+                inside:
+                  has:
+                    field: right
+                    has:
+                      nthChild: 121
+                      matches: static
+            - nthChild: 122
+              inside:
+                inside:
+                  has:
+                    field: right
+                    has:
+                      nthChild: 122
+                      matches: static
+            - nthChild: 123
+              inside:
+                inside:
+                  has:
+                    field: right
+                    has:
+                      nthChild: 123
+                      matches: static
+            - nthChild: 124
+              inside:
+                inside:
+                  has:
+                    field: right
+                    has:
+                      nthChild: 124
+                      matches: static
+            - nthChild: 125
+              inside:
+                inside:
+                  has:
+                    field: right
+                    has:
+                      nthChild: 125
+                      matches: static
+            - nthChild: 126
+              inside:
+                inside:
+                  has:
+                    field: right
+                    has:
+                      nthChild: 126
+                      matches: static
+            - nthChild: 127
+              inside:
+                inside:
+                  has:
+                    field: right
+                    has:
+                      nthChild: 127
+                      matches: static
+            - nthChild: 128
+              inside:
+                inside:
+                  has:
+                    field: right
+                    has:
+                      nthChild: 128
+                      matches: static
+            - nthChild: 129
+              inside:
+                inside:
+                  has:
+                    field: right
+                    has:
+                      nthChild: 129
+                      matches: static
+            - nthChild: 130
+              inside:
+                inside:
+                  has:
+                    field: right
+                    has:
+                      nthChild: 130
+                      matches: static
+            - nthChild: 131
+              inside:
+                inside:
+                  has:
+                    field: right
+                    has:
+                      nthChild: 131
+                      matches: static
+            - nthChild: 132
+              inside:
+                inside:
+                  has:
+                    field: right
+                    has:
+                      nthChild: 132
+                      matches: static
+            - nthChild: 133
+              inside:
+                inside:
+                  has:
+                    field: right
+                    has:
+                      nthChild: 133
+                      matches: static
+            - nthChild: 134
+              inside:
+                inside:
+                  has:
+                    field: right
+                    has:
+                      nthChild: 134
+                      matches: static
+            - nthChild: 135
+              inside:
+                inside:
+                  has:
+                    field: right
+                    has:
+                      nthChild: 135
+                      matches: static
+            - nthChild: 136
+              inside:
+                inside:
+                  has:
+                    field: right
+                    has:
+                      nthChild: 136
+                      matches: static
+            - nthChild: 137
+              inside:
+                inside:
+                  has:
+                    field: right
+                    has:
+                      nthChild: 137
+                      matches: static
+            - nthChild: 138
+              inside:
+                inside:
+                  has:
+                    field: right
+                    has:
+                      nthChild: 138
+                      matches: static
+            - nthChild: 139
+              inside:
+                inside:
+                  has:
+                    field: right
+                    has:
+                      nthChild: 139
+                      matches: static
+            - nthChild: 140
+              inside:
+                inside:
+                  has:
+                    field: right
+                    has:
+                      nthChild: 140
+                      matches: static
+            - nthChild: 141
+              inside:
+                inside:
+                  has:
+                    field: right
+                    has:
+                      nthChild: 141
+                      matches: static
+            - nthChild: 142
+              inside:
+                inside:
+                  has:
+                    field: right
+                    has:
+                      nthChild: 142
+                      matches: static
+            - nthChild: 143
+              inside:
+                inside:
+                  has:
+                    field: right
+                    has:
+                      nthChild: 143
+                      matches: static
+            - nthChild: 144
+              inside:
+                inside:
+                  has:
+                    field: right
+                    has:
+                      nthChild: 144
+                      matches: static
+            - nthChild: 145
+              inside:
+                inside:
+                  has:
+                    field: right
+                    has:
+                      nthChild: 145
+                      matches: static
+            - nthChild: 146
+              inside:
+                inside:
+                  has:
+                    field: right
+                    has:
+                      nthChild: 146
+                      matches: static
+            - nthChild: 147
+              inside:
+                inside:
+                  has:
+                    field: right
+                    has:
+                      nthChild: 147
+                      matches: static
+            - nthChild: 148
+              inside:
+                inside:
+                  has:
+                    field: right
+                    has:
+                      nthChild: 148
+                      matches: static
+            - nthChild: 149
+              inside:
+                inside:
+                  has:
+                    field: right
+                    has:
+                      nthChild: 149
+                      matches: static
+            - nthChild: 150
+              inside:
+                inside:
+                  has:
+                    field: right
+                    has:
+                      nthChild: 150
+                      matches: static
+            - nthChild: 151
+              inside:
+                inside:
+                  has:
+                    field: right
+                    has:
+                      nthChild: 151
+                      matches: static
+            - nthChild: 152
+              inside:
+                inside:
+                  has:
+                    field: right
+                    has:
+                      nthChild: 152
+                      matches: static
+            - nthChild: 153
+              inside:
+                inside:
+                  has:
+                    field: right
+                    has:
+                      nthChild: 153
+                      matches: static
+            - nthChild: 154
+              inside:
+                inside:
+                  has:
+                    field: right
+                    has:
+                      nthChild: 154
+                      matches: static
+            - nthChild: 155
+              inside:
+                inside:
+                  has:
+                    field: right
+                    has:
+                      nthChild: 155
+                      matches: static
+            - nthChild: 156
+              inside:
+                inside:
+                  has:
+                    field: right
+                    has:
+                      nthChild: 156
+                      matches: static
+            - nthChild: 157
+              inside:
+                inside:
+                  has:
+                    field: right
+                    has:
+                      nthChild: 157
+                      matches: static
+            - nthChild: 158
+              inside:
+                inside:
+                  has:
+                    field: right
+                    has:
+                      nthChild: 158
+                      matches: static
+            - nthChild: 159
+              inside:
+                inside:
+                  has:
+                    field: right
+                    has:
+                      nthChild: 159
+                      matches: static
+            - nthChild: 160
+              inside:
+                inside:
+                  has:
+                    field: right
+                    has:
+                      nthChild: 160
+                      matches: static
+            - nthChild: 161
+              inside:
+                inside:
+                  has:
+                    field: right
+                    has:
+                      nthChild: 161
+                      matches: static
+            - nthChild: 162
+              inside:
+                inside:
+                  has:
+                    field: right
+                    has:
+                      nthChild: 162
+                      matches: static
+            - nthChild: 163
+              inside:
+                inside:
+                  has:
+                    field: right
+                    has:
+                      nthChild: 163
+                      matches: static
+            - nthChild: 164
+              inside:
+                inside:
+                  has:
+                    field: right
+                    has:
+                      nthChild: 164
+                      matches: static
+            - nthChild: 165
+              inside:
+                inside:
+                  has:
+                    field: right
+                    has:
+                      nthChild: 165
+                      matches: static
+            - nthChild: 166
+              inside:
+                inside:
+                  has:
+                    field: right
+                    has:
+                      nthChild: 166
+                      matches: static
+            - nthChild: 167
+              inside:
+                inside:
+                  has:
+                    field: right
+                    has:
+                      nthChild: 167
+                      matches: static
+            - nthChild: 168
+              inside:
+                inside:
+                  has:
+                    field: right
+                    has:
+                      nthChild: 168
+                      matches: static
+            - nthChild: 169
+              inside:
+                inside:
+                  has:
+                    field: right
+                    has:
+                      nthChild: 169
+                      matches: static
+            - nthChild: 170
+              inside:
+                inside:
+                  has:
+                    field: right
+                    has:
+                      nthChild: 170
+                      matches: static
+            - nthChild: 171
+              inside:
+                inside:
+                  has:
+                    field: right
+                    has:
+                      nthChild: 171
+                      matches: static
+            - nthChild: 172
+              inside:
+                inside:
+                  has:
+                    field: right
+                    has:
+                      nthChild: 172
+                      matches: static
+            - nthChild: 173
+              inside:
+                inside:
+                  has:
+                    field: right
+                    has:
+                      nthChild: 173
+                      matches: static
+            - nthChild: 174
+              inside:
+                inside:
+                  has:
+                    field: right
+                    has:
+                      nthChild: 174
+                      matches: static
+            - nthChild: 175
+              inside:
+                inside:
+                  has:
+                    field: right
+                    has:
+                      nthChild: 175
+                      matches: static
+            - nthChild: 176
+              inside:
+                inside:
+                  has:
+                    field: right
+                    has:
+                      nthChild: 176
+                      matches: static
+            - nthChild: 177
+              inside:
+                inside:
+                  has:
+                    field: right
+                    has:
+                      nthChild: 177
+                      matches: static
+            - nthChild: 178
+              inside:
+                inside:
+                  has:
+                    field: right
+                    has:
+                      nthChild: 178
+                      matches: static
+            - nthChild: 179
+              inside:
+                inside:
+                  has:
+                    field: right
+                    has:
+                      nthChild: 179
+                      matches: static
+            - nthChild: 180
+              inside:
+                inside:
+                  has:
+                    field: right
+                    has:
+                      nthChild: 180
+                      matches: static
 
 utils:
   static:
