@@ -24,3 +24,16 @@ if 1<2<3:
 
 if 2==2:
     b2 = 0x80 | ((h2so3 >> 12) & 0x3F)
+
+if 2<1:
+    print("Hello")
+else:
+    print("World")
+
+if not 37:
+    llIIII11 = 5
+else:
+    llIIII11 = 37
+
+if not False:
+    c = 87

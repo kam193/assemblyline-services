@@ -217,16 +217,21 @@ def str_concat(config: dict, context: dict):
     return left + right
 
 
-MATH_ALLOWED = "0123456789/+-*^(). ><=_~ \t"
-
+MATH_ALLOWED = "0123456789/+-*^(). ><=_~ \tnot"
+MATH_GUARD = re.compile(r"[\s/+\-*^](?!(not\s)|[0-9/+\-*^(). ><=~ \t])\S")
+MATH_BOOL_EXPR = re.compile(r"^\s*(not\s{1,}|)(True|False)\s*$")
 
 def math_eval(config: dict, context: dict):
     source = config.get("source", "MATH_SOURCE")
     if source not in context:
         return None
     data = context[source]
+    if MATH_BOOL_EXPR.match(data):
+        return bool(eval(data, {}, {}))
     if not isinstance(data, str) or any(c not in MATH_ALLOWED for c in data):
         raise TransformationRejected("Not allowed chars found")
+    if MATH_GUARD.search(data):
+        raise TransformationRejected("Not allowed expression found")
     try:
         return eval(data, {}, {})
     except Exception as exc:
@@ -373,12 +378,11 @@ def rename(config: dict, context: dict):
 def noop_ifs(config: dict, context: dict):
     if_result = config.get("if_result", "IF_RESULT")
     elif_result = config.get("elif_result", "ELIF_RESULT")
-    # else_result = config.get("else_result", "ELSE_RESULT")
 
     if context[if_result]:
         code = config.get("if_code", "IF_CODE")
         return context[code]
-    elif context[elif_result]:
+    elif context.get(elif_result, False):
         code = config.get("elif_code", "ELIF_CODE")
         return context[code]
     else:
