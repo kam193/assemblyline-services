@@ -27,6 +27,10 @@ submission_params:
     name: reformat_deobfuscated_code
     type: bool
     value: true
+  - default: false
+    name: extract_not_confirmed
+    type: bool
+    value: false
 
 heuristics:
   - description: Suspicious code pattern

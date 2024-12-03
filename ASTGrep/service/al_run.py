@@ -213,6 +213,7 @@ class AssemblylineService(ServiceBase):
 
         if self._should_deobfuscate:
             reformat_code = request.get_param("reformat_deobfuscated_code")
+            extract_not_confirmed = request.get_param("extract_not_confirmed")
             extracted_layers = []
             result_no = 1
             for deobf_result, layer in self._deobfuscator.deobfuscate_file(file_path, file_type):
@@ -237,12 +238,13 @@ class AssemblylineService(ServiceBase):
                             )
                         except Exception:
                             self.log.warning("Error reformatting deobfuscated code", exc_info=True)
-                    request.add_extracted(
-                        path,
-                        f"_deobfuscated_code_FINAL{LANGUAGE_TO_EXT[file_type]}",
-                        "Final deobfuscation layer",
-                        safelist_interface=self.api_interface,
-                    )
+                    if self._deobfuscator.confirmed_obfuscation or extract_not_confirmed:
+                        request.add_extracted(
+                            path,
+                            f"_deobfuscated_code_FINAL{LANGUAGE_TO_EXT[file_type]}",
+                            "Final deobfuscation layer",
+                            safelist_interface=self.api_interface,
+                        )
                 result_no += 1
             deobf_section = ResultTextSection(
                 "Obfuscation found"
@@ -257,8 +259,8 @@ class AssemblylineService(ServiceBase):
                 for args in extracted_layers[:-10:-1]:
                     if self.extract_intermediate_layers:
                         request.add_extracted(*args)
-                    else:
-                        request.add_supplementary(*args)
+                    # else:
+                    #     request.add_supplementary(*args)
             if len(extracted_layers) > 10:
                 layers_section = ResultTextSection(
                     f"Found {len(extracted_layers)} layers of obfuscation"
