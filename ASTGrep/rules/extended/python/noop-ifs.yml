@@ -84,7 +84,7 @@ utils:
 
 metadata:
   extended-obfuscation: yes
-  confirmed-obfuscation: yes
+  confirmed-obfuscation: no
   template_file: python-replace-codepart.yml.j2
   deobfuscate: |
     {

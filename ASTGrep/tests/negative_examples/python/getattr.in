@@ -1,0 +1,2 @@
+with open(path_to('.first_run_options'), encoding=FILE_ENCODING) as f:
+    pass

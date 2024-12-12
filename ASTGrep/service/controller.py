@@ -605,11 +605,16 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
         if "{{{DOLLARPLACEHOLDER}}}" in rule_data:
             self._persistent_escape_dollar = True
 
+    def _set_confirmed(self, rule_id: str):
+        self._last_confirmation_rule = rule_id
+        self.confirmed_obfuscation = True
+
     def _process_result(self, result: dict, secondary=False):
         if not result:
             return
         type_, extract, confirmed = self._get_type(result)
-        self.log.debug("Matched rule: %s [%s]", result.get("ruleId"), type_)
+        rule_id = result.get("ruleId")
+        self.log.debug("Matched rule: %s [%s]", rule_id, type_)
         if not type_:
             return
         if secondary and type_.startswith("secondary-"):
@@ -634,12 +639,12 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
                     self._generated_fixes[match], _ = self.transform(result)
                     if confirmed:
                         if not extract:
-                            self.confirmed_obfuscation = True
+                            self._set_confirmed(rule_id)
                         elif (
                             self._generated_fixes[match]
                             and len(self._generated_fixes[match]) >= self.min_length_for_confirmed
                         ):
-                            self.confirmed_obfuscation = True
+                            self._set_confirmed(rule_id)
                     if extract:
                         return self._generated_fixes[match]
                 except Exception as exc:
@@ -654,9 +659,9 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
                     self._generated_fixes[match], output = self.transform_template(result)
                     if confirmed:
                         if not extract:
-                            self.confirmed_obfuscation = True
+                            self._set_confirmed(rule_id)
                         elif output and len(output) >= self.min_length_for_confirmed:
-                            self.confirmed_obfuscation = True
+                            self._set_confirmed(rule_id)
                     if extract:
                         return output
                 except Exception as exc:
@@ -714,7 +719,7 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
                     else:
                         self._save_persistent_rule(result.get("ruleId"), p_key, p_value, template)
                     if confirmed:
-                        self.confirmed_obfuscation = True
+                        self._set_confirmed(rule_id)
                 except Exception as exc:
                     self.log.error(
                         "Error transforming template '%s' result: %r", result.get("ruleId"), exc
@@ -722,10 +727,10 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
             elif type_ == "extract":
                 output, _ = self.transform(result)
                 if output and len(output) >= self.min_length_for_confirmed:
-                    self.confirmed_obfuscation = True
+                    self._set_confirmed(rule_id)
                 return output
             elif type_ == "detection":
-                self.confirmed_obfuscation = True
+                self._set_confirmed(rule_id)
                 return None
         except Exception as exc:
             self.log.error("Error processing result for rule %s: %r", result.get("ruleId"), exc)
@@ -832,6 +837,7 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
         self.status = ""
         self._extracted_cache = set()
         self.confirmed_obfuscation = False
+        self._last_confirmation_rule = None
         original_timestamp = last_timestamp = os.stat(self._working_file).st_mtime_ns
         last_size = os.stat(self._working_file).st_size
         file_size_not_changed = False

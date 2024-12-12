@@ -39,37 +39,54 @@ def scan_controller():
     return scan
 
 
-def detect_sample(controller, example, deobfuscator):
+def detect_sample(
+    controller, example, deobfuscator, expected=True, metadata_field="extended-obfuscation"
+):
     language = f"code/{example.split('/')[-2]}"
     results = list(controller.process_file(f"{example}.in", language, retry=False))
 
-    extended_obfuscation = False
+    detection_result = False
     for result in results:
         rule_id = result.get("ruleId", result.get("check_id"))
         metadata = deobfuscator._metadata.get(rule_id, {})
-        if metadata.get("extended-obfuscation", False):
-            extended_obfuscation = True
+        if metadata.get(metadata_field, False):
+            detection_result = True
             break
-    assert extended_obfuscation is True, "Sample was not detected as potentially obfuscated"
+
+    if not detection_result:
+        rule_id = "/"
+
+    assert (
+        detection_result == expected
+    ), f"Sample was {'not' if expected else ''} detected as {metadata_field} by {rule_id}"
 
 
 @pytest.fixture
 def deobfuscate_example(deobfuscator):
     def _check_example(
-        path: str, language: str | None = None, warning_time: int = 5, check_confirmed: bool = False
+        path: str,
+        language: str | None = None,
+        warning_time: int = 5,
+        check_confirmed: bool = False,
+        check_output: bool = True,
+        confirmed_obfuscation: bool = True,
     ):
         if not language:
             lang_name = os.path.relpath(path, "./tests").split("/")[1]
             language = f"code/{lang_name}"
         results = list(deobfuscator.deobfuscate_file(f"{path}.in", language))
-        assert results[-1][0].strip() == open(f"{path}.out", "r").read().strip()
+        if check_output:
+            assert results[-1][0].strip() == open(f"{path}.out", "r").read().strip()
         if deobfuscator.work_time > warning_time:
             warnings.warn(f"Deobfuscation took {deobfuscator.work_time:.3f} seconds")
         assert (
             deobfuscator.work_time < deobfuscator.deobfuscation_timeout
         ), "Deobfuscation took too long"
         if check_confirmed:
-            assert deobfuscator.confirmed_obfuscation is True, "Deobfuscation was not confirmed"
+            assert deobfuscator.confirmed_obfuscation == confirmed_obfuscation, (
+                f"Deobfuscation was {'not' if confirmed_obfuscation else ''}"
+                f" confirmed by {deobfuscator._last_confirmation_rule}"
+            )
         return results
 
     return _check_example
@@ -172,3 +189,32 @@ def test_lsp_detects_prepared_samples(lsp_controller, example, deobfuscator):
 def test_scan_detects_prepared_samples(scan_controller, example, deobfuscator):
     """Tests on prepared samples"""
     detect_sample(scan_controller, example, deobfuscator)
+
+
+@pytest.mark.parametrize(
+    "example",
+    _list_examples("negative"),
+)
+def test_negative_cases(scan_controller, example, deobfuscator):
+    """Those samples should not be detected as confirmed obfuscation"""
+    detect_sample(
+        scan_controller,
+        example,
+        deobfuscator,
+        expected=False,
+        metadata_field="confirmed-obfuscation",
+    )
+
+
+@pytest.mark.skipif(
+    not os.path.exists("./tests/real_negative_examples"), reason="Samples are not accessible"
+)
+@pytest.mark.parametrize(
+    "example",
+    _list_examples("real_negative"),
+)
+def test_negative_real_cases(deobfuscate_example, example):
+    """Those samples should not be detected as confirmed obfuscation after deobfuscation"""
+    deobfuscate_example(
+        example, check_output=False, confirmed_obfuscation=False, check_confirmed=True
+    )

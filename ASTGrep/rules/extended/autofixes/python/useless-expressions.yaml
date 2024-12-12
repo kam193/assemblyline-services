@@ -9,19 +9,13 @@ rule:
     - has:
         nthChild: 1
         any:
-          - has:
-              kind: identifier
-              pattern: $VALUE
-          - kind: identifier
-            pattern: $VALUE
+          - pattern: "($VALUE)"
+          - pattern: $VALUE
     - has:
         nthChild: 3
         any:
-          - has:
-              kind: identifier
-              pattern: $VALUE
-          - kind: identifier
-            pattern: $VALUE
+          - pattern: "($VALUE)"
+          - pattern: $VALUE
 
 fix: $VALUE
 

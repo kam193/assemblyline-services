@@ -1,0 +1,4 @@
+class A:
+    @staticmethod
+    def get_payload_from_product_object(product_object):
+        return product_object

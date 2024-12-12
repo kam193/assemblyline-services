@@ -13,13 +13,22 @@ id: python-detect-builtin-getattr
 message: Uses getattr to obfuscate using a builtin function
 language: Python
 rule:
-  any:
-    - pattern:
-        context: getattr(__import__("builtins"), $ANY)
-        strictness: signature
-    - pattern:
-        context: getattr(__import__(bytes([$$$ANY][::-1]).decode()), $$$ANY2)
-        strictness: signature
+  kind: call
+  has:
+    field: function
+    pattern: getattr
+  all:
+    - has:
+        field: arguments
+        has:
+          kind: call
+          has:
+            field: function
+            pattern: __import__
+
+# Examples:
+# getattr(__import__("builtins"), $ANY)
+# getattr(__import__(bytes([1, 2, 3, 4][::-1]).decode()), xxx)
 
 metadata:
   extended-obfuscation: yes

@@ -138,7 +138,7 @@ rule:
 
 metadata:
   extended-obfuscation: yes
-  confirmed-obfuscation: yes
+  confirmed-obfuscation: no
   template_file: call-replace-tpl.yml.j2
   TPL_FIX: $X
   deobfuscate: |

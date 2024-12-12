@@ -77,6 +77,7 @@ jobs:
         run: |
           cd tests
           ln -s ../tmp/dangerous_examples/ dangerous_examples
+          ln -s ../tmp/real_negative_examples/ real_negative_examples
       - name: Install test dependencies
         if: steps.check-service-changed.outputs.exit-code != 0
         run: |

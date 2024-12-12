@@ -1,0 +1,3 @@
+(N, self.d_model) if time_step is not None else (N, src.size(1), self.d_model)
+
+self.llink = self.ident if options.dirs else self.file_name
