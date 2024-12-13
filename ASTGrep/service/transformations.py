@@ -221,6 +221,7 @@ MATH_ALLOWED = "0123456789/+-*^(). ><=_~ \tnot"
 MATH_GUARD = re.compile(r"[\s/+\-*^](?!(not\s)|[0-9/+\-*^(). ><=~ \t])\S")
 MATH_BOOL_EXPR = re.compile(r"^\s*(not\s{1,}|)(True|False)\s*$")
 
+
 def math_eval(config: dict, context: dict):
     source = config.get("source", "MATH_SOURCE")
     if source not in context:
@@ -399,3 +400,11 @@ def join_chr_xor(config: dict, context: dict) -> str:
         xor_value = int(xor_value)
 
     return "".join(chr(i ^ xor_value) for i in context[data_list])
+
+
+def chr_(config: dict, context: dict) -> str:
+    field = config.get("source", "DATA")
+    data = context[field]
+    if not isinstance(data, int):
+        data = int(data)
+    return chr(data)

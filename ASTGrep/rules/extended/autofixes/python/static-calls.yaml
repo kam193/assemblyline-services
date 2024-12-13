@@ -14,29 +14,21 @@ rule:
         all:
           - has:
               nthChild: 1
-              kind: call
-              all:
-                - has:
-                    field: function
-                    pattern: __import__
-                - has:
-                    stopBy: end
-                    kind: string_content
-                    pattern: $MODULE
-                    not:
-                        regex: builtins
+              kind: identifier
+              pattern: $MODULE
           - has:
                 nthChild: 2
+                kind: string
                 has:
-                    stopBy: end
+                    # stopBy: end
                     kind: string_content
                     pattern: $METHOD
 
 fix: $MODULE.$METHOD
 
 metadata:
-  extended-obfuscation: yes
-  confirmed-obfuscation: yes
+  extended-obfuscation: no
+  confirmed-obfuscation: no
 
 ---
 

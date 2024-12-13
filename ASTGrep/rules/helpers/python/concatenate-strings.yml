@@ -10,16 +10,27 @@ rule:
         pattern: +
     - has:
         field: left
-        kind: string
-        pattern: $LEFT_OP
-        # exclude f-strings
-        regex: "^[bB\"']"
+        any:
+          - pattern: $LEFT_OP
+            matches: static_string
+          - kind: parenthesized_expression
+            has:
+              pattern: $LEFT_OP
+              matches: static_string
     - has:
         field: right
-        kind: string
-        pattern: $RIGHT_OP
-        # exclude f-strings
-        regex: "^[bB\"']"
+        any:
+          - pattern: $RIGHT_OP
+            matches: static_string
+          - kind: parenthesized_expression
+            has:
+              pattern: $RIGHT_OP
+              matches: static_string
+
+utils:
+  static_string:
+    kind: string
+    regex: '^[bB"'']'
 
 metadata:
   extended-obfuscation: no

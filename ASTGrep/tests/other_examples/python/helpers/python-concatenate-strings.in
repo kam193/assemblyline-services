@@ -1,0 +1,15 @@
+x = 'I' + (
+        'IllllllllIlllIIIIlllIIll'
+    )
+
+"a" + "b" + "c" + "d"
+
+("a") + ("b") + ("c") + ("d")
+
+("a") + "b"
+
+"a" + (3)
+
+"a" + (a)
+
+"a" + ("b", a)

@@ -1,0 +1,36 @@
+id: python-getattr-import
+message: Uses getattr and import to obfuscate using a method
+language: Python
+# getattr(__import__("builtins"), "exec")("print('hello')")
+rule:
+  kind: call
+  all:
+    - has:
+        field: function
+        pattern: getattr
+    - has:
+        kind: argument_list
+        all:
+          - has:
+              nthChild: 1
+              kind: call
+              all:
+                - has:
+                    field: function
+                    pattern: __import__
+                - has:
+                    stopBy: end
+                    kind: string_content
+                    pattern: $MODULE
+                    not:
+                        regex: builtins
+          - has:
+                nthChild: 2
+                has:
+                    stopBy: end
+                    kind: string_content
+                    pattern: $METHOD
+
+metadata:
+  extended-obfuscation: yes
+  confirmed-obfuscation: yes

@@ -745,6 +745,13 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
         self._extracted_cache.add(hashed)
         return True
 
+    def _sanitize_pattern(self, pattern: str) -> str:
+        """Sanitize match to be useful as a pattern"""
+
+        # Match had to be a single node, but if it had a newline,
+        # the pattern would treat it as multiple nodes
+        return pattern.replace("\n", "")
+
     def _generate_fix_documents(self) -> Iterable[dict]:
         for match, fix in self._generated_fixes.items():
             if fix == match:
@@ -762,7 +769,7 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
                 "id": f"fix-rule-{self._fix_number}",
                 "message": f"Fixing {match}",
                 "language": self.current_language,
-                "rule": {"pattern": match},
+                "rule": {"pattern": self._sanitize_pattern(match)},
                 "fix": fix,
             }
 

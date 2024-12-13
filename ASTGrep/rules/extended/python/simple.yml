@@ -49,6 +49,7 @@ rule:
                     kind: string_content
                     regex: builtins
                 - pattern: builtins
+                - pattern: __builtins__
           # TODO: what with case like:
           # getattr(__import__(b"builtins"), str("aaa"))("print('hello')")
           - has:

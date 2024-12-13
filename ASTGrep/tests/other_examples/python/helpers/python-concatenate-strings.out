@@ -1,0 +1,13 @@
+x = 'IIllllllllIlllIIIIlllIIll'
+
+'abcd'
+
+'abcd'
+
+'ab'
+
+"a" + (3)
+
+"a" + (a)
+
+"a" + ("b", a)

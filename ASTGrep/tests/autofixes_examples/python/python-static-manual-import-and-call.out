@@ -1,4 +1,6 @@
-builtins.exec("print('hel\"lo')")
-builtins.exec(b"print('hel\"lo')")
-builtins.exec("print('hel\"lo')")
+print('hel"lo')
+print('hel"lo')
+print('hel"lo')
 base64.some_func("AAAA")
+
+gc

@@ -1028,6 +1028,7 @@ utils:
           - pattern: round
           - pattern: range
           - pattern: open
+          - pattern: chr
           # TODO: better patterns
           # - pattern: "''.join"
           - pattern: binascii.unhexlify

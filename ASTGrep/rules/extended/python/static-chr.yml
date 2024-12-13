@@ -1,0 +1,36 @@
+---
+
+# yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/main/schemas/rule.json
+
+id: python-static-chr
+message: Chr of a static value
+language: Python
+rule:
+  kind: call
+  has:
+    field: function
+    regex: chr
+  all:
+    - pattern: chr($NUMBER)
+    - has:
+        field: arguments
+        has:
+          nthChild: 1
+          kind: integer
+          pattern: $NUMBER
+        # not:
+        #   has:
+        #     nthChild: 2
+
+
+metadata:
+  extended-obfuscation: yes
+  confirmed-obfuscation: no
+  deobfuscate: |
+    {
+      "type": "fix-generate",
+      "steps": [
+        {"func": "chr_", "source": "NUMBER", "output": "NUMBER"},
+        {"func": "quote", "source": "NUMBER"}
+      ]
+    }

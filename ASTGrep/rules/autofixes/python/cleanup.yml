@@ -58,21 +58,21 @@ id: python-static-manual-import-and-call
 message: Manually import and execute a function on static data
 language: Python
 rule:
-  any:
-    - pattern: '__import__("$MODULE").$FUNC($DATA)'
-    - pattern: __import__('$MODULE').$FUNC($DATA)
-    - pattern: __import__(b'$MODULE').$FUNC($DATA)
-    - pattern: __import__(b"$MODULE").$FUNC($DATA)
-    - pattern: __import__('''$MODULE''').$FUNC($DATA)
-    - pattern: __import__("""$MODULE""").$FUNC($DATA)
-    - pattern: __import__(b'''$MODULE''').$FUNC($DATA)
-    - pattern: __import__(b"""$MODULE""").$FUNC($DATA)
+  kind: call
+  has:
+    field: function
+    regex: "^__import__$"
+  all:
+    - has:
+       field: arguments
+       has:
+        nthChild: 1
+        kind: string
+        has:
+          kind: string_content
+          pattern: $MODULE
 
-constraints:
-  DATA:
-    kind: string
-
-fix: $MODULE.$FUNC($DATA)
+fix: $MODULE
 
 metadata:
   extended-obfuscation: yes
