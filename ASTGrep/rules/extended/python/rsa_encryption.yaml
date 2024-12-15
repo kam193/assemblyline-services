@@ -1,0 +1,81 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/main/schemas/rule.json
+id: python-obfuscation-encrypted-RSA-PKCS1_OAEP
+language: Python
+message: Very specific pattern looking static data encrypted by RSA
+severity: error
+metadata:
+  category: obfuscation
+  extended-obfuscation: yes
+  obfuscation-confirmed: yes
+  # template_file: javascript/const-var-tpl.j2
+  deobfuscate: |
+    {
+      "type": "fix-generate",
+      "extract": true,
+      "steps": [
+        {"func": "dequote", "source": "DATA", "decode": false},
+        {"func": "dequote", "source": "PRIV_KEY"},
+        {"func": "rsa", "source": "DATA", "key": "PRIV_KEY", "block_size": "BLOCK_SIZE", "mode": "PKCS1_OAEP"},
+        {"func": "quote", "source": "DATA"}
+      ]
+    }
+rule:
+  kind: call
+  pattern: $DECRYPT_RSA($DATA, $PRIV_KEY_VAR)
+  has:
+    field: arguments
+    all:
+      - has:
+          nthChild: 1
+          kind: string
+      - has:
+          nthChild: 2
+          kind: identifier
+  inside:
+    stopBy: end
+    kind: expression_statement
+    follows:
+      stopBy: end
+      kind: function_definition
+      has:
+        field: name
+        pattern: $DECRYPT_RSA
+      all:
+        - has:
+            field: parameters
+            has:
+              nthChild: 1
+              pattern: $DATA_PAR
+        - has:
+            field: parameters
+            has:
+              nthChild: 2
+              pattern: $KEY_PAR
+        - has:
+            field: body
+            all:
+              - has:
+                  stopBy: end
+                  pattern: $CIPHER = PKCS1_OAEP.new($KEY_PAR)
+              - has:
+                  stopBy: end
+                  pattern: $BLOCK_SIZE_VAR = $BLOCK_SIZE
+                  has:
+                    field: right
+                    kind: integer
+              - has:
+                  stopBy: end
+                  pattern: $BLOCK = $DATA_PAR[$I:$I + $BLOCK_SIZE_VAR]
+              - has:
+                  stopBy: end
+                  pattern: $CIPHER.decrypt($BLOCK)
+    all:
+      - follows:
+          stopBy: end
+          kind: expression_statement
+          has:
+            pattern: $PRIV_KEY_VAR = RSA.import_key($PRIV_KEY)
+            has:
+              stopBy: end
+              kind: string
+              pattern: $PRIV_KEY

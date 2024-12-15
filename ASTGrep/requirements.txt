@@ -5,3 +5,4 @@ cryptography
 ast-grep-py
 jinja2
 ruff
+pycryptodome

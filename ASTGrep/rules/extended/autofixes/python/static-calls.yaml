@@ -23,6 +23,9 @@ rule:
                     # stopBy: end
                     kind: string_content
                     pattern: $METHOD
+          - not:
+              has:
+                nthChild: 3
 
 fix: $MODULE.$METHOD
 

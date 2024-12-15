@@ -10,6 +10,8 @@ import zlib
 import cryptography
 import cryptography.fernet
 from ast_grep_py import SgRoot
+from Crypto.Cipher import PKCS1_OAEP
+from Crypto.PublicKey import RSA as RSA_Key
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 
 
@@ -408,3 +410,22 @@ def chr_(config: dict, context: dict) -> str:
     if not isinstance(data, int):
         data = int(data)
     return chr(data)
+
+
+def rsa(config: dict, context: dict) -> bytes:
+    data = config.get("source", "DATA")
+    key = config.get("key", "KEY")
+    block_size = config.get("block_size", "BLOCK_SIZE")
+    mode = config.get("mode", "PKCS1_OAEP")
+
+    if mode != "PKCS1_OAEP":
+        raise TransformationRejected("Unsupported RSA mode")
+
+    rsa_cipher = PKCS1_OAEP.new(RSA_Key.import_key(context[key]))
+    decrypted_data = bytearray()
+    block_size = int(context[block_size])
+    data = context[data]
+    for block_start in range(0, len(data), block_size):
+        block = data[block_start : block_start + block_size]
+        decrypted_data.extend(rsa_cipher.decrypt(block))
+    return bytes(decrypted_data)

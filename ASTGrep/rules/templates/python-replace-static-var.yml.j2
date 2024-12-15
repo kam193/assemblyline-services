@@ -73,6 +73,31 @@ rule:
       - nthChild: 2
         inside:
           kind: attribute
+      - inside:
+          kind: expression_statement
+          stopBy: end
+          follows:
+            stopBy: end
+            kind: expression_statement
+            has:
+              kind: assignment
+              has:
+                field: left
+                pattern: {{ VAR }}
+              not:
+                has:
+                  field: right
+                  any:
+                    - kind: string
+                    - kind: integer
+                    - kind: "true"
+                    - kind: "false"
+                    - kind: float
+                    - kind: "none"
+                  # TODO: good regex sanitization to exclude only specific string
+                  #has:
+                  #  kind: string_content
+                  #  {# regex: {{ VALUE | replace('?', '\\?') | replace('(', '\\(') | replace(')', '\\)') | replace('[', '\\[') | replace(']', '\\]') | replace('{', '\\{') | replace('}', '\\}') | replace('*', '\\*') | replace("$", "{{{DOLLARPLACEHOLDER}}}") | tojson }} #}
 # TODO: better way to detect if the variable is used in a loop
 # or if it is used in a condition that modifies the variable
 #      - inside:

@@ -1,2 +1,3 @@
 os.open
 subprocess.check_output
+getattr(obj, "sth", "default")

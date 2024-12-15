@@ -9,15 +9,13 @@ rule:
     - has:
         field: value
         kind: string
+        pattern: $DATA
         all:
-          # bytestrings not supported yet
+          # avoid f-strings for now
           - not:
               has:
                 kind: string_start
-                regex: "^(b|B)"
-          - has:
-              kind: string_content
-              pattern: $DATA
+                regex: "^(f|F)"
     - has:
         field: subscript
         kind: slice
@@ -31,6 +29,7 @@ rule:
         - pattern: $_[:$SLICE_END]
         - pattern: $_[::$SLICE_STEP]
         - pattern: $_[:]
+        - pattern: $_[$SLICE_START:]
 
 metadata:
   extended-obfuscation: yes
@@ -42,6 +41,7 @@ metadata:
         {"func": "math_eval", "source": "SLICE_START"},
         {"func": "math_eval", "source": "SLICE_END"},
         {"func": "math_eval", "source": "SLICE_STEP"},
+        {"func": "dequote", "source": "DATA", "output": "DATA", "decode": false},
         {"func": "slice", "source": "DATA"},
         {"func": "quote", "source": "DATA"}
       ]

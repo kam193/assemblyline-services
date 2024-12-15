@@ -1,0 +1,38 @@
+private_key = RSA.import_key('''-----BEGIN RSA PRIVATE KEY-----
+MIIEpAIBAAKCAQEA1zGNOkyK3eIoimhfyp792fbbhxurWQSlKj3va3BmRcaVHNKo
+JGm/JpZuSRRqhmVNDWET6AEEbhysI/yKAPddnPaXHD5muO8lyRZOIGtN3Aj0673v
+O+DKcDDG4ke5pBEDW9iqPWEOQH0weHntLNcz9PyQ1uMwrdbpjR+FhQMKbLGKE6dA
+i0JOVrDv8ytoEFnt44WG2FwyH+JB3vc3//AIuYzyBZ+bZoMIPhW8AsV4c4sQkz/T
+28hLWV4GVtkpmRNbL1TeL3yyenk3fnnyEOwVmZHEkPMXNWmY9v0d/24peuGqK6J0
+ohU0Padc4AoENjC0IcsBBwy9OoRMhzmj43kg0wIDAQABAoIBAB9NvIMeDldfplEY
+BNNHVJsn72BUlJTy+YnPD6x74czFqfxS4pXFckKNQIbN+v8I7nADTq+BsmDIN/xW
+KMciNNJ4BpxbsXq2gzMg1QWfRmi7PtGqRApcVWaDmfLhxy4IMYpjVsRuAXI9I9dq
+uSc8OPkq4nD4BKVNLZVTYAts2U/dMXLsqMKT63XT/xzK7B/QJSCzUYtY7h00GvCN
+F1dICbAWhojtokQOz6GeWEvIQTzSLjbvIEcWHyFdSNp93nlaEa55X9dI8jIaNHc1
+UvGCGmqFutICqLPHBki7siFJ6HnKyMY1inuVg+jM2FsHdn+pSnT63tbERa9bqHLp
+qQL3dQkCgYEA5zjg6/IwA5WuEsjC1Cgv9cxMSzuJjZljQ3djF7j1rGoW5useXInN
+EeaCEqIpA9eZTqBLh793TSA5wjU/5s9T/WLgt2FM8iM8oL0qxdirIGNGQuJe/SO6
+BG9UbmAXUaZT5WuGlu+lh3MeuzvqQTbNfwf3ONxyEbk191ftqroCrTkCgYEA7kD1
+riG/KyRF9PnpYPzmgNsFdE68ZXHheNyurEARELrrd4JQErYRVjwiTis6BseYeLSN
+jaOMljWxgV/x0mrIKOXQh55TzTOvt8lG2CYE/3P4vMc61nuL5C50cqPxhVVfXYdm
+pUNEJZ6mTKff+PD5KbwkliLeHJrmmyXC2iTKimsCgYEA5QjlWzJSNyrL/BVbT7Xj
+E/HjXN5DubxHpCudP4FZ8QhBWUlqkLV7KZEQJQ7127VzSXvkdTnGHeKe8+21N5cF
+FkgcWemKw4r94iafOM0PbYyIq3X6K3t5Ji11D8QlNR6xmd4xuk71wz7YIRUPTLvR
+QFSOoYdTgpTYjQJPDL8mKZkCgYEA7DI0HbRQ++kS/YFAT6mIrpfzeVGRThSvDY3i
+ENvWzzovs6PZ1CLxXwdwjwQlm5EGZCvC5XcNKeEDH5pJd2vrETh8Gebpd1ZVTqNY
++3H9pG6JWkU83GNQ1R8EzJ4hEykGyQcxyIa+KXl1risDTJ1AtpJRxxG8FqmuEoNF
+/9NXhA8CgYB3oC2YZFsIl3vnJiha6N4kfH8sHSeTbcvrdn0AACYxLJ3/gvkGb83g
+2IfF/hYwvA9FApUe2LAJh06ajr2qJYHlwatdvGgeew+U3XaKJL6rUAV1u/wj+LzX
+8G6PAmOyntgn3oOdd+zU+el77hDxfB6XZo5PRONmJiTdJQbKBzbTEg==
+-----END RSA PRIVATE KEY-----''')
+
+def decrypt_rsa(cipher_text, private_key):
+    rsa_cipher = PKCS1_OAEP.new(private_key)
+    decrypted_data = bytearray()
+    block_size = 256
+    for block_start in range(0, len(cipher_text), block_size):
+        block = cipher_text[block_start:block_start + block_size]
+        decrypted_data.extend(rsa_cipher.decrypt(block))
+    return bytes(decrypted_data)
+
+decrypted_session_key = decrypt_rsa(b'i\xea\x9d\x13F\x85<\xce\x1b\xb1\xc3\xc6N\x81\xc5g\r%\xf7\x8c\x0f\xb9H~\xaa\xb0q\xa4Z|\x08uq\x14\xf5\xb6\xd1\xda$@/>\xf1\x01\xd9i\x92(,\x91I\xaf\xdb\x0c\xca\x1c\x9f\x19+\x9d\xdcU\x06B\xb2\xa5 k\t\x97%4\x9e)tM0\x87\xc6\xce\xda\x18\xad\xa5\x94\xea6\xd4\x05\xee\xce3a\xd4:\xf7.\xddEh\x07r\x13\xb22"\x8f\x13E\xde\xd0"\x14\x91H\xda\xd1\xb0\x86\xe1\x862A\xe1\x8dm)\xd7G2\td\xb4f\xfeVE\xab\xe4\x84\x8fI\xd0R\xb9\x85\x8a7\xbeiX\x9bE\x19\xe4\xae\x1d8%\x82w\x02\xa5\xb2\x92\x01\xd0G\xc7\xfe4\xc2\'\xd7\x81m\x02\x10\xa0\xbea\xf5\xf9\x86\x14\x85\x0c\xde\xce\xe3\x04Lv\x08\xf4\xf3\xf9\xfe\x95\xa2=\xed/[\'\xba\x7f\x13V\xde\x87\x0f\xcb\xba\x9dn\xaa6Q\x9aM/\xa7\xcel\x08,\x82\x9e?@3G\x88b\xd8\xbc\xc0\xf2R\xe1\xcf\xf5\x08\x9c\x08\xfd\x8c\x84;\xb2\xb7\xee\xd5\xffq', private_key)
