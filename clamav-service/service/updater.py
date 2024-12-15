@@ -171,7 +171,7 @@ class ClamavServiceUpdater(ServiceUpdater):
 
         raise ValueError(result.stderr)
 
-    def import_update(self, files_sha256, source, default_classification=None) -> None:
+    def import_update(self, files_sha256, source, default_classification=None, *args, **kwargs) -> None:
         output_dir = os.path.join(self.latest_updates_dir, source)
         os.makedirs(os.path.join(self.latest_updates_dir, source), exist_ok=True)
         for file, _ in files_sha256:
