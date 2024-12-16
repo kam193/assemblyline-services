@@ -55,13 +55,22 @@ id: python-static-b64decode
 message: Decode static base64 strings
 language: Python
 rule:
+  kind: call
   all:
-    - kind: call
     - any:
-      - pattern: base64.b64decode("$DATA")
-      - pattern: base64.b64decode('$DATA')
-      - pattern: b64decode("$DATA")
-      - pattern: b64decode('$DATA')
+      - pattern: base64.b64decode($DATA)
+      - pattern: b64decode($DATA)
+      - pattern: binascii.a2b_base64($DATA)
+      - pattern: a2b_base64($DATA)
+    - matches: static_data
+
+utils:
+  static_data:
+    has:
+      field: arguments
+      has:
+        kind: string
+        pattern: $DATA
 
 metadata:
   extended-obfuscation: yes
@@ -70,7 +79,7 @@ metadata:
     {
       "type": "fix-generate",
       "steps": [
-        {"func": "encode", "encoding": "utf-8", "source": "DATA"},
+        {"func": "dequote", "encoding": "utf-8", "source": "DATA"},
         {"func": "encode", "encoding": "base64-bytes", "source": "DATA"},
         {"func": "quote", "source": "DATA", "style": "py-byte"}
       ]
