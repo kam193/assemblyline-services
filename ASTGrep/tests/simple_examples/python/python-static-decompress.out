@@ -3,3 +3,9 @@ from zlib import decompress
 
 b'aaa'
 b'aaa'
+
+import lzma
+b'aaa'
+
+import bz2
+b'abcd'

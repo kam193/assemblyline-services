@@ -1,6 +1,7 @@
 import ast
 import base64
 import binascii
+import bz2
 import codecs
 import hashlib
 import lzma
@@ -10,10 +11,10 @@ import zlib
 import cryptography
 import cryptography.fernet
 from ast_grep_py import SgRoot
-from Crypto.Cipher import PKCS1_OAEP, ChaCha20, Blowfish, AES
+from Crypto.Cipher import AES, PKCS1_OAEP, Blowfish, ChaCha20
 from Crypto.PublicKey import RSA as RSA_Key
-from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from Crypto.Util.Padding import unpad
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 
 
 class TransformationRejected(Exception):
@@ -117,10 +118,12 @@ def encode(config: dict, context: dict):
             except Exception:
                 pass
         raise TransformationRejected("Cannot decode bytes")
-    elif encoding == "zlib-decompress":
+    elif encoding == "zlib":
         data = zlib.decompress(context[source])
-    elif encoding == "lzma-decompress":
+    elif encoding == "lzma":
         data = lzma.decompress(context[source])
+    elif encoding == "bz2":
+        data = bz2.decompress(context[source])
     elif encoding == "base64-bytes":
         data = base64.b64decode(context[source])
     else:
@@ -440,6 +443,7 @@ def rsa(config: dict, context: dict) -> bytes:
         decrypted_data.extend(rsa_cipher.decrypt(block))
     return bytes(decrypted_data)
 
+
 def chacha20(config: dict, context: dict) -> bytes:
     data = config.get("source", "DATA")
     key = config.get("key", "KEY")
@@ -447,6 +451,7 @@ def chacha20(config: dict, context: dict) -> bytes:
 
     cipher = ChaCha20.new(key=context[key], nonce=context[nonce])
     return cipher.decrypt(context[data])
+
 
 def blowfish(config: dict, context: dict) -> bytes:
     data = config.get("source", "DATA")
@@ -459,6 +464,7 @@ def blowfish(config: dict, context: dict) -> bytes:
 
     cipher = Blowfish.new(key=context[key], mode=Blowfish.MODE_CBC, iv=context[iv])
     return cipher.decrypt(context[data])
+
 
 def unpad_function(config: dict, context: dict) -> bytes:
     data = config.get("source", "DATA")

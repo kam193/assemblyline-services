@@ -102,42 +102,34 @@ metadata:
     }
 
 ---
-id: python-static-zlib-decompress
-message: Decompress static zlib strings
-language: Python
-rule:
-  all:
-    - kind: call
-    - any:
-      - pattern: zlib.decompress(b"$DATA")
-      - pattern: zlib.decompress(b'$DATA')
-      - pattern: decompress(b"$DATA")
-      - pattern: decompress(b'$DATA')
-
-metadata:
-  extended-obfuscation: yes
-  deobfuscate: |
-    {
-      "type": "fix-generate",
-      "steps": [
-        {"func": "encode", "encoding": "py-bytes", "source": "DATA"},
-        {"func": "encode", "encoding": "zlib-decompress", "source": "DATA"},
-        {"func": "quote", "source": "DATA"}
-      ]
-    }
-
----
-id: python-static-lzma-decompress
-message: Decompress static zlib strings
+id: python-static-decompress
+message: Decompress static strings
 language: Python
 rule:
   kind: call
-  pattern: lzma.decompress($DATA)
-  has:
-    field: arguments
-    has:
-      kind: string
-      pattern: $DATA
+  all:
+    - any:
+      - pattern: $MODE.decompress($DATA)
+        has:
+          field: arguments
+          has:
+            kind: string
+            pattern: $DATA
+      - pattern: decompress($DATA)
+        has:
+          field: arguments
+          has:
+            kind: string
+            pattern: $DATA
+        inside:
+          kind: expression_statement
+          follows:
+            stopBy: end
+            kind: import_from_statement
+            has:
+              field: module_name
+              pattern: $MODE
+
 
 metadata:
   extended-obfuscation: yes
@@ -145,11 +137,15 @@ metadata:
     {
       "type": "fix-generate",
       "steps": [
-        {"func": "dequote", "source": "DATA", "decode": false},
-        {"func": "encode", "encoding": "lzma-decompress", "source": "DATA"},
+        {"func": "dequote", "encoding": "py-bytes", "source": "DATA", "decode": false},
+        {"func": "encode", "encoding": "MODE", "source": "DATA"},
         {"func": "quote", "source": "DATA"}
       ]
     }
+
+constraints:
+  MODE:
+    regex: "(zlib|lzma|bz2)"
 
 ---
 # yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/main/schemas/rule.json
