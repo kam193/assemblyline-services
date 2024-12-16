@@ -3,6 +3,7 @@ import codecs
 import json
 import logging
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -82,6 +83,8 @@ AL_TO_SG_LANGUAGE = {
 }
 
 CMD_TIMEOUT = 15
+
+RULE_SANITIZE_SLASH_NLTAB = re.compile(r"\\\n\t")
 
 
 class UnsupportedLanguageError(ValueError):
@@ -748,9 +751,14 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
     def _sanitize_pattern(self, pattern: str) -> str:
         """Sanitize match to be useful as a pattern"""
 
+        # Apparently, the pattern that has "\\n\t" causes confusions,
+        # in the ASTGrep. Maybe because of removing the newline later?
+        pattern = RULE_SANITIZE_SLASH_NLTAB.sub("", pattern)
+
         # Match had to be a single node, but if it had a newline,
         # the pattern would treat it as multiple nodes
-        return pattern.replace("\n", "")
+        pattern = pattern.replace("\n", "")
+        return pattern
 
     def _generate_fix_documents(self) -> Iterable[dict]:
         for match, fix in self._generated_fixes.items():
@@ -767,7 +775,7 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
                 self._escape_dollar = True
             yield {
                 "id": f"fix-rule-{self._fix_number}",
-                "message": f"Fixing {match}",
+                "message": f"Fixing {match[:50]}...",
                 "language": self.current_language,
                 "rule": {"pattern": self._sanitize_pattern(match)},
                 "fix": fix,

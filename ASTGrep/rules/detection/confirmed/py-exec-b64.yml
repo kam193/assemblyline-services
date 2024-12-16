@@ -38,3 +38,20 @@ metadata:
   #       {"func": "concat", "sources": ["MODULE", "METHOD"]}
   #     ]
   #   }
+
+---
+
+id: python-detect-eval-compile
+message: Concatenate strings
+language: Python
+rule:
+  kind: call
+  pattern: eval(compile($$$_))
+
+metadata:
+  extended-obfuscation: yes
+  confirmed-obfuscation: yes
+  deobfuscate: |
+    {
+      "type": "detection"
+    }
