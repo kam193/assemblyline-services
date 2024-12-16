@@ -46,10 +46,10 @@ rule:
                   stopBy: end
                   kind: identifier
                   pattern: {{ VAR }}
-            - kind: assignment
-              has:
-                field: left
-                pattern: {{ VAR }}
+            #- kind: assignment
+            #  has:
+            #    field: left
+            #    pattern: {{ VAR }}
       - inside:
           kind: parameters
       - inside:

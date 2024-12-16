@@ -68,3 +68,6 @@ while 9:
 var10 = "aaaa"
 var10 = omg_a_function(sth)
 func(var10)
+
+encrypted_payload = b"abcdefghijklmnopqrstuvwxyz"
+encrypted_payload = some_func(key=b"\x95",nonce=b"\xff").decrypt(b'mnopqrstuvwxyz')
