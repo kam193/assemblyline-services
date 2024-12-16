@@ -10,9 +10,10 @@ import zlib
 import cryptography
 import cryptography.fernet
 from ast_grep_py import SgRoot
-from Crypto.Cipher import PKCS1_OAEP
+from Crypto.Cipher import PKCS1_OAEP, ChaCha20, Blowfish, AES
 from Crypto.PublicKey import RSA as RSA_Key
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+from Crypto.Util.Padding import unpad
 
 
 class TransformationRejected(Exception):
@@ -42,12 +43,19 @@ def slice(config: dict, context: dict):
 
 def aes(config: dict, context: dict):
     source = config.get("source", "AES_SOURCE")
-    mode_string = context.get("AES_MODE", "aes-256-gcm").upper()
+    mode_var = config.get("mode", "AES_MODE")
+    mode_string = context.get(mode_var, "aes-256-gcm").upper()
+    do_decode = config.get("decode", True)
     if "-" in mode_string:
         mode_string = mode_string.split("-")[-1]
+    elif "_" in mode_string:
+        mode_string = mode_string.split("_")[-1]
+
     if mode_string == "GCM":
         tag = context.get("AUTH_TAG", None)
         mode = modes.GCM(context.get("IV"), tag=tag)
+    elif mode_string == "CBC":
+        mode = modes.CBC(context.get("IV"))
     else:
         mode = modes.CTR(context.get("IV"))
 
@@ -57,7 +65,9 @@ def aes(config: dict, context: dict):
     cipher = Cipher(algorithms.AES(key), mode)
     decryptor = cipher.decryptor()
     source_data = context[source]
-    return (decryptor.update(source_data) + decryptor.finalize()).decode("utf-8")
+    if do_decode:
+        return (decryptor.update(source_data) + decryptor.finalize()).decode("utf-8")
+    return decryptor.update(source_data) + decryptor.finalize()
 
 
 def encode(config: dict, context: dict):
@@ -429,3 +439,37 @@ def rsa(config: dict, context: dict) -> bytes:
         block = data[block_start : block_start + block_size]
         decrypted_data.extend(rsa_cipher.decrypt(block))
     return bytes(decrypted_data)
+
+def chacha20(config: dict, context: dict) -> bytes:
+    data = config.get("source", "DATA")
+    key = config.get("key", "KEY")
+    nonce = config.get("nonce", "NONCE")
+
+    cipher = ChaCha20.new(key=context[key], nonce=context[nonce])
+    return cipher.decrypt(context[data])
+
+def blowfish(config: dict, context: dict) -> bytes:
+    data = config.get("source", "DATA")
+    key = config.get("key", "KEY")
+    iv = config.get("nonce", "IV")
+    mode = config.get("mode", "MODE_CBC")
+
+    if mode != "MODE_CBC":
+        raise TransformationRejected("Unsupported Blowfish mode")
+
+    cipher = Blowfish.new(key=context[key], mode=Blowfish.MODE_CBC, iv=context[iv])
+    return cipher.decrypt(context[data])
+
+def unpad_function(config: dict, context: dict) -> bytes:
+    data = config.get("source", "DATA")
+    block = config.get("block", "BLOCK_SIZE")
+
+    block_size = None
+    if context[block] == "Blowfish.block_size":
+        block_size = Blowfish.block_size
+    elif context[block] == "AES.block_size":
+        block_size = AES.block_size
+    else:
+        raise TransformationRejected("Unsupported block size")
+
+    return unpad(context[data], block_size)

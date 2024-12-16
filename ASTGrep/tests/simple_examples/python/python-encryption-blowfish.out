@@ -1,0 +1,2 @@
+Blowfish.new(b"12345678912345671234567891234567", Blowfish.MODE_CBC, iv=iv).decrypt(b'\xaaOM%iE\xf0\xda')
+b'abcabcab'

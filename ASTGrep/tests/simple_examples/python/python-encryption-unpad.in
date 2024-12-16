@@ -1,0 +1,2 @@
+unpad(b'aaa\x05\x05\x05\x05\x05', Blowfish.block_size)
+unpad(b'aaa\r\r\r\r\r\r\r\r\r\r\r\r\r', AES.block_size)

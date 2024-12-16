@@ -1,0 +1,139 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/main/schemas/rule.json
+id: python-encryption-chacha20
+language: Python
+message: Very specific pattern looking static data encrypted by ChaCha20
+severity: error
+metadata:
+  category: obfuscation
+  extended-obfuscation: yes
+  obfuscation-confirmed: yes
+  # TODO: more generic
+  deobfuscate: |
+    {
+      "type": "fix-generate",
+      "extract": true,
+      "steps": [
+        {"func": "dequote", "source": "DATA", "decode": false},
+        {"func": "dequote", "source": "KEY", "decode": false},
+        {"func": "dequote", "source": "NONCE", "decode": false},
+        {"func": "chacha20", "source": "DATA", "key": "KEY", "nonce": "NONCE"},
+        {"func": "quote", "source": "DATA"}
+      ]
+    }
+rule:
+  kind: call
+  pattern: ChaCha20.new(key=$KEY, nonce=$NONCE).decrypt($DATA)
+
+constraints:
+  KEY:
+    kind: string
+  NONCE:
+    kind: string
+  DATA:
+    kind: string
+
+---
+
+# yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/main/schemas/rule.json
+id: python-encryption-blowfish
+language: Python
+message: Very specific pattern looking static data encrypted by Blowfish
+severity: error
+metadata:
+  category: obfuscation
+  extended-obfuscation: yes
+  obfuscation-confirmed: yes
+  # TODO: more generic pattern
+  deobfuscate: |
+    {
+      "type": "fix-generate",
+      "extract": true,
+      "steps": [
+        {"func": "dequote", "source": "DATA", "decode": false},
+        {"func": "dequote", "source": "KEY", "decode": false},
+        {"func": "dequote", "source": "IV", "decode": false},
+        {"func": "blowfish", "source": "DATA", "key": "KEY", "iv": "IV", "mode": "MODE_CBC"},
+        {"func": "quote", "source": "DATA"}
+      ]
+    }
+rule:
+  kind: call
+  pattern: Blowfish.new($KEY, Blowfish.MODE_CBC, iv=$IV).decrypt($DATA)
+
+constraints:
+  KEY:
+    kind: string
+  IV:
+    kind: string
+  DATA:
+    kind: string
+
+---
+
+# yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/main/schemas/rule.json
+id: python-encryption-aes
+language: Python
+message: Very specific pattern looking static data encrypted by AES
+severity: error
+metadata:
+  category: obfuscation
+  extended-obfuscation: yes
+  obfuscation-confirmed: yes
+  # TODO: more generic pattern
+  deobfuscate: |
+    {
+      "type": "fix-generate",
+      "extract": true,
+      "steps": [
+        {"func": "dequote", "source": "DATA", "decode": false},
+        {"func": "dequote", "source": "KEY", "decode": false},
+        {"func": "dequote", "source": "IV", "decode": false},
+        {"func": "aes", "source": "DATA", "key": "KEY", "iv": "IV", "mode": "MODE", "decode": false},
+        {"func": "quote", "source": "DATA"}
+      ]
+    }
+rule:
+  kind: call
+  pattern: AES.new($KEY, AES.$MODE, iv=$IV).decrypt($DATA)
+
+constraints:
+  KEY:
+    kind: string
+  IV:
+    kind: string
+  DATA:
+    kind: string
+
+---
+
+# yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/main/schemas/rule.json
+id: python-encryption-unpad
+language: Python
+message: Very specific pattern to unpad static data
+severity: info
+metadata:
+  category: obfuscation
+  extended-obfuscation: no
+  obfuscation-confirmed: no
+  # template_file: javascript/const-var-tpl.j2
+  deobfuscate: |
+    {
+      "type": "fix-generate",
+      "extract": true,
+      "steps": [
+        {"func": "dequote", "source": "DATA", "decode": false},
+        {"func": "unpad_function", "source": "DATA", "block": "BLOCK"},
+        {"func": "quote", "source": "DATA"}
+      ]
+    }
+rule:
+  kind: call
+  pattern: unpad($DATA, $BLOCK)
+
+constraints:
+  BLOCK:
+    any:
+      - pattern: AES.block_size
+      - pattern: Blowfish.block_size
+  DATA:
+    kind: string

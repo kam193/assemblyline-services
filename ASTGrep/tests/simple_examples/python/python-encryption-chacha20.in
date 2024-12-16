@@ -1,0 +1,2 @@
+ChaCha20.new(key=key, nonce=b"123456789123").decrypt(b'os\x9e')
+ChaCha20.new(key=b"12345678912345671234567891234567", nonce=b"123456789123").decrypt(b'os\x9e')
