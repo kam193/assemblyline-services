@@ -78,6 +78,12 @@ jobs:
           cd tests
           ln -s ../tmp/dangerous_examples/ dangerous_examples
           ln -s ../tmp/real_negative_examples/ real_negative_examples
+
+      - name: Install Python 3.11 as in the container
+        uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b #v5.3.0
+        with:
+          python-version: '3.11'
+
       - name: Install test dependencies
         if: steps.check-service-changed.outputs.exit-code != 0
         run: |
