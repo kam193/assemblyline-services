@@ -47,7 +47,9 @@ class AssemblylineServiceUpdater(ServiceUpdater):
             del rule["paths"]
         return rule
 
-    def import_update(self, files_sha256, source, default_classification=None, *args, **kwargs) -> None:
+    def import_update(
+        self, files_sha256, source, default_classification=None, *args, **kwargs
+    ) -> None:
         signatures: list[Signature] = []
         for file, _ in files_sha256:
             with open(file, "r") as f:

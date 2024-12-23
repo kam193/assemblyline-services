@@ -462,13 +462,14 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
         max_iterations: int = None,
         min_length_for_confirmed: int = 100,
         group_fixes: bool = True,
+        deobfuscation_timeout: int = 120,
     ):
         super().__init__(logger, rules_dirs)
         self._rules_transformations = {}
         self._metadata = {}
         self.read_rules(rules_dirs)
         self.cli_timeout = cli_timeout
-        self.deobfuscation_timeout = 120
+        self.deobfuscation_timeout = deobfuscation_timeout
         self.config_file = "./rules/deobfuscation.sgconfig.yml"
         self.work_time = 0
         self.max_iterations = max_iterations
@@ -1019,11 +1020,14 @@ def main():
     )
     parser.add_argument("--output", help="Output file", default=None)
     parser.add_argument("--max-iterations", help="Maximum iterations", default=None, type=int)
+    parser.add_argument("--timeout", help="Obfuscation timeout in seconds", default=120, type=int)
     parser.add_argument("file", type=str, help="File path")
     args = parser.parse_args()
 
     deobfuscator = ASTGrepDeobfuscationController(
-        rules_dirs=["./rules/"], max_iterations=args.max_iterations
+        rules_dirs=["./rules/"],
+        max_iterations=args.max_iterations,
+        deobfuscation_timeout=args.timeout,
     )
     deobfuscator.log.setLevel(logging.DEBUG if args.verbose else logging.INFO)
 

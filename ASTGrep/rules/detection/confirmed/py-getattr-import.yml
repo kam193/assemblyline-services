@@ -34,3 +34,7 @@ rule:
 metadata:
   extended-obfuscation: yes
   confirmed-obfuscation: yes
+  deobfuscate: |
+    {
+      "type": "detection"
+    }

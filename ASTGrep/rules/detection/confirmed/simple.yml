@@ -1,0 +1,56 @@
+id: python-detect-builtin-getattr
+message: Uses getattr to obfuscate using a builtin function
+language: Python
+rule:
+  kind: call
+  has:
+    field: function
+    pattern: getattr
+  all:
+    - has:
+        field: arguments
+        has:
+          kind: call
+          has:
+            field: function
+            pattern: __import__
+
+# Examples:
+# getattr(__import__("builtins"), $ANY)
+# getattr(__import__(bytes([1, 2, 3, 4][::-1]).decode()), xxx)
+
+metadata:
+  extended-obfuscation: yes
+  confirmed-obfuscation: yes
+  deobfuscate: |
+    {
+      "type": "detection"
+    }
+
+---
+
+id: python-detect-manual-import-of-stdlib
+message: Manual import using __import__ of standard library or popular module
+language: Python
+rule:
+  kind: call
+  has:
+    field: function
+    kind: identifier
+    pattern: __import__
+  all:
+    - has:
+        field: arguments
+        has:
+          kind: string
+          has:
+            kind: string_content
+            regex: zlib|base64|requests
+
+metadata:
+  extended-obfuscation: yes
+  obfuscation-confirmed: yes
+  deobfuscate: |
+    {
+      "type": "detection"
+    }
