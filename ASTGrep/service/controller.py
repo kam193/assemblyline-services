@@ -1,4 +1,3 @@
-import argparse
 import codecs
 import json
 import logging
@@ -11,20 +10,21 @@ import tempfile
 import threading
 import time
 from contextlib import suppress
+from pathlib import Path
 from threading import RLock
 from typing import Iterable
 
 import jinja2
 import pylspclient
 import pylspclient.lsp_pydantic_strcuts
+import typer
 import yaml
 from assemblyline.common.identify_defaults import type_to_extension
+from typing_extensions import Annotated
 
 from . import transformations
 
-# from .helpers import configure_yaml
-
-# configure_yaml()
+cli_app = typer.Typer()
 
 # TODO: fix supported list
 
@@ -1004,41 +1004,50 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
         ), output
 
 
-def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--lang",
-        "-l",
-        # required=True,
-        type=str,
-        help="Language as in AL convention",
-        default="code/python",
-    )
-    parser.add_argument("--verbose", help="Verbose output", default=False, action="store_true")
-    parser.add_argument(
-        "--final-only", help="Print only final layer", default=False, action="store_true"
-    )
-    parser.add_argument("--output", help="Output file", default=None)
-    parser.add_argument("--max-iterations", help="Maximum iterations", default=None, type=int)
-    parser.add_argument("--timeout", help="Obfuscation timeout in seconds", default=120, type=int)
-    parser.add_argument("file", type=str, help="File path")
-    args = parser.parse_args()
+@cli_app.command()
+def main(
+    file: Annotated[Path, typer.Argument(help="Path to the file to deobfuscate")],
+    lang: Annotated[str, typer.Option(help="Language as in AL convention")] = "code/python",
+    verbose: bool = typer.Option(False, help="Verbose output"),
+    final_only: bool = typer.Option(False, help="Print only final layer"),
+    output: Annotated[str, typer.Option(help="Output file")] = None,
+    max_iterations: Annotated[int, typer.Option(help="Maximum iterations")] = None,
+    timeout: Annotated[int, typer.Option(help="Obfuscation timeout in seconds")] = 120,
+):
+    # parser = argparse.ArgumentParser()
+    # parser.add_argument(
+    #     "--lang",
+    #     "-l",
+    #     # required=True,
+    #     type=str,
+    #     help="Language as in AL convention",
+    #     default="code/python",
+    # )
+    # parser.add_argument("--verbose", help="Verbose output", default=False, action="store_true")
+    # parser.add_argument(
+    #     "--final-only", help="Print only final layer", default=False, action="store_true"
+    # )
+    # parser.add_argument("--output", help="Output file", default=None)
+    # parser.add_argument("--max-iterations", help="Maximum iterations", default=None, type=int)
+    # parser.add_argument("--timeout", help="Obfuscation timeout in seconds", default=120, type=int)
+    # parser.add_argument("file", type=str, help="File path")
+    # args = parser.parse_args()
 
     deobfuscator = ASTGrepDeobfuscationController(
         rules_dirs=["./rules/"],
-        max_iterations=args.max_iterations,
-        deobfuscation_timeout=args.timeout,
+        max_iterations=max_iterations,
+        deobfuscation_timeout=timeout,
     )
-    deobfuscator.log.setLevel(logging.DEBUG if args.verbose else logging.INFO)
+    deobfuscator.log.setLevel(logging.DEBUG if verbose else logging.INFO)
 
-    for result, layer in deobfuscator.deobfuscate_file(args.file, args.lang):
-        if not args.output:
-            if not args.final_only:
+    for result, layer in deobfuscator.deobfuscate_file(file, lang):
+        if not output:
+            if not final_only:
                 print("#" + "=" * 80 + "#" + layer + "#")
-            if not args.final_only or layer == "#final-layer#":
+            if not final_only or layer == "#final-layer#":
                 print(result)
         else:
-            with codecs.open(args.output, "w+", "utf-16") as f:
+            with codecs.open(output, "w+", "utf-16") as f:
                 f.write(result)
 
     print("#" + "=" * 80 + "#", file=sys.stderr)
@@ -1046,4 +1055,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    cli_app()

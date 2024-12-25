@@ -16,7 +16,7 @@ rule:
           - has:
               field: object
               kind: string
-              not:  # TODO: join with other strings!
+              not: # TODO: join with other strings!
                 has:
                   kind: string_content
     - has:
@@ -48,7 +48,6 @@ rule:
                       pattern: $XOR_NUM
                       kind: integer
 
-
 metadata:
   extended-obfuscation: yes
   confirmed-obfuscation: no
@@ -58,6 +57,67 @@ metadata:
       "steps": [
         {"func": "encode_list", "source": "NUMBERS", "output": "NUMBERS"},
         {"func": "join_chr_xor", "source": "NUMBERS", "xor": "XOR_NUM", "output": "STRING"},
+        {"func": "quote", "source": "STRING"}
+      ]
+    }
+
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/main/schemas/rule.json
+
+id: python-static-join-map-chr-numbers
+message: Evaluating static expressions
+language: Python
+rule:
+  kind: call
+  has: # look for: "".join
+    field: function
+    all:
+      - has:
+          kind: identifier
+          pattern: join
+      - has:
+          field: object
+          kind: string
+          not: # TODO: join with other strings!
+            has:
+              kind: string_content
+  all:
+    - has:
+        field: arguments
+        kind: argument_list
+        has:
+          kind: call
+          has:
+            field: function
+            pattern: map
+          all:
+            - has:
+                field: arguments
+                has:
+                  nthChild: 1
+                  kind: identifier
+                  pattern: chr
+            - has:
+                field: arguments
+                has:
+                  nthChild: 2
+                  kind: list
+                  pattern: "[$$$NUMBERS]"
+                  not:
+                    has:
+                      pattern: $_
+                      not:
+                        kind: integer
+
+metadata:
+  extended-obfuscation: yes
+  confirmed-obfuscation: yes
+  deobfuscate: |
+    {
+      "type": "fix-generate",
+      "steps": [
+        {"func": "encode_list", "source": "NUMBERS", "output": "NUMBERS"},
+        {"func": "join_chr_xor", "source": "NUMBERS", "xor": null, "output": "STRING"},
         {"func": "quote", "source": "STRING"}
       ]
     }

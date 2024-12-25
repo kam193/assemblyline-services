@@ -410,11 +410,13 @@ def join_chr_xor(config: dict, context: dict) -> str:
     data_list = config.get("source", "DATA")
     xor_num = config.get("xor", "XOR_NUM")
 
-    xor_value = context[xor_num]
-    if not isinstance(xor_value, int):
-        xor_value = int(xor_value)
+    if xor_num is not None:
+        xor_value = context[xor_num]
+        if not isinstance(xor_value, int):
+            xor_value = int(xor_value)
 
-    return "".join(chr(i ^ xor_value) for i in context[data_list])
+        return "".join(chr(i ^ xor_value) for i in context[data_list])
+    return "".join(chr(i) for i in context[data_list])
 
 
 def chr_(config: dict, context: dict) -> str:

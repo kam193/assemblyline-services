@@ -2,3 +2,30 @@
 markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
 ]
+
+[build-system]
+requires = ["setuptools>=62.6"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ASTDeobfuscator"
+version = "0.0.1"
+description = "Service using AST-grep to analyze the source code to detect obfuscation and reverse it."
+readme = "README.md"
+requires-python = ">=3.10"
+license = {file = "LICENSE"}
+keywords = []
+authors = [
+  {name = "Kamil Mańkowski"},
+]
+dynamic = ["dependencies"]
+
+[tool.setuptools.dynamic]
+dependencies = {file = ["requirements.txt"]}
+
+[project.scripts]
+deobfuscate = "ASTDeobfuscator.controller:cli_app"
+
+[tool.setuptools]
+packages = ["ASTDeobfuscator"]
+package-dir = { "ASTDeobfuscator" = "service" }
