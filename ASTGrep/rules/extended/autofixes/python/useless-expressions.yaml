@@ -26,3 +26,26 @@ metadata:
     {
       "type": "auto-fix"
     }
+
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/main/schemas/rule.json
+
+id: python-useless-lambda-static-call
+message: Lambda is used to obfuscate a static call
+language: Python
+rule:
+  kind: lambda
+  has:
+    field: body
+    kind: call
+    pattern: $FUNC()
+    any:
+      - pattern: globals()
+      - pattern: locals()
+      - pattern: vars()
+
+fix: $FUNC
+
+metadata:
+  extended-obfuscation: yes
+  confirmed-obfuscation: yes

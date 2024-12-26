@@ -195,7 +195,7 @@ def output(config: dict, context: dict):
 def concat(config: dict, context: dict):
     sources = config.get("sources", ["DATA"])
     separator = config.get("separator", ".")
-    return separator.join(context[source] for source in sources)
+    return separator.join(context[source] for source in sources if source in context)
 
 
 def str_concat(config: dict, context: dict):

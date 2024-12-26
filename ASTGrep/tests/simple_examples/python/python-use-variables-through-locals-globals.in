@@ -5,3 +5,5 @@ globals()['sssss']=123
 vars()['yes']=True
 
 globals()['Ids'] = Ids
+
+locals()["oooOODooOoooOoDODoooO"]("aaa")

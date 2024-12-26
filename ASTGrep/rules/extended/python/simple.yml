@@ -166,3 +166,48 @@ metadata:
         {"func": "concat", "sources": ["OBJECT", "FIELD"]}
       ]
     }
+
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/main/schemas/rule.json
+
+id: python-use-variables-through-locals-globals
+message: Variable value is used using locals or globals function
+language: Python
+rule:
+  kind: subscript
+  has:
+    field: value
+    kind: call
+    any:
+      - pattern: globals()
+      - pattern: locals()
+      - pattern: vars()
+  all:
+    - has:
+        field: subscript
+        kind: string
+        pattern: $VARIABLE
+        has:
+          kind: string_content
+          pattern: $VARIABLE_CONTENT
+    - not:
+        all:
+          - inside:
+              kind: assignment
+              field: left
+          - inside:
+              kind: assignment
+              has:
+                field: right
+                pattern: $VARIABLE_CONTENT
+
+metadata:
+  extended-obfuscation: yes
+  confirmed-obfuscation: no
+  deobfuscate: |
+    {
+      "type": "fix-generate",
+      "steps": [
+        {"func": "dequote", "source": "VARIABLE"}
+      ]
+    }

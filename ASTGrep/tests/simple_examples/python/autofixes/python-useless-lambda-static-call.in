@@ -1,0 +1,4 @@
+x = lambda ooOOODDOODODooOOoD:vars()
+y = lambda ooOOODDOODODooOOoD:vars()['xcz']
+z = lambda ooOOODDOODODooOOoD:vars().aaa
+z2 = lambda ooOOODDOODODooOOoD:vars(a)

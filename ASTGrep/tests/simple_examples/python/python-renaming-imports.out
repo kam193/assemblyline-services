@@ -28,10 +28,10 @@ np.array()
 plt.plot()
 bitcoin.core.script.something("aaaa")
 
-something("aaaa")
+base64.something("aaaa")
 
 def aaa():
-    something("aaaa")
+    base64.something("aaaa")
 
 def script(other: str):
     pass

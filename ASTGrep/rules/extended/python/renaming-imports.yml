@@ -2,17 +2,31 @@ id: python-renaming-imports
 message: Renaming imports is sometimes used as obfuscation method
 language: Python
 rule:
+  kind: aliased_import
   all:
-  - kind: aliased_import
-    has:
-      pattern: $ORIGINAL
-      nthChild: 1
-  - kind: aliased_import
-    has:
-      pattern: $RENAMED
-      nthChild: 2
-      not:
+    - has:
         pattern: $ORIGINAL
+        nthChild: 1
+    - has:
+        pattern: $RENAMED
+        nthChild: 2
+        not:
+          pattern: $ORIGINAL
+  any:
+    - inside:
+        kind: import_statement
+    - inside:
+        kind: import_from_statement
+        has:
+          field: module_name
+          pattern: $MODULE_NAME
+          not:
+            regex: ^\.
+    # - inside:
+    #     kind: import_from_statement
+    #     has:
+    #       field: module_name
+    #       regex: ^\.
 
 constraints:
   ORIGINAL:
@@ -26,5 +40,7 @@ metadata:
   deobfuscate: |
     {
       "type": "template",
-      "steps": []
+      "steps": [
+        {"func": "concat", "sources": ["MODULE_NAME", "ORIGINAL"], "separator": ".", "output": "ORIGINAL"}
+      ]
     }
