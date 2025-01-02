@@ -1029,6 +1029,13 @@ utils:
           - pattern: range
           - pattern: open
           - pattern: chr
+          - pattern: request
+          - pattern: getenv
+          - pattern: listdir
+          - pattern: exit
+          - pattern: choice
+          - pattern: system
+          - pattern: winreg
           # TODO: better patterns
           # - pattern: "''.join"
           - pattern: binascii.unhexlify
