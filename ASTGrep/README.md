@@ -10,49 +10,39 @@ on every request.
 The `controller` module can be used as a standalone python module. It's intended for debugging purposes,
 but can be used to deobfuscate code without having to run the service.
 
-First, install requirements from `requirements.txt`. Then, you can use the `controller` module to deobfuscate:
+You can either install requirements from `requirements.txt` and call the `controller` module directly,
+or just install the module with `pip install .`: this will also install the `deobfuscate` script.
+
+CLI uses the [Typer](https://typer.tiangolo.com/) library, so you can even install the bash completion.
+
+### CLI usage
 
 ```bash
 
-$ python -m service.controller -h
+$ python -m service.controller --help
+<OR>
+$ deobfuscate --help
 
-usage: controller.py [-h] [--lang LANG] [--verbose] [--final-only] [--output OUTPUT] [--max-iterations MAX_ITERATIONS] file
+ Usage: deobfuscate [OPTIONS] FILE
 
-positional arguments:
-  file                  File path
-
-options:
-  -h, --help            show this help message and exit
-  --lang LANG, -l LANG  Language as in AL convention
-  --verbose             Verbose output
-  --final-only          Print only final layer
-  --output OUTPUT       Output file
-  --max-iterations MAX_ITERATIONS
-                        Maximum iterations
+╭─ Arguments ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ *    file      PATH  Path to the file to deobfuscate [default: None] [required]                                                        │
+╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ Options ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ --lang                                     TEXT     Language as in AL convention [default: code/python]                                │
+│ --verbose               --no-verbose                Verbose output [default: no-verbose]                                               │
+│ --final-only            --no-final-only             Print only final layer [default: no-final-only]                                    │
+│ --output                                   TEXT     Output file [default: None]                                                        │
+│ --max-iterations                           INTEGER  Maximum iterations [default: None]                                                 │
+│ --timeout                                  INTEGER  Obfuscation timeout in seconds [default: 120]                                      │
+│ --install-completion                                Install completion for the current shell.                                          │
+│ --show-completion                                   Show completion for the current shell, to copy it or customize the installation.   │
+│ --help                                              Show this message and exit.                                                        │
+╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
 ```
 
-TODO:
+### Example usage
 
-Renaming ambiguous variables (?)
-
-# ruleid: python-obfuscation-ambiguous-variable-name
-(
-    OO0oo0O0oOoO0OoooO,
-    JLLLIJJILJLILIJLLLJI,
-    O0000OOOO000ooO00OoO,
-    OoO0OoooO0OOOO000OooOO0,
-    IIlIllllIlIIlllIIl,
-) = 1, 2, 3, 4, 5
-
-# ruleid: python-obfuscation-ambiguous-variable-name
-lambda nnnnnmmmnnmnmmnmnnnm: aaa
-
-# ruleid: python-obfuscation-ambiguous-variable-name
-__4319848022592 = 52015194899669
-
-pattern-either:
-            - pattern-regex: "[1lI]{10,}"
-            - pattern-regex: "[0Oo]{10,}"
-            - pattern-regex: "[mn]{10,}"
-            - pattern-regex: "[IJl]{10,}"
-            - pattern-regex: "_{1,}[0-9]{10,}"
+```bash
+$ deobfuscate --final-only path/to/obfuscated/file.py > deobfuscated.py
+```
