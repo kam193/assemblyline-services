@@ -28,7 +28,9 @@ class AssemblylineService(ServiceBase):
         if request.file_size > self.max_file_size:
             return
 
-        av_response = requests.post(f"{self.url}/scan-file", files={"file": request.file_contents})
+        av_response = requests.post(
+            f"{self.url}/scan-file", files={"file": open(request.file_path, "rb")}, stream=True
+        )
         av_response.raise_for_status()
 
         av_result = av_response.json()
