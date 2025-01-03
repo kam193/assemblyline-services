@@ -61,6 +61,12 @@ def detect_sample(
     ), f"Sample was {'not' if expected else ''} detected as {metadata_field} by {rule_id}"
 
 
+def rstrip_lines(data: str | list[str]) -> str:
+    if not isinstance(data, list):
+        data = data.splitlines()
+    return "\n".join(s.rstrip() for s in data)
+
+
 @pytest.fixture
 def deobfuscate_example(deobfuscator):
     def _check_example(
@@ -76,7 +82,9 @@ def deobfuscate_example(deobfuscator):
             language = f"code/{lang_name}"
         results = list(deobfuscator.deobfuscate_file(f"{path}.in", language))
         if check_output:
-            assert results[-1][0].strip() == open(f"{path}.out", "r").read().strip()
+            assert rstrip_lines(results[-1][0].strip()) == rstrip_lines(
+                open(f"{path}.out", "r").read().strip()
+            )
         if deobfuscator.work_time > warning_time:
             warnings.warn(f"Deobfuscation took {deobfuscator.work_time:.3f} seconds")
         assert (

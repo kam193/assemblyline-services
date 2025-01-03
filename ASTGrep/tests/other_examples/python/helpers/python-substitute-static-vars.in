@@ -22,7 +22,7 @@ def f2(var1):
 var20 = 2
 self.var20 = 2
 
-# TODO: this should be ignored
+# this should be ignored
 x = 7
 for i in range(3):
     x = i
@@ -71,3 +71,6 @@ func(var10)
 
 encrypted_payload = b"abcdefghijklmnopqrstuvwxyz"
 encrypted_payload = some_func(key=b"\x95",nonce=b"\xff").decrypt(encrypted_payload[12:])
+
+lIIIlIIIIlllIlIIII=gc
+lIllIIIlIlIIIIlIlI=lIIIlIIIIlllIlIIII.get_referents

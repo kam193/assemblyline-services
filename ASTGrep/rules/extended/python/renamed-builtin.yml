@@ -1036,6 +1036,8 @@ utils:
           - pattern: choice
           - pattern: system
           - pattern: winreg
+          - pattern: base64
+          - pattern: gc.get_referents
           # TODO: better patterns
           # - pattern: "''.join"
           - pattern: binascii.unhexlify

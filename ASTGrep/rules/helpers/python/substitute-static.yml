@@ -1490,6 +1490,46 @@ utils:
       - kind: float
       - kind: string
       - kind: "none"
+      - kind: identifier
+        not:
+          # Handled by renamed-builtin ->  TODO: merge both!
+          any:
+            - pattern: eval
+            - pattern: exec
+            - pattern: str
+            - pattern: map
+            - pattern: ord
+            - pattern: tuple
+            - pattern: type
+            - pattern: globals
+            - pattern: locals
+            - pattern: __import__
+            - pattern: compile
+            - pattern: getattr
+            - pattern: dir
+            - pattern: vars
+            - pattern: bool
+            - pattern: float
+            - pattern: int
+            - pattern: bytes
+            - pattern: list
+            - pattern: pow
+            - pattern: round
+            - pattern: range
+            - pattern: open
+            - pattern: chr
+            - pattern: request
+            - pattern: getenv
+            - pattern: listdir
+            - pattern: exit
+            - pattern: choice
+            - pattern: system
+            - pattern: winreg
+            - pattern: base64
+            - pattern: gc.get_referents
+            # TODO: better patterns
+            # - pattern: "''.join"
+            - pattern: binascii.unhexlify
 
 metadata:
   extended-obfuscation: no

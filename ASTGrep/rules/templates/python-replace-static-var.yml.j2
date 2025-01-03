@@ -94,10 +94,24 @@ rule:
                     - kind: "false"
                     - kind: float
                     - kind: "none"
+                    - pattern: {{ VALUE | replace("$", "{{{DOLLARPLACEHOLDER}}}") | tojson }}
                   # TODO: good regex sanitization to exclude only specific string
                   #has:
                   #  kind: string_content
                   #  {# regex: {{ VALUE | replace('?', '\\?') | replace('(', '\\(') | replace(')', '\\)') | replace('[', '\\[') | replace(']', '\\]') | replace('{', '\\{') | replace('}', '\\}') | replace('*', '\\*') | replace("$", "{{{DOLLARPLACEHOLDER}}}") | tojson }} #}
+      - inside:
+          kind: expression_statement
+          stopBy: end
+          follows:
+            stopBy: end
+            any:
+              - kind: for_statement
+            has:
+              stopBy: end
+              kind: assignment
+              has:
+                field: left
+                pattern: {{ VAR }}
 # TODO: better way to detect if the variable is used in a loop
 # or if it is used in a condition that modifies the variable
 #      - inside:

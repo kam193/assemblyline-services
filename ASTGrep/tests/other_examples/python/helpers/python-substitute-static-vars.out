@@ -26,7 +26,7 @@ self.var20 = 2
 x = 7
 for i in range(3):
     x = i
-print(7)
+print(x)
 
 global var2
 var1 += "a"
@@ -71,3 +71,6 @@ func(var10)
 
 encrypted_payload = b"abcdefghijklmnopqrstuvwxyz"
 encrypted_payload = some_func(key=b"\x95",nonce=b"\xff").decrypt(b'mnopqrstuvwxyz')
+
+lIIIlIIIIlllIlIIII=gc
+lIllIIIlIlIIIIlIlI=gc.get_referents
