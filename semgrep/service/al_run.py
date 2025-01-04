@@ -271,7 +271,7 @@ class AssemblylineService(ServiceBase):
                     result = self._run_semgrep(self._fallback_semgrep)
                 else:
                     raise
-        except UnsupportedLanguageError:
+        except (UnsupportedLanguageError, UnsupportedFileError):
             self.log.warning(f"Unsupported language: {self._request.file_type}")
             return
         except TimeoutError:
