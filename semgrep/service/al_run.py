@@ -49,10 +49,14 @@ USE_LSP = True
 MAX_LINE_SIZE = 5000
 
 
+class UnsupportedFileError(Exception):
+    pass
+
+
 class AssemblylineService(ServiceBase):
     def _load_config(self):
         semgreps = [self._semgrep]
-        if self.fallback_to_scan:
+        if self._fallback_semgrep:
             semgreps.append(self._fallback_semgrep)
         for semgrep in semgreps:
             if isinstance(semgrep, SemgrepLSPController):
@@ -152,7 +156,7 @@ class AssemblylineService(ServiceBase):
         code_hash = hashlib.sha256(code.encode()).hexdigest()
         return f"code.{code_hash}"
 
-    def _read_lines(self, lines_no: set[tuple[int, int]]):
+    def _read_lines(self, lines_no: set[tuple[int, int]], first_line_no: int):
         lines = defaultdict(list)
         slices_by_start = defaultdict(list)
         for start, end in lines_no:
@@ -160,12 +164,11 @@ class AssemblylineService(ServiceBase):
 
         open_slices = list()
         with open(self._request.file_path, "r") as f:
-            for i, line in enumerate(f):
+            for i, line in enumerate(f, start=first_line_no):
                 if i in slices_by_start:
                     for end in slices_by_start[i]:
                         open_slices.append((i, end))
                 for slice_ in copy(open_slices):
-                    self.log.debug(f"Reading line {i} for slice {slice_}, {type(slice_)}")
                     lines[slice_].append(line)
                     if i == slice_[1]:
                         open_slices.remove(slice_)
@@ -173,7 +176,9 @@ class AssemblylineService(ServiceBase):
                     break
         return {k: "".join(v) for k, v in lines.items()}
 
-    def _process_results(self, results: list[dict]) -> Iterable[ResultMultiSection]:
+    def _process_results(
+        self, results: list[dict], first_line_no: int
+    ) -> Iterable[ResultMultiSection]:
         result_by_rule = defaultdict(list)
         lines_by_rule = defaultdict(set)
         line_no = set()
@@ -185,8 +190,8 @@ class AssemblylineService(ServiceBase):
                 lines_by_rule[result["check_id"]].add((line_start, line_end))
 
         lines = dict()
-        if self.use_lsp and line_no:
-            lines = self._read_lines(line_no)
+        if line_no:
+            lines = self._read_lines(line_no, first_line_no)
 
         for rule_id, matches in result_by_rule.items():
             extra = matches[0].get("extra", {})
@@ -207,8 +212,12 @@ class AssemblylineService(ServiceBase):
             section.set_heuristic(heuristic, signature=rule_id, attack_id=attack_id)
             for match in matches:
                 line_start, line_end = match["start"]["line"], match["end"]["line"]
-                line = match["extra"].get("lines", lines.get((line_start, line_end), ""))
+                line = lines.get((line_start, line_end), "")
                 code_hash = self._get_code_hash(line)
+
+                if first_line_no == 0:
+                    line_start += 1
+                    line_end += 1
                 title = f"Match at lines {line_start} - {line_end}"
                 if line_start == line_end:
                     title = f"Match at line {line_start}"
@@ -226,11 +235,14 @@ class AssemblylineService(ServiceBase):
 
     def _run_semgrep(self, semgrep: SemgrepScanController):
         result = Result()
-        self._request.set_service_context(f"Semgrep™ OSS {semgrep.version}")
+
+        if not semgrep.can_handle_file(self._request.file_path, self._request.file_type):
+            self.log.debug("File is not supported by given semgrep")
+            raise UnsupportedFileError()
 
         # TODO: better tests if we should retry by default
         results = semgrep.process_file(self._request.file_path, self._request.file_type)
-        for result_section in self._process_results(results):
+        for result_section in self._process_results(results, semgrep.LINE_START):
             result.add_section(result_section)
 
         if semgrep.last_results:
@@ -239,6 +251,8 @@ class AssemblylineService(ServiceBase):
             self._request.add_supplementary(
                 f.name, "semgrep_raw_results.json", "Semgrep™ OSS Results"
             )
+
+        self._request.set_service_context(f"Semgrep™ OSS {semgrep.version}")
 
         return result
 
@@ -251,7 +265,7 @@ class AssemblylineService(ServiceBase):
         try:
             try:
                 result = self._run_semgrep(self._semgrep)
-            except TimeoutError:
+            except (TimeoutError, UnsupportedFileError):
                 if self.fallback_to_scan:
                     self.log.info("Falling back to CLI scan")
                     result = self._run_semgrep(self._fallback_semgrep)

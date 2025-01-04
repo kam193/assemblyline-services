@@ -64,6 +64,8 @@ class SemgrepTimeoutError(SemgrepError, TimeoutError):
 
 
 class SemgrepScanController:
+    LINE_START = 1
+
     def __init__(self, logger: logging.Logger = None, rules_dir: str = None):
         self._active_rules = []
         self._active_rules_prefix = ""
@@ -159,7 +161,7 @@ class SemgrepScanController:
         self._prepare_file_with_extension(file_path, file_type)
         results, rule_prefix = self._execute_semgrep(self._working_file)
         self.last_results = results
-        self.version = results.get("version", "")
+        self.version = results.get("version", "") + " scan CLI"
         if res_list := results.get("results", []):
             for result in res_list:
                 result["check_id"] = result["check_id"][len(rule_prefix) :]
@@ -173,6 +175,14 @@ class SemgrepScanController:
 
     def stop(self):
         pass
+
+    def can_handle_file(self, file_path: str, file_type: str) -> bool:
+        ext = LANGUAGE_TO_EXT.get(file_type, None)
+        if not ext:
+            # yeah, with languages we have an extension for we would just try;
+            # without it doesn't make sense at all
+            return False
+        return True
 
 
 class LSPSemgrepClient(pylspclient.LspClient):
@@ -193,6 +203,8 @@ class LSPSemgrepClient(pylspclient.LspClient):
 
 
 class SemgrepLSPController(SemgrepScanController):
+    LINE_START = 0
+
     def _startup_values(self):
         self._is_initialized = False
         self.last_results = []
@@ -306,7 +318,7 @@ class SemgrepLSPController(SemgrepScanController):
                 }
             ],
         )
-        self.version = server_init_data["serverInfo"]["version"]
+        self.version = server_init_data["serverInfo"]["version"] + " LSP"
 
     def load_rules(self, _: list[str], __: str):
         with self._refresh_rules_cond:
@@ -424,3 +436,48 @@ class SemgrepLSPController(SemgrepScanController):
             self._reload_server()
         elif self._was_timeout:
             self._reload_server()
+
+    def can_handle_file(self, file_path: str, file_type: str) -> bool:
+        if not super().can_handle_file(file_path, file_type):
+            return False
+
+        # Semgrep LSP has a hardcoded skipping minified files:
+        # https://github.com/semgrep/semgrep/blob/611bdbd15026dfdd38fa30b93889925fa50e444e/src/osemgrep/language_server/server/User_settings.ml#L61
+        # so if the file wouldn't pass this check, we can't process it with LSP
+        # The logic bellow is based on the check done in Semgrep:
+        # https://github.com/semgrep/semgrep/blob/611bdbd15026dfdd38fa30b93889925fa50e444e/src/targeting/Skip_target.ml#L51
+        # and https://github.com/semgrep/semgrep/blob/611bdbd15026dfdd38fa30b93889925fa50e444e/src/targeting/Skip_target.ml#L79
+
+        if os.stat(file_path).st_size <= 1000:
+            return True
+
+        with open(file_path, "rb") as f:
+            first_block = f.read(4096)
+
+        lines = 1.0
+        whitespaces = 0.0
+        other = 0.0
+        for c in first_block:
+            if c in b" \t\r":
+                whitespaces += 1.0
+            elif c in b"\n":
+                lines += 1.0
+                whitespaces += 1.0
+            else:
+                other += 1.0
+
+        total = whitespaces + other
+
+        if int(total) == 0:
+            return True
+
+        whitespaces_freq = whitespaces / total
+        line_freq = lines / total
+
+        # Constants from Semgrep checks
+        if whitespaces_freq < 0.07:
+            return False
+        if line_freq < 0.001:
+            return False
+
+        return True
