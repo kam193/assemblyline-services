@@ -11,6 +11,7 @@ from assemblyline_v4_service.common.result import (
     ResultMemoryDumpSection,
     ResultTextSection,
 )
+from assemblyline_v4_service.common.task import MaxExtractedExceeded
 
 from .extractor import Extractor, bytes_to_human
 
@@ -177,8 +178,11 @@ class AssemblylineService(ServiceBase):
             tcp_section.add_subsection(conversation_section)
 
         if extract_files:
-            for file in extractor.get_files(safelisted_tcp_streams):
-                request.add_extracted(file, os.path.basename(file), "File extracted from PCAP")
+            try:
+                for file in extractor.get_files(safelisted_tcp_streams):
+                    request.add_extracted(file, os.path.basename(file), "File extracted from PCAP")
+            except MaxExtractedExceeded:
+                self.log.warning("Exceeded max extracted files")
 
         stats_section = ResultTextSection("IP statistics (excl. safelisted)")
 
