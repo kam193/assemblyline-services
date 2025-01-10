@@ -42,7 +42,8 @@ heuristics:
 docker_config:
   image: ${REGISTRY}ghcr.io/kam193/assemblyline-service-remoteav:$SERVICE_TAG
   cpu_cores: 0.25
-  ram_mb: 512
+  # has to be able to read the file to scan
+  ram_mb: 768
   ram_mb_min: 256
   allow_internet_access: true
 

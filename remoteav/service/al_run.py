@@ -1,4 +1,5 @@
 import random
+import time
 
 import requests
 from assemblyline_v4_service.common.base import ServiceBase
@@ -39,10 +40,12 @@ class AssemblylineService(ServiceBase):
                 url = random.choice(self.url)
             self.log.debug("Selected service URL: %s", url)
             av_response = requests.post(
-                f"{url}/scan-file", files={"file": open(request.file_path, "rb")}, stream=True
+                f"{url}/scan-file", files={"file": open(request.file_path, "rb")}
             )
             # kind of a hacky retry for uploading issues
             if av_response.status_code == 504:
+                self.log.warning("Remote AV server is busy or network has issues, retrying...")
+                time.sleep(random.uniform(0.1, 1))
                 continue
             break
 
@@ -57,5 +60,4 @@ class AssemblylineService(ServiceBase):
         main_section.add_tag("av.virus_name", av_result["av_result"])
         main_section.set_heuristic(1)
 
-        main_section = ResultTextSection("Results of scoring")
         result.add_section(main_section)
