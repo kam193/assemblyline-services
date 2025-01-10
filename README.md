@@ -57,7 +57,11 @@ Supported heuristics:
 
 - newly created domains (based on WHOIS data).
 
-### OOPreview
+### OOPreview (deprecated)
+
+  > [!NOTE]
+  > Deprecated as the same preview builder is now used by the official AL DocumentPreview
+  > service (starting version 4.5.0.stable36).
 
 Simple service that uses [OnlyOffice Document Builder](https://api.onlyoffice.com/docbuilder/basic)
 to generate documents previews, with the high compatibility with Microsoft Office formats. Supported
