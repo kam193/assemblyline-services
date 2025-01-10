@@ -1,3 +1,5 @@
+import random
+
 import requests
 from assemblyline_v4_service.common.base import ServiceBase
 from assemblyline_v4_service.common.request import ServiceRequest
@@ -10,6 +12,8 @@ class AssemblylineService(ServiceBase):
 
     def _load_config(self):
         self.url = self.config.get("remoteav_server", "http://localhost:5556")
+        if isinstance(self.url, str) and "," in self.url:
+            self.url = self.url.split(",")
         self.max_file_size = self.config.get("max_file_size", 1024 * 1024 * 500)
 
     def start(self):
@@ -28,10 +32,19 @@ class AssemblylineService(ServiceBase):
         if request.file_size > self.max_file_size:
             return
 
-        av_response = requests.post(
-            f"{self.url}/scan-file", files={"file": open(request.file_path, "rb")}, stream=True
-        )
-        av_response.raise_for_status()
+        while True:
+            if isinstance(self.url, str):
+                url = self.url
+            else:
+                url = random.choice(self.url)
+            self.log.debug("Selected service URL: %s", url)
+            av_response = requests.post(
+                f"{url}/scan-file", files={"file": open(request.file_path, "rb")}, stream=True
+            )
+            # kind of a hacky retry for uploading issues
+            if av_response.status_code == 504:
+                continue
+            break
 
         av_result = av_response.json()
         if av_result["status"] == "ok":
