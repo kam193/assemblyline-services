@@ -39,9 +39,7 @@ class AssemblylineService(ServiceBase):
             else:
                 url = random.choice(self.url)
             self.log.debug("Selected service URL: %s", url)
-            av_response = requests.post(
-                f"{url}/scan-file", files={"file": open(request.file_path, "rb")}
-            )
+            av_response = requests.post(f"{url}/scan-file", files={"file": request.file_contents})
             # kind of a hacky retry for uploading issues
             if av_response.status_code == 504:
                 self.log.warning("Remote AV server is busy or network has issues, retrying...")
