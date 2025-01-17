@@ -60,15 +60,15 @@ update_config:
   wait_for_update: true
   sources:
     # Source named "freshclam" is reserved for updates using FreshClam utility
-    # Headers are treated as freshclam.conf options
+    # Configuration is treated as freshclam.conf options
     - name: freshclam
       uri: database.clamav.net
-      headers:
-        - name: DNSDatabaseInfo
-          value: current.cvd.clamav.net
+      configuration:
+        DNSDatabaseInfo: current.cvd.clamav.net
         # Additional databases can be specified using DatabaseCustomURL option
-        # - name: DatabaseCustomURL
-        #   value: http://www.rfxn.com/downloads/rfxn.ndb
+        # DatabaseCustomURL:
+        #   - http://www.rfxn.com/downloads/rfxn.ndb
+        #   - http://www.some.other.url.com/custom.ndb
     # Other sources are just downloaded and put in the database directory
     # More resources:
     # https://github.com/extremeshok/clamav-unofficial-sigs/tree/master

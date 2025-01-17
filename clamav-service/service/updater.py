@@ -5,7 +5,10 @@ import shutil
 import subprocess
 import tempfile
 import time
+import uuid
+from functools import lru_cache
 
+from assemblyline.odm.models.service import UpdateSource
 from assemblyline_v4_service.updater.updater import Service, ServiceUpdater
 
 TIMEOUT = 600
@@ -19,7 +22,7 @@ class ClamavServiceUpdater(ServiceUpdater):
 
         self.persistent_dir = pathlib.Path(os.getenv("UPDATER_DIR", "/opt/clamav_db"))
 
-    def _prepare_configs(self, update_dir: str, config) -> None:
+    def _prepare_configs(self, update_dir: str, config: UpdateSource) -> None:
         # Fill & prepare config file
         service_configs = {}
         self.log.debug("Preparing freshclam.conf")
@@ -27,15 +30,33 @@ class ClamavServiceUpdater(ServiceUpdater):
         add_default_mirror = True
         with open(update_dir + "/freshclam.conf", "w+") as f:
             f.write(f"DatabaseDirectory {update_dir}\n")
-            for header in config.headers:
-                if header.name.startswith("_"):
-                    service_configs[header.name] = header.value
-                    continue
+            user_config = config.configuration
 
-                self.log.debug(f"Adding {header.name} {header.value} to freshclam.conf")
-                f.write(f"{header.name} {header.value}\n")
-                if header.name == "DatabaseMirror":
-                    add_default_mirror = False
+            # backward compatibility, use the legacy method to generate config from headers
+            if not user_config:
+                for header in config.headers:
+                    if header.name.startswith("_"):
+                        service_configs[header.name] = header.value
+                        continue
+
+                    self.log.debug(
+                        f"Adding {header.name} {header.value} to freshclam.conf [legacy config]"
+                    )
+                    f.write(f"{header.name} {header.value}\n")
+                    if header.name == "DatabaseMirror":
+                        add_default_mirror = False
+            else:
+                for config_key, config_value in user_config.items():
+                    if config_key.startswith("_"):
+                        continue
+
+                    if not isinstance(config_value, list):
+                        config_value = [config_value]
+                    for value in config_value:
+                        self.log.debug(f"Adding {config_key} {value} to freshclam.conf")
+                        f.write(f"{config_key} {value}\n")
+                    if config_key == "DatabaseMirror":
+                        add_default_mirror = False
 
             if add_default_mirror:
                 self.log.debug(f"Adding DatabaseMirror {config['uri']} to freshclam.conf")
@@ -46,6 +67,7 @@ class ClamavServiceUpdater(ServiceUpdater):
         return service_configs
 
     def _clean_up_old_sources(self, service: Service, update_dir: str) -> None:
+        # TODO: remove disabled sources?
         active_sources = [source["name"] for source in service.update_config.sources]
         for source in os.listdir(update_dir):
             if os.path.isdir(f"{update_dir}/{source}") and source not in active_sources:
@@ -90,6 +112,7 @@ class ClamavServiceUpdater(ServiceUpdater):
                 freshclam.check_returncode()
             except Exception as exc:
                 # ext. 8 - memory kill
+                # ext. 11 - HTTP error
                 self.log.exception("freshclam failed: %s", exc)
                 self.push_status("ERROR", str(exc))
                 return
@@ -134,6 +157,41 @@ class ClamavServiceUpdater(ServiceUpdater):
                 dirs_exist_ok=True,
             )
 
+    @lru_cache()
+    def clamav_user_agent(self):
+        clamav_version = subprocess.run(
+            ["clamscan", "--version"], capture_output=True, text=True
+        ).stdout.strip()
+        clamav_version = clamav_version.split("/")[0]
+        # TODO: use UUID from freshclam.dat to keep it persistent?
+        id_ = uuid.uuid4()
+        return f"{clamav_version} (OS: linux-gnu, ARCH: x86_64, CPU: x86_64, UUID: {id_})"
+
+    def _add_headers(self, source_obj: UpdateSource):
+        # For compatibility with providers that do require using FreshClam or specific versions for updates
+        if not source_obj.headers:
+            source_obj.headers = []
+
+        user_agent = next(
+            filter(lambda x: x.name.lower() == "user-agent", source_obj.headers), None
+        )
+        if not user_agent:
+            source_obj.headers.append(
+                {
+                    "name": "User-Agent",
+                    "value": self.clamav_user_agent(),
+                }
+            )
+
+        accept = next(filter(lambda x: x.name.lower() == "accept", source_obj.headers), None)
+        if not accept:
+            source_obj.headers.append(
+                {
+                    "name": "Accept",
+                    "value": "*/*",
+                }
+            )
+
     def do_source_update(self, service: Service) -> None:
         sources_to_update = []
         while not self.update_queue.empty():
@@ -147,12 +205,21 @@ class ClamavServiceUpdater(ServiceUpdater):
                 ),
                 None,
             )
-            self._update_freshclam(service, freshclam_config)
+            if freshclam_config.enabled:
+                self._update_freshclam(service, freshclam_config)
 
         for source in sources_to_update:
             if source == FRESHCLAM_SOURCE_NAME:
                 continue
             self.update_queue.put(source)
+
+        # Add ClamAV-like headers to sources that are being updated
+        for source_config in service.update_config.sources:
+            if (
+                source_config.name in sources_to_update
+                and source_config.name != FRESHCLAM_SOURCE_NAME
+            ):
+                self._add_headers(source_config)
 
         super().do_source_update(service)
         self._clean_up_old_sources(service, self.latest_updates_dir)
@@ -171,7 +238,9 @@ class ClamavServiceUpdater(ServiceUpdater):
 
         raise ValueError(result.stderr)
 
-    def import_update(self, files_sha256, source, default_classification=None, *args, **kwargs) -> None:
+    def import_update(
+        self, files_sha256, source, default_classification=None, *args, **kwargs
+    ) -> None:
         output_dir = os.path.join(self.latest_updates_dir, source)
         os.makedirs(os.path.join(self.latest_updates_dir, source), exist_ok=True)
         for file, _ in files_sha256:
