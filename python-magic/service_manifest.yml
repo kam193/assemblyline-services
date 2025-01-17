@@ -2,12 +2,11 @@ name: Python-Magic
 version: $SERVICE_TAG
 description: |
   Designed to help with analysis of Python artifacts. Supports extracting dependencies
-  from packages and marking suspicious (requires some update source), unpacking
-  PyInstaller executables (using pyinstxtractor-ng) and decompyling Python bytecode
-  (using Decompyle++).
+  from packages and marking suspicious (requires some update source) and unpacking
+  PyInstaller executables (using pyinstxtractor-ng)
 enabled: true
 
-accepts: executable/*|resource/pyc|archive/*
+accepts: executable/*|archive/*
 rejects: empty
 stage: EXTRACT
 category: Static Analysis

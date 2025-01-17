@@ -82,7 +82,6 @@ Supported heuristics:
 Designed to help with analysis of Python artifacts. Currently supported:
 
 - unpacking PyInstaller executables (using [pyinstxtractor-ng](https://github.com/pyinstxtractor/pyinstxtractor-ng)),
-- decompyling Python bytecode (.pyc) (using [Decompyle++](https://github.com/zrax/pycdc)),
 - extracting declared dependencies and matching them against configurable lists of suspicious and malicious packages,
 
 ### RemoteAV

@@ -19,4 +19,8 @@ Service config:
 
 ### Decompyling Python bytecode
 
+> [!NOTE]
+> This feature has been removed as the official Extract service now supports decompiling Python
+> bytecode. It may come back to decompile marshalled Python bytecode in the future.
+
 Decompyling Python bytecode (.pyc) using [Decompyle++](https://github.com/zrax/pycdc)

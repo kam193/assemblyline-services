@@ -1,13 +1,14 @@
 ARG REGISTRY=
 ARG MANIFEST_REGISTRY=ghcr.io/
 ARG BASE_IMAGE=cccs/assemblyline-v4-service-base:stable
-FROM debian:bookworm-slim as builder
+# FROM debian:bookworm-slim as builder
 
-RUN --mount=type=secret,id=apt,target=/etc/apt/apt.conf.d/00cfg \
-    apt-get update && apt-get upgrade -y && apt-get install -y git cmake make g++
+# RUN --mount=type=secret,id=apt,target=/etc/apt/apt.conf.d/00cfg \
+#     apt-get update && apt-get upgrade -y && apt-get install -y git cmake make g++
 
-COPY helpers/ helpers/
-RUN bash helpers/build-pycdc.sh
+# Removed as it's not used in the current version
+# COPY helpers/ helpers/
+# RUN bash helpers/build-pycdc.sh
 
 FROM ${BASE_IMAGE}
 
@@ -29,7 +30,7 @@ RUN --mount=type=secret,id=pypi,target=/etc/pip.conf,mode=0444 \
     bash helpers/install-deps.sh && \
     rm -rf ~/.cache/pip
 
-COPY --from=builder /helpers/pycdc /usr/local/bin/pycdc
+# COPY --from=builder /helpers/pycdc /usr/local/bin/pycdc
 USER assemblyline
 COPY . .
 
