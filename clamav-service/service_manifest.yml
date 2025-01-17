@@ -49,7 +49,7 @@ heuristics:
 
 docker_config:
   image: ${REGISTRY}ghcr.io/kam193/assemblyline-service-clamav:$SERVICE_TAG
-  cpu_cores: 1.0
+  cpu_cores: 1.5
   ram_mb: 3072
   ram_mb_min: 1536
   allow_internet_access: false
