@@ -114,10 +114,10 @@ class ClamAVService(ServiceBase):
 
         for scan_result, comment in clamav_results:
             if scan_result == "FOUND":
-                if comment.startswith("PUA."):
+                if comment.startswith("PUA.") or ".PUA." in comment:
                     puas.add_line(comment)
                     puas.add_tag("av.heuristic", comment)
-                elif "Heuristics." in comment:
+                elif "Heuristics." in comment or ".HEUR." in comment:
                     heuristics.add_line(comment)
                     heuristics.add_tag("av.heuristic", comment)
                 else:
