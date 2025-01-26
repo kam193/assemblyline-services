@@ -23,6 +23,9 @@ config:
   AlertPartitionIntersection: yes
   MaxScanTime: 60000
   _WAIT_FOR_DAEMON: 60
+  # Generate .ign2 from safelisted signatures when refreshing updates
+  # so ClamAV will ignore them
+  _GenerateIgnoreFileFromSafelisted: yes
 
 # -1000: safe
 # 0 - 299: informative

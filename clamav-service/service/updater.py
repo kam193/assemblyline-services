@@ -9,11 +9,13 @@ import uuid
 from functools import lru_cache
 
 from assemblyline.odm.models.service import UpdateSource
+from assemblyline_v4_service.common.api import PrivilegedServiceAPI
 from assemblyline_v4_service.updater.updater import Service, ServiceUpdater
 
 TIMEOUT = 600
 
 FRESHCLAM_SOURCE_NAME = "freshclam"
+GENERATED_IGNORE_NAME = "_generated_ignore"
 
 
 class ClamavServiceUpdater(ServiceUpdater):
@@ -21,6 +23,7 @@ class ClamavServiceUpdater(ServiceUpdater):
         super().__init__(*args, **kwargs)
 
         self.persistent_dir = pathlib.Path(os.getenv("UPDATER_DIR", "/opt/clamav_db"))
+        self._safelist_client = None
 
     def _prepare_configs(self, update_dir: str, config: UpdateSource) -> None:
         # Fill & prepare config file
@@ -69,6 +72,8 @@ class ClamavServiceUpdater(ServiceUpdater):
     def _clean_up_old_sources(self, service: Service, update_dir: str) -> None:
         # TODO: remove disabled sources?
         active_sources = [source["name"] for source in service.update_config.sources]
+        if service.config.get("_GenerateIgnoreFileFromSafelisted"):
+            active_sources.append(GENERATED_IGNORE_NAME)
         for source in os.listdir(update_dir):
             if os.path.isdir(f"{update_dir}/{source}") and source not in active_sources:
                 self.log.info(f"Removing old source {source}")
@@ -192,6 +197,25 @@ class ClamavServiceUpdater(ServiceUpdater):
                 }
             )
 
+    def _generate_ignore_file_from_safelisted(self, service: Service) -> None:
+        safelisted_av_signs = self.safelist_client.get_safelisted_tags(tag_types="av.virus_name")
+
+        preprocessed = list()
+        for sign in safelisted_av_signs["match"].get("av.virus_name", []):
+            sign: str
+            sign = sign.removeprefix("YARA.")
+            sign = sign.removesuffix(".UNOFFICIAL")
+            preprocessed.append(sign)
+
+        preprocessed = sorted(set(preprocessed))
+
+        self.log.info(f"Found {len(preprocessed)} safelisted signatures")
+        with tempfile.TemporaryDirectory() as d:
+            ign_path = os.path.join(d, GENERATED_IGNORE_NAME + ".ign2")
+            with open(ign_path, "w+") as f:
+                f.write("\n".join(preprocessed))
+            self.import_update([(ign_path, "")], GENERATED_IGNORE_NAME)
+
     def do_source_update(self, service: Service) -> None:
         sources_to_update = []
         while not self.update_queue.empty():
@@ -221,8 +245,22 @@ class ClamavServiceUpdater(ServiceUpdater):
             ):
                 self._add_headers(source_config)
 
+        if sources_to_update:
+            if service.config.get("_GenerateIgnoreFileFromSafelisted"):
+                try:
+                    self._generate_ignore_file_from_safelisted(service)
+                except Exception:
+                    self.log.exception("Failed to generate ignore file from safelisted signatures")
+
         super().do_source_update(service)
         self._clean_up_old_sources(service, self.latest_updates_dir)
+
+    @property
+    def safelist_client(self):
+        if self._safelist_client is None:
+            self._safelist_client = PrivilegedServiceAPI(self.log).safelist_client
+
+        return self._safelist_client
 
     def _test_database_file(self, file: str) -> bool:
         result = subprocess.run(
