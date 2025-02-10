@@ -52,7 +52,6 @@ class AssemblylineService(ServiceBase):
             return
 
         main_section = ResultTextSection(f"Scanning with {av_result['av_info']}")
-        result.add_section(main_section)
 
         main_section.add_line(f"A threat was detected: {av_result['av_result']}")
         main_section.add_tag("av.virus_name", av_result["av_result"])
