@@ -19,6 +19,7 @@ from assemblyline_v4_service.common.result import (
 )
 
 from .controller import (
+    SemgrepError,
     SemgrepLSPController,
     SemgrepScanController,
     UnsupportedLanguageError,
@@ -195,7 +196,10 @@ class AssemblylineService(ServiceBase):
 
         for rule_id, matches in result_by_rule.items():
             extra = matches[0].get("extra", {})
-            message = extra.get("message", "").replace("\n\n", "\n")
+            message = extra.get("message", "")
+            if isinstance(message, dict):
+                message = message.get("value", "")
+            message = message.replace("\n\n", "\n")
             severity = extra.get("severity", "INFO")
             heuristic = SEVERITY_TO_HEURISTIC.get(str(severity).upper(), 0)
 
@@ -265,7 +269,7 @@ class AssemblylineService(ServiceBase):
         try:
             try:
                 result = self._run_semgrep(self._semgrep)
-            except (TimeoutError, UnsupportedFileError):
+            except (TimeoutError, UnsupportedFileError, SemgrepError):
                 if self.fallback_to_scan:
                     self.log.info("Falling back to CLI scan")
                     result = self._run_semgrep(self._fallback_semgrep)

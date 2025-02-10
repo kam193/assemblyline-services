@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+import queue
 import subprocess
 import tempfile
 import threading
@@ -162,6 +163,9 @@ class SemgrepScanController:
         results, rule_prefix = self._execute_semgrep(self._working_file)
         self.last_results = results
         self.version = results.get("version", "") + " scan CLI"
+        errors = results.get("errors", [])
+        if errors:
+            self.log.warning("Scanning returned some errors: %s", errors)
         if res_list := results.get("results", []):
             for result in res_list:
                 result["check_id"] = result["check_id"][len(rule_prefix) :]
@@ -216,6 +220,8 @@ class SemgrepLSPController(SemgrepScanController):
         self._lock = RLock()
         self._diagnostic_cond = threading.Condition(self._lock)
         self._refresh_rules_cond = threading.Condition(self._lock)
+        self._server_stderr = queue.Queue()
+        self._server_stderr_thread = None
 
     def __init__(self, logger: logging.Logger = None, rules_dir: str = None):
         super().__init__(logger, rules_dir)
@@ -236,6 +242,14 @@ class SemgrepLSPController(SemgrepScanController):
             self.last_results.extend(params["diagnostics"])
             self._diagnostic_cond.notify()
 
+    def _collect_server_stderr(self):
+        while line := self._server_process.stderr.readline():
+            # self.log.debug("Semgrep stderr: %s", line)
+            self._server_stderr.put(line.decode())
+            if self._server_process.poll() is not None:
+                # process terminated
+                return
+
     def _initialize(self):
         os.makedirs(f"{os.environ['HOME']}/.semgrep/cache", exist_ok=True)
         self._server_process = subprocess.Popen(
@@ -245,8 +259,6 @@ class SemgrepLSPController(SemgrepScanController):
             stderr=subprocess.PIPE,
             env={**os.environ, "NO_COLOR": "true"},
         )
-
-        self.log.debug(os.environ["PATH"])
 
         if self._server_process.returncode is not None:
             self.log.error(
@@ -269,6 +281,10 @@ class SemgrepLSPController(SemgrepScanController):
             timeout=10,
         )
         self.client = LSPSemgrepClient(self.endpoint)
+        self._server_stderr_thread = threading.Thread(
+            target=self._collect_server_stderr, daemon=True
+        )
+        self._server_stderr_thread.start()
 
         current_pid = os.getpid()
         server_init_data = self.client.initialize(
@@ -320,6 +336,11 @@ class SemgrepLSPController(SemgrepScanController):
         )
         self.version = server_init_data["serverInfo"]["version"] + " LSP"
 
+        # Clean up from the initial messages
+        while not self._server_stderr.empty():
+            self._server_stderr.get()
+            self._server_stderr.task_done()
+
     def load_rules(self, _: list[str], __: str):
         with self._refresh_rules_cond:
             if not self._is_initialized:
@@ -353,6 +374,7 @@ class SemgrepLSPController(SemgrepScanController):
             self.client.shutdown()
             self._server_process.terminate()
             self._server_process.wait()
+            self._server_stderr_thread.join()
 
     def _reload_server(self):
         if self._server_process.poll() is None:
@@ -418,6 +440,19 @@ class SemgrepLSPController(SemgrepScanController):
                 yield from self.process_file(file_path, file_type, False)
             else:
                 raise
+
+        stderr = []
+        is_error = False
+        while not self._server_stderr.empty():
+            line = self._server_stderr.get()
+            if "exception" in line:
+                is_error = True
+            stderr.append(line)
+            self._server_stderr.task_done()
+
+        if is_error:
+            self.log.error("Semgrep LSP reported an error: %s", "".join(stderr))
+            raise SemgrepError("".join(stderr))
 
     def stop(self):
         if not self.client:
