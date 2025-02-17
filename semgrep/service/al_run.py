@@ -186,9 +186,14 @@ class AssemblylineService(ServiceBase):
         for result in results:
             line_start, line_end = result["start"]["line"], result["end"]["line"]
             if (line_start, line_end) not in lines_by_rule[result["check_id"]]:
-                line_no.add((line_start, line_end))
                 result_by_rule[result["check_id"]].append(result)
                 lines_by_rule[result["check_id"]].add((line_start, line_end))
+                extended_preview = self.metadata_cache.get(result["check_id"], {}).get(
+                    "extend_preview", 0
+                )
+                if extended_preview:
+                    line_start = max(line_start - extended_preview, first_line_no)
+                line_no.add((line_start, line_end))
 
         lines = dict()
         if line_no:
@@ -207,6 +212,9 @@ class AssemblylineService(ServiceBase):
             metadata = self.metadata_cache.get(rule_id, {})
             title = metadata.get("title", metadata.get("name", message[:100]))
             attack_id = metadata.get("attack_id")
+            extend_preview = metadata.get("extend_preview", 0)
+            if not isinstance(extend_preview, int):
+                extend_preview = 0
 
             section = ResultTextSection(
                 title,
@@ -216,7 +224,8 @@ class AssemblylineService(ServiceBase):
             section.set_heuristic(heuristic, signature=rule_id, attack_id=attack_id)
             for match in matches:
                 line_start, line_end = match["start"]["line"], match["end"]["line"]
-                line = lines.get((line_start, line_end), "")
+
+                line = lines.get((max(line_start - extend_preview, first_line_no), line_end), "")
                 code_hash = self._get_code_hash(line)
 
                 if first_line_no == 0:
@@ -225,6 +234,8 @@ class AssemblylineService(ServiceBase):
                 title = f"Match at lines {line_start} - {line_end}"
                 if line_start == line_end:
                     title = f"Match at line {line_start}"
+                if extend_preview:
+                    title = f"{title} (+{extend_preview} lines before)"
                 ResultMemoryDumpSection(
                     title,
                     body=line[:MAX_LINE_SIZE],
