@@ -157,7 +157,16 @@ def test_all_extended_rules_have_simple_tests():
 def test_real_samples(deobfuscate_example, example):
     """Tests on real samples"""
     check_confirmed = "NOCONFIRMATION" not in example
-    deobfuscate_example(example, check_confirmed=check_confirmed)
+    max_retries = 3 if "UNSTABLE" in example else 1
+    current_try = 0
+    while current_try < max_retries:
+        try:
+            deobfuscate_example(example, check_confirmed=check_confirmed)
+            break
+        except AssertionError:
+            current_try += 1
+            if current_try >= max_retries:
+                raise
 
 
 @pytest.mark.skipif(

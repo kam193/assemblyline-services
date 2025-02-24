@@ -114,6 +114,8 @@ rule:
         stopBy: end
         kind: string_content
         pattern: $ARGS_STRING
+        not:
+          regex: "__file__"
       not:
         inside:
           kind: assignment
