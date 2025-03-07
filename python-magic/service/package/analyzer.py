@@ -163,13 +163,14 @@ class Analyzer:
         overwrite_top_packages_paths = []
         non_package_paths = []
         normalized_package_name = self._normalize_pypi_name(opener.get_package_name()).lower()
+        expected_dir = normalized_package_name.replace("-", "_")
         for record in opener.get_records():
             first_dir = record.split("/")[0].lower()
             if first_dir in self.paths_to_ignore:
                 continue
             if first_dir.endswith(".dist-info") or first_dir.endswith(".egg-info"):
                 continue
-            if first_dir != normalized_package_name:
+            if first_dir != expected_dir:
                 non_package_paths.append(record)
 
             if first_dir in self.top_package_paths:
