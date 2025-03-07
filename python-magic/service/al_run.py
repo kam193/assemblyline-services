@@ -1,3 +1,4 @@
+import json
 import os
 from contextlib import contextmanager, suppress
 
@@ -18,6 +19,9 @@ class AssemblylineService(ServiceBase):
 
     def _load_config(self):
         PyInstallerExtractor.load_static_config()
+        with open("data/popular_paths.json", "r") as f:
+            self._popular_paths = json.load(f)
+        self._popular_paths_to_ignore = self.config.get("POPULAR_PATHS_TO_IGNORE", "").split(",")
 
     def start(self):
         self.log.info(f"start() from {self.service_attributes.name} service called")
@@ -66,7 +70,11 @@ class AssemblylineService(ServiceBase):
             with suppress(Exception):
                 if pkg_type := identify_python_package(request.file_path):
                     section = Analyzer(
-                        request.file_path, pkg_type, self._requirements_blocklist
+                        request.file_path,
+                        pkg_type,
+                        self._requirements_blocklist,
+                        self._popular_paths,
+                        self._popular_paths_to_ignore,
                     ).analyze()
                     if section:
                         result.add_section(section)

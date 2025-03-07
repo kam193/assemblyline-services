@@ -1,5 +1,6 @@
 import abc
 import configparser
+import csv
 import tarfile
 import zipfile
 from contextlib import suppress
@@ -111,6 +112,14 @@ class PackageOpener(abc.ABC):
     def get_top_level_modules(self):
         if top_level := self.get_distribution_file("top_level.txt"):
             return (module.replace("-", "_") for module in filter(None, top_level.splitlines()))
+        return []
+
+    def get_records(self):
+        if records := self.get_distribution_file("RECORD"):
+            csv_reader = csv.reader(records.splitlines(), delimiter=",")
+            return [row[0] for row in csv_reader]
+        elif records := self.get_distribution_file("SOURCES.txt"):
+            return [p for p in records.splitlines() if "/" in p]
         return []
 
     @abc.abstractmethod

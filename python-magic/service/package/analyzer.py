@@ -8,6 +8,25 @@ HEURISTICS_MAP = {
     "malicious": 1,
     "suspicious": 2,
 }
+PATHS_TO_IGNORE = set(
+    [
+        "tests",
+        "docs",
+        "examples",
+        "test",
+        "data",
+        "scripts",
+        "example",
+        "license",
+        "licence",
+        "include",
+        "authors",
+        "doc",
+        "bin",
+        "etc",
+        "src",
+    ]
+)
 
 _separator_replace = re.compile(r"([._-])+")
 _cleanup_replace = re.compile(r"([^a-z0-9-])")
@@ -16,7 +35,12 @@ _cleanup_extras = re.compile(r"\[[a-zA-Z0-9-]*\]")
 
 class Analyzer:
     def __init__(
-        self, path: str, package_type: str, requirements_blocklist: dict[str, set[str]] = None
+        self,
+        path: str,
+        package_type: str,
+        requirements_blocklist: dict[str, set[str]] = None,
+        top_package_paths: dict[str, set[str]] = None,
+        paths_to_ignore: list[str] = None,
     ):
         self.path = path
         self.package_type = package_type
@@ -24,6 +48,8 @@ class Analyzer:
             "malicious": set(),
             "suspicious": set(),
         }
+        self.top_package_paths = top_package_paths or {}
+        self.paths_to_ignore = paths_to_ignore or PATHS_TO_IGNORE
 
     @staticmethod
     def _normalize_pypi_name(name):
@@ -86,4 +112,68 @@ class Analyzer:
                 for module in top_level_modules:
                     module_section.add_line(module)
                 section.add_subsection(module_section)
+
+            non_package_paths, overwrite_top_packages_paths = self.get_suspicious_install_paths(
+                opener
+            )
+            if non_package_paths:
+                paths_section = ResultTextSection("Files in untypical paths", auto_collapse=True)
+                paths_section.set_heuristic(4)
+                paths_section.add_line(
+                    "The following paths are installed by this package and do not match the package name. "
+                    "This is not necessarily a malicious activity. \n"
+                )
+                for path in non_package_paths:
+                    paths_section.add_line(path)
+                section.add_subsection(paths_section)
+
+            if overwrite_top_packages_paths:
+                overwrite_section = ResultTextSection(
+                    "Overwriting popular packages paths",
+                    auto_collapse=False,
+                    zeroize_on_tag_safe=True,
+                    zeroize_on_sig_safe=True,
+                )
+                overwrite_section.set_heuristic(3)
+                overwrite_section.add_line(
+                    "The following paths are installed by this package and placed in directories used by some "
+                    "popular PyPI packages. This may indicate malicious activity by overwriting source code. \n"
+                )
+                conflicts = dict()
+                for path, top_packages in overwrite_top_packages_paths:
+                    overwrite_section.add_line(path)
+                    base = path.split("/")[0]
+                    if base not in conflicts:
+                        conflicts[base] = top_packages
+                        overwrite_section.heuristic.add_signature_id(
+                            f"PythonMagic.override_popular_path.{base}"
+                        )
+
+                conflicts_section = ResultTextSection("Conflicts with...", auto_collapse=True)
+                for base, top_packages in conflicts.items():
+                    conflicts_section.add_line(
+                        f"DIRECTORY {base} has {len(top_packages)} conflicting package(s):"
+                    )
+                    conflicts_section.add_line(", ".join(top_packages))
+                overwrite_section.add_subsection(conflicts_section)
+                section.add_subsection(overwrite_section)
             return section
+
+    def get_suspicious_install_paths(self, opener: PackageOpener):
+        overwrite_top_packages_paths = []
+        non_package_paths = []
+        normalized_package_name = self._normalize_pypi_name(opener.get_package_name()).lower()
+        for record in opener.get_records():
+            first_dir = record.split("/")[0].lower()
+            if first_dir in self.paths_to_ignore:
+                continue
+            if first_dir.endswith(".dist-info") or first_dir.endswith(".egg-info"):
+                continue
+            if first_dir != normalized_package_name:
+                non_package_paths.append(record)
+
+            if first_dir in self.top_package_paths:
+                if normalized_package_name not in self.top_package_paths[first_dir]:
+                    overwrite_top_packages_paths.append((record, self.top_package_paths[first_dir]))
+
+        return non_package_paths, overwrite_top_packages_paths

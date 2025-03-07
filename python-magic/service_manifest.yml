@@ -5,7 +5,6 @@ description: |
   from packages and marking suspicious (requires some update source) and unpacking
   PyInstaller executables (using pyinstxtractor-ng)
 enabled: true
-
 accepts: executable/*|archive/*
 rejects: empty
 stage: EXTRACT
@@ -16,6 +15,7 @@ is_external: false
 
 config:
   MAX_EXTRACTED: 500
+  POPULAR_PATHS_TO_IGNORE: tests,docs,examples,test,data,scripts,example,license,licence,include,authors,doc,bin,etc,src
 
 submission_params:
   - name: extract_all
@@ -45,6 +45,22 @@ heuristics:
     name: Suspicious dependencies
     score: 300
     max_score: 500
+  - description: >
+      Files installed by this package can overwrite files installed by popular PyPI packages. This
+      technique is often used to add malicious activity to popular packages.
+    filetype: "*"
+    heur_id: 3
+    name: Overwriting popular packages files
+    score: 400
+    max_score: 500
+  - description: >
+      Some paths where package files are installed does not match the package name. This is not necessarily malicious,
+      but it is sometimes used to overwrite files installed by other packages.
+    filetype: "*"
+    heur_id: 4
+    name: Files in untypical paths
+    score: 50
+    max_score: 100
 
 docker_config:
   image: ${REGISTRY}ghcr.io/kam193/assemblyline-service-python-magic:$SERVICE_TAG
@@ -56,7 +72,8 @@ update_config:
   update_interval_seconds: 3600 # 1 hour
   generates_signatures: false
   wait_for_update: false
-  sources: []
+  sources:
+    []
     # - name: susp_example
     #   uri: https://gist.githubusercontent.com/kam193/e487162a6672bdde20c07d53c8fce9c1/raw/4e75b4915a7d6066e58ead715a8f98730dabb5cf/test_req.txt
 
