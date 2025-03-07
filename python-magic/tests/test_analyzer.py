@@ -7,9 +7,17 @@ from .conftest import SAMPLE1_SDIST, SAMPLE1_WHEEL
 
 @pytest.fixture
 def get_analyzer():
-    def _analyzer(path, requirements_blocklist=None, top_package_paths=None) -> Analyzer:
+    def _analyzer(
+        path, requirements_blocklist=None, top_package_paths=None, paths_to_ignore=None
+    ) -> Analyzer:
         package_type = identify_python_package(path)
-        return Analyzer(path, package_type, requirements_blocklist, top_package_paths)
+        return Analyzer(
+            path,
+            package_type,
+            requirements_blocklist,
+            top_package_paths,
+            paths_to_ignore=paths_to_ignore or ["src"],
+        )
 
     return _analyzer
 
@@ -19,6 +27,21 @@ def test_analyzer_get_non_package_paths(get_analyzer, open_pkg, path):
     analyzer: Analyzer = get_analyzer(path)
     assert analyzer.get_suspicious_install_paths(open_pkg(path)) == (
         ["example/__init__.py", "example/console.py"],
+        [],
+    )
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        SAMPLE1_SDIST,
+        SAMPLE1_WHEEL,
+    ],
+)
+def test_analyzer_suspicious_paths_respects_ignored_paths(get_analyzer, open_pkg, path):
+    analyzer: Analyzer = get_analyzer(path, paths_to_ignore=["example"])
+    assert analyzer.get_suspicious_install_paths(open_pkg(path)) == (
+        [],
         [],
     )
 
