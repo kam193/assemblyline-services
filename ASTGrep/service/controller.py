@@ -382,7 +382,6 @@ class ASTGrepLSPController(ASTGrepScanController):
         with suppress(Exception):
             self._server_process.wait()
 
-
     def _reload_server(self):
         if self._server_process.poll() is None:
             self._shutdown()
@@ -465,9 +464,7 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
         deobfuscation_timeout: int = 120,
     ):
         super().__init__(logger, rules_dirs)
-        self._rules_transformations = {}
-        self._metadata = {}
-        self.read_rules(rules_dirs)
+        self._rules_transformations, self._metadata = self.read_rules(rules_dirs)
         self.cli_timeout = cli_timeout
         self.deobfuscation_timeout = deobfuscation_timeout
         self.config_file = "./rules/deobfuscation.sgconfig.yml"
@@ -479,6 +476,8 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
         self._extract_tmp_rules_on_failure = False  # "./tmp"
 
     def read_rules(self, rule_paths: list[str]):
+        output = dict()
+        out_metadata = dict()
         for rule_path in rule_paths:
             for root, _, files in os.walk(rule_path):
                 for file in files:
@@ -492,27 +491,23 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
                                 if not yaml_doc:
                                     continue
                                 metadata = yaml_doc.get("metadata", {})
-                                self._metadata[yaml_doc.get("id")] = metadata
+                                out_metadata[yaml_doc.get("id")] = metadata
                                 if transformation := metadata.get("deobfuscate", ""):
-                                    self._rules_transformations[yaml_doc.get("id")] = json.loads(
-                                        transformation
-                                    )
+                                    output[yaml_doc.get("id")] = json.loads(transformation)
                                 elif "fix" in yaml_doc:
-                                    self._rules_transformations[yaml_doc.get("id")] = {
-                                        "type": "auto-fix"
-                                    }
+                                    output[yaml_doc.get("id")] = {"type": "auto-fix"}
 
                                 if metadata.get("confirmed-obfuscation", False):
-                                    if yaml_doc.get("id") not in self._rules_transformations:
-                                        self._rules_transformations[yaml_doc.get("id")] = {}
-                                    self._rules_transformations[yaml_doc.get("id")][
-                                        "confirmed-obfuscation"
-                                    ] = True
+                                    if yaml_doc.get("id") not in output:
+                                        output[yaml_doc.get("id")] = {}
+                                    output[yaml_doc.get("id")]["confirmed-obfuscation"] = True
 
                                 if tpl := metadata.get("template_file"):
-                                    self._metadata[yaml_doc.get("id")]["template"] = open(
+                                    out_metadata[yaml_doc.get("id")]["template"] = open(
                                         os.path.join("rules/templates", tpl)
                                     ).read()
+
+        return output, out_metadata
 
     def _apply_fix(self, pattern: str, fix: str):
         if pattern == fix:
@@ -564,19 +559,28 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
 
     def _get_type(self, result: dict) -> tuple[str, bool]:
         rule_id = result.get("ruleId")
-        if rule_id not in self._rules_transformations:
+        look_in = self._rules_transformations
+        if rule_id in self._persistent_transformations:
+            look_in = self._persistent_transformations
+        if rule_id not in look_in:
             return None, None, None
-        type_ = self._rules_transformations[rule_id].get("type", "extract")
-        extract = type_ == "extract" or self._rules_transformations[rule_id].get("extract", False)
-        confirmed = extract or self._rules_transformations[rule_id].get(
-            "confirmed-obfuscation", False
-        )
+        type_ = look_in[rule_id].get("type", "extract")
+        extract = type_ == "extract" or look_in[rule_id].get("extract", False)
+        confirmed = extract or look_in[rule_id].get("confirmed-obfuscation", False)
         return type_, extract, confirmed
 
     def _get_fix_config(self, result: dict) -> dict:
         rule_id = result.get("ruleId")
-        if rule_id not in self._rules_transformations:
+        look_in = self._rules_transformations
+        if rule_id in self._persistent_transformations:
+            look_in = self._persistent_transformations
+        if rule_id not in look_in:
             return None, None, None, None
+        override_fix = look_in[rule_id].get("override-fix", False)
+        fix_key = look_in[rule_id].get("fix-key", None)
+        if look_in[rule_id].get("persistent", False):
+            persistent_key = look_in[rule_id].get("persistent-key", None)
+            persistent_value = look_in[rule_id].get("persistent-value", None)
         override_fix = self._rules_transformations[rule_id].get("override-fix", False)
         fix_key = self._rules_transformations[rule_id].get("fix-key", None)
         if self._rules_transformations[rule_id].get("persistent", False):
@@ -594,17 +598,21 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
         self._run_auto_fixes = False
         self._global_variable_context = {}
         self._global_cache = {}
+        self._force_next_run = False
 
     def _delete_persistent_rule(self, rule_id: str, key: str):
         hash_key = hash((rule_id, key))
         with suppress(Exception):
-            os.remove(os.path.join(self._persistent_rules_dir.name, f"{hash_key}.yaml"))
+            os.remove(os.path.join(self._persistent_fixes_dir.name, f"{hash_key}.yaml"))
 
-    def _save_persistent_rule(self, rule_id: str, key: str, value: str, rule_data: str):
+    def _save_persistent_rule(
+        self, rule_id: str, key: str, value: str, rule_data: str, directory: str = None
+    ):
         hash_key = hash((rule_id, key))
         self._persistent_rules[(rule_id, key)] = value
+        directory = directory or self._persistent_fixes_dir.name
         self.log.debug("Saving persistent rule (%s, %s)", rule_id, key)
-        with open(os.path.join(self._persistent_rules_dir.name, f"{hash_key}.yaml"), "w+") as f:
+        with open(os.path.join(directory, f"{hash_key}.yaml"), "w+") as f:
             f.write(rule_data)
         if "{{{DOLLARPLACEHOLDER}}}" in rule_data:
             self._persistent_escape_dollar = True
@@ -612,6 +620,27 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
     def _set_confirmed(self, rule_id: str):
         self._last_confirmation_rule = rule_id
         self.confirmed_obfuscation = True
+
+    def _load_generated_rules(self):
+        if self._current_config == self.config_file:
+            self._current_config = tempfile.NamedTemporaryFile(prefix="astgrep_config_").name
+            builtin_dir = os.path.dirname(os.path.realpath(self.config_file))
+
+            config = {"ruleDirs": []}
+            with open(self.config_file, "r") as f:
+                for rule_dir in yaml.safe_load(f).get("ruleDirs", []):
+                    if rule_dir.startswith("./"):
+                        rule_dir = os.path.join(builtin_dir, rule_dir[2:])
+                    config["ruleDirs"].append(rule_dir)
+            config["ruleDirs"].append(self._persistent_rules_dir.name)
+
+            with open(self._current_config, "w+") as f:
+                yaml.dump(config, f)
+            self.log.debug(config)
+
+        self._persistent_transformations, self._persistent_metadata = self.read_rules(
+            [self._persistent_rules_dir.name]
+        )
 
     def _process_result(self, result: dict, secondary=False):
         if not result:
@@ -672,7 +701,7 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
                     self.log.error(
                         "Error transforming fix-template '%s' result: %r", result.get("ruleId"), exc
                     )
-            elif type_ == "template":
+            elif type_ == "template" or type_ == "template-rule":
                 match = result.get("text")
                 override_fix, fix_key, persistent_key, persistent_value = self._get_fix_config(
                     result
@@ -721,7 +750,18 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
                     if not persistent_key:
                         self._generated_templates[match] = template
                     else:
-                        self._save_persistent_rule(result.get("ruleId"), p_key, p_value, template)
+                        self._save_persistent_rule(
+                            result.get("ruleId"),
+                            p_key,
+                            p_value,
+                            template,
+                            directory=self._persistent_fixes_dir.name
+                            if type_ == "template"
+                            else self._persistent_rules_dir.name,
+                        )
+                        if type_ == "template-rule":
+                            self._load_generated_rules()
+                            self._force_next_run = True
                     if confirmed:
                         self._set_confirmed(rule_id)
                 except Exception as exc:
@@ -815,7 +855,7 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
                             self._escape_dollar = True
 
             if self._persistent_rules:
-                apply_rule_dirs.add(self._persistent_rules_dir.name)
+                apply_rule_dirs.add(self._persistent_fixes_dir.name)
 
             if not apply_rule_dirs:
                 self.log.debug("No fixes to apply")
@@ -834,7 +874,7 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
                 if self._extract_tmp_rules_on_failure:
                     shutil.copytree(tmpdir, self._extract_tmp_rules_on_failure, dirs_exist_ok=True)
                     shutil.copytree(
-                        self._persistent_rules_dir.name,
+                        self._persistent_fixes_dir.name,
                         self._extract_tmp_rules_on_failure,
                         dirs_exist_ok=True,
                     )
@@ -859,21 +899,26 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
         file_size_not_changed = False
 
         self._sg_process_time = 0.0
+        self._current_config = self.config_file
 
         # TODO:
         #   - replacing static variables could be part of the persistent rules
         #     but requires also persistent keeping them in the context, as well as
         #     supporting the overwriting of them
+        self._persistent_fixes_dir = tempfile.TemporaryDirectory(prefix="astgrep_rules_")
         self._persistent_rules_dir = tempfile.TemporaryDirectory(prefix="astgrep_rules_")
         self._persistent_rules = dict()  # (rule name, key) -> value
         self._persistent_escape_dollar = False
+
+        self._persistent_metadata = {}
+        self._persistent_transformations = {}
 
         start = time.monotonic()
         while time.monotonic() - start < self.deobfuscation_timeout:
             iteration_start = time.monotonic()
             self._cleanup_status()
 
-            for result in self._execute_sg(self._working_file):
+            for result in self._execute_sg(self._working_file, config_file=self._current_config):
                 outcome = self._process_result(result)
                 if self._should_extract(outcome):
                     if isinstance(outcome, bytes):
@@ -912,7 +957,10 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
             iteration_time = time.monotonic() - iteration_start
             self.log.debug("Iteration took %.3f seconds", iteration_time)
 
-            if last_timestamp == os.stat(self._working_file).st_mtime_ns:
+            if (
+                last_timestamp == os.stat(self._working_file).st_mtime_ns
+                and not self._force_next_run
+            ):
                 break
             # TODO: better way to detect file changes
             elif last_size == os.stat(self._working_file).st_size:
@@ -945,7 +993,10 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
         if self.work_time > self.deobfuscation_timeout:
             self.status += "\n - Timeout exceeded, potentially not all fixes applied."
 
+        self._persistent_fixes_dir.cleanup()
         self._persistent_rules_dir.cleanup()
+        if self._current_config != self.config_file:
+            os.remove(self._current_config)
 
     def _build_context(self, result: dict) -> dict:
         context = {
@@ -963,10 +1014,13 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
 
     def transform(self, result: dict) -> tuple[str, dict]:
         rule_id = result.get("ruleId")
-        if rule_id not in self._rules_transformations:
+        look_in = self._rules_transformations
+        if rule_id in self._persistent_transformations:
+            look_in = self._persistent_transformations
+        if rule_id not in look_in:
             return
 
-        transformation = self._rules_transformations[rule_id]
+        transformation = look_in[rule_id]
         context = self._build_context(result)
 
         output = ""
@@ -985,9 +1039,14 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
 
     def transform_template(self, result: dict) -> tuple[str, str]:
         rule_id = result.get("ruleId")
-        if rule_id not in self._rules_transformations:
+        look_in = self._rules_transformations
+        metadata = self._metadata
+        if rule_id in self._persistent_transformations:
+            look_in = self._persistent_transformations
+            metadata = self._persistent_metadata
+        if rule_id not in look_in:
             return
-        template = self._metadata[rule_id].get("template")
+        template = metadata[rule_id].get("template")
         if not template:
             self.log.error("Template not found for rule %s", rule_id)
             return
@@ -998,7 +1057,7 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
         counter = len(self._generated_templates)
         return jinja2.Template(template).render(
             TEMPLATE_COUNTER=counter,
-            **self._metadata[rule_id],
+            **metadata[rule_id],
             **self._global_variable_context,
             **context,
         ), output

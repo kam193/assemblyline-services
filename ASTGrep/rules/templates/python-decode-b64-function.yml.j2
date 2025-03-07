@@ -1,0 +1,31 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/main/schemas/rule.json
+id: python-decode-b64-function-{{TEMPLATE_COUNTER}}
+message: Decode static base64 strings
+language: Python
+rule:
+  kind: call
+  all:
+    - pattern: {{FUNCTION}}($DATA)
+    - matches: static_data
+
+utils:
+  static_data:
+    has:
+      field: arguments
+      has:
+        kind: string
+        pattern: $DATA
+
+metadata:
+  extended-obfuscation: yes
+  # alone-unimportant: yes
+  deobfuscate: |
+    {
+      "type": "fix-generate",
+      "steps": [
+        {"func": "dequote", "encoding": "utf-8", "source": "DATA"},
+        {"func": "encode", "encoding": "base64-bytes", "source": "DATA"},
+        {"func": "decode", "source": "DATA", "encoding": {{ENCODING | tojson}} },
+        {"func": "quote", "source": "DATA"}
+      ]
+    }

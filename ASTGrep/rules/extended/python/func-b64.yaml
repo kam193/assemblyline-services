@@ -1,0 +1,50 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/main/schemas/rule.json
+
+id: python-decodingb64-through-a-function
+message: Extract code executed by exec
+language: Python
+rule:
+  kind: function_definition
+  has:
+    field: name
+    pattern: $FUNCTION
+  all:
+    - has:
+        field: parameters
+        has:
+          nthChild: 1
+          pattern: $F_INPUT
+    - has:
+        kind: block
+        has:
+          all:
+            - kind: expression_statement
+              has:
+                pattern: $INPUT_BYTES = $F_INPUT.encode('ascii')
+              precedes:
+                kind: expression_statement
+                has:
+                  pattern: $CODE_BYTES = base64.b64decode($INPUT_BYTES)
+                precedes:
+                  kind: expression_statement
+                  has:
+                    pattern: $CODE = $CODE_BYTES.decode($ENCODING)
+                  precedes:
+                    kind: return_statement
+                    has:
+                      kind: identifier
+                      pattern: $CODE
+
+metadata:
+  extended-obfuscation: yes
+  template_file: python-decode-b64-function.yml.j2
+  deobfuscate: |
+    {
+      "type": "template-rule",
+      "persistent": true,
+      "persistent-key": "FUNCTION",
+      "persistent-value": "F_INPUT",
+      "steps": [
+        {"func": "dequote", "source": "ENCODING"}
+      ]
+    }
