@@ -330,6 +330,8 @@ class ASTGrepLSPController(ASTGrepScanController):
             },
             timeout=CMD_TIMEOUT,
         )
+        # fighting with hanging threads
+        self.endpoint.daemon = True
         self.client = LSPASTGrepClient(self.endpoint)
 
         current_pid = os.getpid()
@@ -373,9 +375,13 @@ class ASTGrepLSPController(ASTGrepScanController):
         self.log.info("Shutting down sg lsp server")
         with suppress(Exception):
             self.client.exit()
+        with suppress(Exception):
             self.client.shutdown()
+        with suppress(Exception):
             self._server_process.terminate()
+        with suppress(Exception):
             self._server_process.wait()
+
 
     def _reload_server(self):
         if self._server_process.poll() is None:
@@ -433,12 +439,6 @@ class ASTGrepLSPController(ASTGrepScanController):
             pass
         with suppress(Exception):
             self._shutdown()
-
-            self.log.info(
-                "Server stdout: %s, stderr: %s",
-                self._server_process.stdout.read(),
-                self._server_process.stderr.read(),
-            )
             self.log.info("sg server stopped")
 
     def cleanup(self):
