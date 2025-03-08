@@ -1,7 +1,0 @@
-import base64
-from base64 import b64decode
-
-base64.b64decode(b"YWJj")
-b64decode(b'YWJj')
-
-binascii.a2b_base64(b'YWJj')
