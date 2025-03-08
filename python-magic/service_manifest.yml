@@ -2,8 +2,9 @@ name: Python-Magic
 version: $SERVICE_TAG
 description: |
   Designed to help with analysis of Python artifacts. Supports extracting dependencies
-  from packages and marking suspicious (requires some update source) and unpacking
-  PyInstaller executables (using pyinstxtractor-ng)
+  from packages and marking suspicious (requires some update source), unpacking
+  PyInstaller executables (using pyinstxtractor-ng) and detecting overwriting popular
+  packages paths.
 enabled: true
 accepts: executable/*|archive/*
 rejects: empty
@@ -15,7 +16,7 @@ is_external: false
 
 config:
   MAX_EXTRACTED: 500
-  POPULAR_PATHS_TO_IGNORE: tests,docs,examples,test,data,scripts,example,license,licence,include,authors,doc,bin,etc,src
+  POPULAR_PATHS_TO_IGNORE: tests,docs,examples,test,data,scripts,example,license,licence,include,authors,doc,bin,etc,src,testing,integration,package,install,flytekitplugins,utils,com,plugins,app,cli,server,assets,frontend,commands
 
 submission_params:
   - name: extract_all

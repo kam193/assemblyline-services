@@ -145,8 +145,9 @@ class Analyzer:
                     base = path.split("/")[0]
                     if base not in conflicts:
                         conflicts[base] = top_packages
+                        # Add to safelist to allow this one package to use this path
                         overwrite_section.heuristic.add_signature_id(
-                            f"PythonMagic.override_popular_path.{base}"
+                            f"PythonMagic.override_popular_path.{base}.{self._normalize_pypi_name(opener.get_package_name()).lower()}"
                         )
 
                 conflicts_section = ResultTextSection("Conflicts with...", auto_collapse=True)

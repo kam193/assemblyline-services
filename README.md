@@ -83,6 +83,7 @@ Designed to help with analysis of Python artifacts. Currently supported:
 
 - unpacking PyInstaller executables (using [pyinstxtractor-ng](https://github.com/pyinstxtractor/pyinstxtractor-ng)),
 - extracting declared dependencies and matching them against configurable lists of suspicious and malicious packages,
+- detecting overwriting popular packages paths.
 
 ### RemoteAV
 
