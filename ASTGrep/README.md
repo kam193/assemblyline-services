@@ -2,7 +2,7 @@
 
 Service using [AST-Grep](https://ast-grep.github.io/) to analyze code for obfuscation.
 
-Currently in the alpha stage. Be default utilizes `sg lsp` to avoid loading rules
+Currently in the alpha stage. By default utilizes `sg lsp` to avoid loading rules
 on every request.
 
 ## Usage without Assembylyline

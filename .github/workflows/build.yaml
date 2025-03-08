@@ -90,12 +90,12 @@ jobs:
           sudo apt-get install -y libfuzzy-dev
           make test-dependencies
       - name: Run tests
-        if: steps.check-service-changed.outputs.exit-code != 0 and matrix.service != 'ASTGrep'
+        if: steps.check-service-changed.outputs.exit-code != 0 && matrix.service != 'ASTGrep'
         run: |
           make test
         # Temporary, hopefully
       - name: Run tests but continue on failure
-        if: steps.check-service-changed.outputs.exit-code != 0 and matrix.service == 'ASTGrep'
+        if: steps.check-service-changed.outputs.exit-code != 0 && matrix.service == 'ASTGrep'
         run: |
           make test
         continue-on-error: true
