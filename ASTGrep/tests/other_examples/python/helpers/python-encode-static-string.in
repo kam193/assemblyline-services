@@ -1,0 +1,7 @@
+"adgsfdf".encode('ascii')
+
+"adfsgdhf".encode("utf-8")
+
+"adfsgdhf".encode("utf-8", "this is something else")
+
+obj.encode("uth-8")
