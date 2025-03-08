@@ -409,13 +409,18 @@ def noop_ifs(config: dict, context: dict):
 def join_chr_xor(config: dict, context: dict) -> str:
     data_list = config.get("source", "DATA")
     xor_num = config.get("xor", "XOR_NUM")
+    ord_first = config.get("ord_first", False)
+
+    func_ = lambda v, x: chr(v ^ x)  # noqa: E731
+    if ord_first:
+        func_ = lambda v, x: chr(ord(v) ^ x)  # noqa: E731
 
     if xor_num is not None:
         xor_value = context[xor_num]
         if not isinstance(xor_value, int):
             xor_value = int(xor_value)
 
-        return "".join(chr(i ^ xor_value) for i in context[data_list])
+        return "".join(func_(i, xor_value) for i in context[data_list])
     return "".join(chr(i) for i in context[data_list])
 
 

@@ -121,3 +121,77 @@ metadata:
         {"func": "quote", "source": "STRING"}
       ]
     }
+
+---
+
+# yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/main/schemas/rule.json
+
+id: python-static-join-chr-ord-with-xor-from-string
+message: Evaluating static expressions
+language: Python
+rule:
+  kind: call
+  all:
+    # TODO: support for bytes!
+    - has: # look for: "".join
+        field: function
+        all:
+          - has:
+              kind: identifier
+              pattern: join
+          - has:
+              field: object
+              kind: string
+              not: # TODO: join with other strings!
+                has:
+                  kind: string_content
+    - has:
+        field: arguments
+        any:
+          - kind: argument_list
+            has:
+              nthChild: 1
+              kind: list_comprehension
+              pattern: "[chr(ord($I) ^ $XOR_NUM) for $I in $STRING]"
+              matches: types_check
+          - kind: argument_list
+            has:
+              nthChild: 1
+              kind: parenthesized_expression
+              has:
+                pattern: "[chr(ord($I) ^ $XOR_NUM) for $I in $STRING]"
+                matches: types_check
+          - kind: generator_expression
+            pattern: "(chr(ord($I) ^ $XOR_NUM) for $I in $STRING)"
+            matches: types_check
+
+utils:
+  types_check:
+    all:
+      - has:
+          kind: call
+          has:
+            stopBy: end
+            kind: binary_operator
+            has:
+              field: right
+              kind: integer
+              pattern: $XOR_NUM
+      - has:
+          kind: for_in_clause
+          has:
+            field: right
+            kind: string
+
+metadata:
+  extended-obfuscation: yes
+  confirmed-obfuscation: no
+  deobfuscate: |
+    {
+      "type": "fix-generate",
+      "steps": [
+        {"func": "dequote", "source": "STRING"},
+        {"func": "join_chr_xor", "source": "STRING", "xor": "XOR_NUM", "output": "STRING", "ord_first": true},
+        {"func": "quote", "source": "STRING"}
+      ]
+    }

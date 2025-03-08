@@ -1,0 +1,5 @@
+''.join(chr(ord(phi) ^ 3) for phi in "bT2ta0I3JKQoa[AnbT{oO@AygTIt`n:iY[MyO@Au`ztd`0oyJ@td`D")
+
+''.join([chr(ord(phi) ^ 3) for phi in "bT2ta0I3JKQoa[AnbT{oO@AygTIt`n:iY[MyO@Au`ztd`0oyJ@td`D"])
+
+''.join(([chr(ord(phi) ^ 3) for phi in "bT2ta0I3JKQoa[AnbT{oO@AygTIt`n:iY[MyO@Au`ztd`0oyJ@td`D"]))
