@@ -896,7 +896,7 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
         self._last_confirmation_rule = None
         original_timestamp = last_timestamp = os.stat(self._working_file).st_mtime_ns
         last_size = os.stat(self._working_file).st_size
-        file_size_not_changed = False
+        file_not_changed = False
 
         self._sg_process_time = 0.0
         self._current_config = self.config_file
@@ -957,20 +957,24 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
             iteration_time = time.monotonic() - iteration_start
             self.log.debug("Iteration took %.3f seconds", iteration_time)
 
+            # TODO: better way to detect file changes
             if (
                 last_timestamp == os.stat(self._working_file).st_mtime_ns
-                and not self._force_next_run
+                or last_size == os.stat(self._working_file).st_size
+                # and not self._force_next_run
             ):
-                break
-            # TODO: better way to detect file changes
-            elif last_size == os.stat(self._working_file).st_size:
-                self.log.debug("File size did not change!")
-                if file_size_not_changed:
-                    self.log.debug("Second consecutive file size did not change, breaking")
+                if file_not_changed and not self._force_next_run:
+                    self.log.debug("Second time no changes, breaking")
                     break
-                file_size_not_changed = True
+                file_not_changed = True
+            # elif last_size == os.stat(self._working_file).st_size:
+            #     self.log.debug("File size did not change!")
+            #     if file_not_changed:
+            #         self.log.debug("Second consecutive file size did not change, breaking")
+            #         break
+            #     file_not_changed = True
             else:
-                file_size_not_changed = False
+                file_not_changed = False
 
             last_timestamp = os.stat(self._working_file).st_mtime_ns
             last_size = os.stat(self._working_file).st_size
