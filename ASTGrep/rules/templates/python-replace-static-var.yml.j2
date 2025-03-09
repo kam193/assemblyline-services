@@ -46,6 +46,10 @@ rule:
                   stopBy: end
                   kind: identifier
                   pattern: {{ VAR }}
+            - kind: generator_expression
+              matches: var_used_in_for
+            - kind: list_comprehension
+              matches: var_used_in_for
             #- kind: assignment
             #  has:
             #    field: left
@@ -132,5 +136,17 @@ rule:
 #                    has:
 #                      field: left
 #                      pattern: {{ VAR }}
+
+utils:
+  var_used_in_for:
+    has:
+      kind: for_in_clause
+      has:
+        field: left
+        any:
+          - kind: identifier
+            pattern: {{ VAR }}
+          - has:
+              pattern: {{ VAR }}
 
 fix: {{ VALUE | replace("$", "{{{DOLLARPLACEHOLDER}}}") | tojson }}
