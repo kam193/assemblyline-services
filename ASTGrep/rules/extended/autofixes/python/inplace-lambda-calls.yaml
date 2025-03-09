@@ -1,0 +1,136 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/main/schemas/rule.json
+id: python-inplace-lambda-calls-1-arg
+message: Code calls lambda immediately with one argument
+language: Python
+rule:
+  kind: call
+  all:
+    - has:
+        field: function
+        kind: parenthesized_expression
+        has:
+          kind: lambda
+          all:
+            - has:
+                field: parameters
+                # TODO: more parameters
+                all:
+                  - not:
+                      has:
+                        nthChild: 2
+                  - has:
+                      nthChild: 1
+                      kind: identifier
+                      pattern: $ARG1
+            - has:
+                field: body
+                kind: call
+                pattern: $BODY
+                has:
+                  stopBy: end
+                  kind: identifier
+                  pattern: $ARG1
+    - has:
+        field: arguments
+        all:
+          - has:
+              nthChild: 1
+              pattern: $VAL1
+
+rewriters:
+  - id: insert-value1
+    rule:
+      pattern: $ARG1
+      kind: identifier
+    fix: $VAL1
+
+transform:
+  EXTRACTED:
+    rewrite:
+      rewriters:
+        - insert-value1
+      source: $BODY
+
+fix: $EXTRACTED
+
+metadata:
+  extended-obfuscation: yes
+  confirmed-obfuscation: yes
+
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/main/schemas/rule.json
+id: python-inplace-lambda-calls-2-args
+message: Code calls lambda immediately with two arguments
+language: Python
+rule:
+  kind: call
+  all:
+    - has:
+        field: function
+        kind: parenthesized_expression
+        has:
+          kind: lambda
+          all:
+            - has:
+                field: parameters
+                # TODO: more parameters, more parameter types?
+                all:
+                  - has:
+                      nthChild: 1
+                      kind: identifier
+                      pattern: $ARG1
+                  - has:
+                      nthChild: 2
+                      kind: identifier
+                      pattern: $ARG2
+                  - not:
+                      has:
+                        nthChild: 3
+            - has:
+                field: body
+                kind: call
+                pattern: $BODY
+                all:
+                  - has:
+                      stopBy: end
+                      kind: identifier
+                      pattern: $ARG2
+                  - has:
+                      stopBy: end
+                      kind: identifier
+                      pattern: $ARG1
+    - has:
+        field: arguments
+        all:
+          - has:
+              nthChild: 1
+              pattern: $VAL1
+          - has:
+              nthChild: 2
+              pattern: $VAL2
+
+rewriters:
+  - id: insert-value1
+    rule:
+      pattern: $ARG1
+      kind: identifier
+    fix: $VAL1
+  - id: insert-value2
+    rule:
+      pattern: $ARG2
+      kind: identifier
+    fix: $VAL2
+
+transform:
+  EXTRACTED:
+    rewrite:
+      rewriters:
+        - insert-value1
+        - insert-value2
+      source: $BODY
+
+fix: $EXTRACTED
+
+metadata:
+  extended-obfuscation: yes
+  confirmed-obfuscation: yes

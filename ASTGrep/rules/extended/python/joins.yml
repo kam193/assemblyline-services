@@ -21,32 +21,40 @@ rule:
                   kind: string_content
     - has:
         field: arguments
-        kind: argument_list
-        has:
-          nthChild: 1
-          kind: list_comprehension # TODO: generators
-          pattern: "[chr($I ^ $XOR_NUM) for $I in [$$$NUMBERS]]"
-          all:
-            # Only static integers
-            - has:
-                kind: for_in_clause
-                has:
-                  field: right
-                  not:
-                    has:
-                      pattern: $_
-                      not:
-                        kind: integer
-            # match the XOR_NUM
-            - has:
-                kind: call
-                has:
-                  field: arguments
-                  has:
-                    has:
-                      field: right
-                      pattern: $XOR_NUM
-                      kind: integer
+        any:
+          - kind: argument_list
+            has:
+              nthChild: 1
+              kind: list_comprehension # TODO: generators
+              pattern: "[chr($I ^ $XOR_NUM) for $I in [$$$NUMBERS]]"
+              matches: requirements
+          - kind: generator_expression
+            pattern: "(chr($I ^ $XOR_NUM) for $I in [$$$NUMBERS])"
+            matches: requirements
+
+utils:
+  requirements:
+    all:
+      # Only static integers
+      - has:
+          kind: for_in_clause
+          has:
+            field: right
+            not:
+              has:
+                pattern: $_
+                not:
+                  kind: integer
+      #match the XOR_NUM
+      - has:
+          kind: call
+          has:
+            field: arguments
+            has:
+              has:
+                field: right
+                pattern: $XOR_NUM
+                kind: integer
 
 metadata:
   extended-obfuscation: yes
@@ -123,7 +131,6 @@ metadata:
     }
 
 ---
-
 # yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/main/schemas/rule.json
 
 id: python-static-join-chr-ord-with-xor-from-string
