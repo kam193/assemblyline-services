@@ -36,5 +36,5 @@ class AssemblylineServiceUpdater(ServiceUpdater):
 
 
 if __name__ == "__main__":
-    with AssemblylineServiceUpdater(default_pattern=".*") as server:
+    with AssemblylineServiceUpdater() as server:
         server.serve_forever()
