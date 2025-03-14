@@ -16,7 +16,7 @@ is_external: false
 
 config:
   MAX_EXTRACTED: 500
-  POPULAR_PATHS_TO_IGNORE: tests,docs,examples,test,data,scripts,example,license,licence,include,authors,doc,bin,etc,src,testing,integration,package,install,flytekitplugins,utils,com,plugins,app,cli,server,assets,frontend,commands
+  POPULAR_PATHS_TO_IGNORE: tests,docs,examples,test,data,scripts,example,license,licence,include,authors,doc,bin,etc,src,testing,integration,package,install,flytekitplugins,utils,com,plugins,app,cli,server,assets,frontend,commands,img,config,tools,db
 
 submission_params:
   - name: extract_all
@@ -47,11 +47,11 @@ heuristics:
     score: 300
     max_score: 500
   - description: >
-      Files installed by this package can overwrite files installed by popular PyPI packages. This
+      Files installed by this package can overwrite files installed by other PyPI packages. This
       technique is often used to add malicious activity to popular packages.
     filetype: "*"
     heur_id: 3
-    name: Overwriting popular packages files
+    name: Overwriting other packages files
     score: 400
     max_score: 500
   - description: >

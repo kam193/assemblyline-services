@@ -129,7 +129,7 @@ class Analyzer:
 
             if overwrite_top_packages_paths:
                 overwrite_section = ResultTextSection(
-                    "Overwriting popular packages paths",
+                    "Overwriting other packages paths",
                     auto_collapse=False,
                     zeroize_on_tag_safe=True,
                     zeroize_on_sig_safe=True,
@@ -137,7 +137,7 @@ class Analyzer:
                 overwrite_section.set_heuristic(3)
                 overwrite_section.add_line(
                     "The following paths are installed by this package and placed in directories used by some "
-                    "popular PyPI packages. This may indicate malicious activity by overwriting source code. \n"
+                    "other PyPI packages. This may indicate malicious activity by overwriting source code. \n"
                 )
                 conflicts = dict()
                 for path, top_packages in overwrite_top_packages_paths:
@@ -155,7 +155,9 @@ class Analyzer:
                     conflicts_section.add_line(
                         f"DIRECTORY {base} has {len(top_packages)} conflicting package(s):"
                     )
-                    conflicts_section.add_line(", ".join(top_packages))
+                    conflicts_section.add_line(", ".join(top_packages[:10]))
+                    if len(top_packages) > 10:
+                        conflicts_section.add_line(f"... and {len(top_packages) - 10} more")
                 overwrite_section.add_subsection(conflicts_section)
                 section.add_subsection(overwrite_section)
             return section
