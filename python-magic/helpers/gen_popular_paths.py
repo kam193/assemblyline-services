@@ -3,6 +3,7 @@ import json
 import re
 import time
 import xmlrpc.client
+import re
 from collections import defaultdict
 
 import requests
@@ -16,10 +17,27 @@ PATHS_TO_IGNORE = set(
         ","
     )
 )
-PATHS_TO_IGNORE.update("changelog,common,images,web,venv,script,share,backports,lib,samples,version,readme,notice,ci,makefile,dockerfile,changes,build_tools,todo,third_party,news,pylintrc,usr,debian,demo,benchmark,misc,contributors,js,pkg-info,static,plugin_tests,contrib,build_tools,copying,pipfile,copyright,example_project,security,man,integration_tests,conf,test_project,icons,client,package_name,tasks,locale,view,acknowledgements".split(","))
+PATHS_TO_IGNORE.update(
+    "test_data,experiments,api,kubernetes,temp,tutorials,apps,changelog,common,images,web,venv,script,share,backports,lib,samples,version,readme,notice,ci,makefile,dockerfile,changes,build_tools,todo,third_party,news,pylintrc,usr,debian,demo,benchmark,misc,contributors,js,pkg-info,static,plugin_tests,contrib,build_tools,copying,pipfile,copyright,example_project,security,man,integration_tests,conf,test_project,icons,client,package_name,tasks,locale,view,acknowledgements".split(
+        ","
+    )
+)
 PATHS_TO_IGNORE.add("")
 
+_separator_replace = re.compile(r"([._-])+")
+_cleanup_replace = re.compile(r"([^a-z0-9-])")
+_cleanup_extras = re.compile(r"\[[a-zA-Z0-9-]*\]")
+
+
+def _normalize_pypi_name(name):
+    name = _separator_replace.sub("-", name)
+    name = name.lower().strip()
+    name = _cleanup_extras.sub("", name)
+    return _cleanup_replace.sub("", name)
+
+
 # ai?
+
 
 def refresh_data(analysed: set = None, top_data: dict[str, set] = None, analysed_users: set = None):
     if analysed:
@@ -158,7 +176,6 @@ def get_popular_paths():
     next(csv_reader)
     # popular_paths = defaultdict(set)
     analysed = 0
-    # csv_reader = [("", "charset-normalizer"), ("", "grpcio-status"), ("", "pysftp")]
     for row in csv_reader:
         try:
             if row[1] in already_analysed:
@@ -218,13 +235,17 @@ def extend_for_users():
         except Exception as e:
             print(f"Error processing {package_name}: {e}")
 
+
 def clean_data():
     global already_analysed, popular_paths, analysed_users
     new_popular_paths = defaultdict(set)
     for base_dir, pkgs in popular_paths.items():
         if base_dir not in PATHS_TO_IGNORE:
-            new_popular_paths[base_dir] = pkgs
+            new_popular_paths[base_dir] = set(_normalize_pypi_name(pkg) for pkg in pkgs)
     popular_paths = new_popular_paths
+
+    already_analysed = set(_normalize_pypi_name(pkg) for pkg in already_analysed)
+
 
 # extend_for_users()
 clean_data()
