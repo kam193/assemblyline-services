@@ -213,3 +213,35 @@ metadata:
         {"func": "dequote", "source": "VARIABLE"}
       ]
     }
+
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/main/schemas/rule.json
+
+id: python-static-bytes-from-hex
+message: Evaluating decoding static data from hex
+language: Python
+rule:
+  kind: call
+  all:
+    - has:
+        field: function
+        pattern: bytes.fromhex
+    - has:
+        field: arguments
+        has:
+          nthChild: 1
+          kind: string
+          pattern: $DATA
+
+metadata:
+  extended-obfuscation: yes
+  confirmed-obfuscation: no
+  deobfuscate: |
+    {
+      "type": "fix-generate",
+      "steps": [
+        {"func": "dequote", "source": "DATA"},
+        {"func": "encode", "source": "DATA", "encoding": "hex"},
+        {"func": "quote", "source": "DATA"}
+      ]
+    }
