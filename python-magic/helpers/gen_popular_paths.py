@@ -9,16 +9,18 @@ from collections import defaultdict
 import requests
 
 TOP_PACKAGES_URL = "https://hugovk.github.io/top-pypi-packages/top-pypi-packages.csv"
+TOP_PACKAGES_PATH = ".randomnotes/top-pypi-packages.csv"
 ANALYZED_PATH = "data/analyzed.json"
 ANALYSED_USERS_PATH = "data/analyzed_users.json"
 TOP_DATA_PATH = "data/popular_paths.json"
+TOP_WITH_DOWNLOADS_PATH = "data/top_paths_with_downloads.json"
 PATHS_TO_IGNORE = set(
     "tests,docs,examples,test,data,scripts,example,license,licence,include,authors,doc,bin,etc,src,testing,integration,package,install,flytekitplugins,utils,com,plugins,app,cli,server,assets,frontend,commands,img,config,tools,db,models,services,bindings,migrations,dev,backend,auth,hydra_plugins,sample,python,envs,notebooks,workflow,util,benchmarks,requirements,release,build,resources,testsuite,cmake,rust,core,cpp,templates,licenses".split(
         ","
     )
 )
 PATHS_TO_IGNORE.update(
-    "test_data,experiments,api,kubernetes,temp,tutorials,apps,changelog,common,images,web,venv,script,share,backports,lib,samples,version,readme,notice,ci,makefile,dockerfile,changes,build_tools,todo,third_party,news,pylintrc,usr,debian,demo,benchmark,misc,contributors,js,pkg-info,static,plugin_tests,contrib,build_tools,copying,pipfile,copyright,example_project,security,man,integration_tests,conf,test_project,icons,client,package_name,tasks,locale,view,acknowledgements".split(
+    "source,simulation,code,tutorial,modules,types,emoji,setup,dockerfiles,tool,sdk,test_data,experiments,api,kubernetes,temp,tutorials,apps,changelog,common,images,web,venv,script,share,backports,lib,samples,version,readme,notice,ci,makefile,dockerfile,changes,build_tools,todo,third_party,news,pylintrc,usr,debian,demo,benchmark,misc,contributors,js,pkg-info,static,plugin_tests,contrib,build_tools,copying,pipfile,copyright,example_project,security,man,integration_tests,conf,test_project,icons,client,package_name,tasks,locale,view,acknowledgements".split(
         ","
     )
 )
@@ -89,12 +91,15 @@ def get_package_uploaders_xmlrpc(package_name):
         time.sleep(30)
         return None
 
-
+last_time = time.time()
 def get_other_packages(user):
+    global last_time
+    if time.time() - last_time < 1:
+        time.sleep(1.0 - (time.time() - last_time))
+    last_time = time.time()
     try:
         roles = client.user_packages(user)
         pkgs = [role[1].strip() for role in roles]
-        # time.sleep(0.5)
         return pkgs
     except Exception as e:
         print(f"Error getting package {user} packages {e}")
@@ -156,6 +161,7 @@ def get_package_records(pkg_name):
 
 def load_package_paths(pkg_name):
     try:
+        normalized_name = _normalize_pypi_name(pkg_name)
         records_reader = csv.reader(get_package_records(pkg_name).splitlines(), delimiter=",")
         for record in records_reader:
             if len(record) == 0:
@@ -165,7 +171,7 @@ def load_package_paths(pkg_name):
                 continue
             if base_dir not in popular_paths:
                 popular_paths[base_dir] = set()
-            popular_paths[base_dir].add(pkg_name)
+            popular_paths[base_dir].add(normalized_name)
     except Exception as e:
         print(f"Error processing {pkg_name}: {e}")
 
@@ -247,6 +253,71 @@ def clean_data():
     already_analysed = set(_normalize_pypi_name(pkg) for pkg in already_analysed)
 
 
+def get_packages_with_paths(popular_paths):
+    pkgs_with_paths = set()
+    for _, pkgs in popular_paths.items():
+        for pkg in pkgs:
+            pkgs_with_paths.add(_normalize_pypi_name(pkg))
+
+    return pkgs_with_paths
+
+
+def refresh_by_users():
+    global already_analysed, popular_paths, analysed_users
+    analysed_pkgs = get_packages_with_paths(popular_paths)
+
+    counter = 0
+    omitted_pkgs = 0
+    reanalysed = 0
+    for user in analysed_users:
+        try:
+            pkgs = get_other_packages(user) or []
+            for pkg in pkgs:
+                normalized_pkg = _normalize_pypi_name(pkg)
+                if normalized_pkg not in analysed_pkgs:
+                    load_package_paths(pkg)
+                    already_analysed.add(normalized_pkg)
+                    analysed_pkgs.add(normalized_pkg)
+                    reanalysed += 1
+                else:
+                    omitted_pkgs += 1
+        except Exception as e:
+            print(f"Error processing {user}: {e}")
+        counter += 1
+
+        if counter % 100 == 0 or reanalysed % 100 == 0:
+            print(f"Refreshed {counter} users")
+            already_analysed, popular_paths, analysed_users = refresh_data(
+                already_analysed, popular_paths, analysed_users
+            )
+        if omitted_pkgs % 100 == 0:
+            print(f"Stats: omitted {omitted_pkgs} packages, reanalysed {reanalysed} packages, {counter} users")
+
+def enrich_popularity():
+    """Mark paths that are related to top 5000 packages"""
+    packages_by_popularity = dict()
+    with open(TOP_PACKAGES_PATH, "r") as f:
+        csv_reader = csv.reader(f, delimiter=",")
+        next(csv_reader)
+        for row in csv_reader:
+            packages_by_popularity[_normalize_pypi_name(row[1])] = int(row[0])
+
+    top_with_downloads = dict()
+    for path, pkgs in popular_paths.items():
+        max_popularity = max(
+            [packages_by_popularity.get(pkg, 0) for pkg in pkgs], default=0
+        )
+        top_with_downloads[path] = {
+            "packages": list(pkgs),
+            "max_popularity": max_popularity,
+        }
+
+    with open(TOP_WITH_DOWNLOADS_PATH, "w") as f:
+        json.dump(top_with_downloads, f)
+
 # extend_for_users()
-clean_data()
-refresh_data(already_analysed, popular_paths, analysed_users)
+# clean_data()
+# refresh_by_users()
+# refresh_data(already_analysed, popular_paths, analysed_users)
+
+enrich_popularity()

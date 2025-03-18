@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 from contextlib import contextmanager, suppress
 
@@ -19,9 +20,12 @@ class AssemblylineService(ServiceBase):
 
     def _load_config(self):
         PyInstallerExtractor.load_static_config()
-        with open("data/popular_paths.json", "r") as f:
+        with open("data/top_paths_with_downloads.json", "r") as f:
             self._popular_paths = json.load(f)
+        for path, data in self._popular_paths.items():
+            self._popular_paths[path]["packages"] = set(data["packages"])
         self._popular_paths_to_ignore = self.config.get("POPULAR_PATHS_TO_IGNORE", "").split(",")
+        self._popularity_to_warn = int(self.config.get("MIN_DOWNLOADS_TO_WARN", 100000))
 
     def start(self):
         self.log.info(f"start() from {self.service_attributes.name} service called")
@@ -64,10 +68,7 @@ class AssemblylineService(ServiceBase):
         #     if section:
         #         result.add_section(section)
         elif request.file_type.startswith("archive/"):
-            # Identification may be unstable
-            # An exception means only that the file is not the expected package,
-            # so no reason to report it
-            with suppress(Exception):
+            try:
                 if pkg_type := identify_python_package(request.file_path):
                     section = Analyzer(
                         request.file_path,
@@ -75,9 +76,17 @@ class AssemblylineService(ServiceBase):
                         self._requirements_blocklist,
                         self._popular_paths,
                         self._popular_paths_to_ignore,
+                        self._popularity_to_warn,
                     ).analyze()
                     if section:
                         result.add_section(section)
+            except Exception as e:
+                # Identification may be unstable
+                # An exception means only that the file is not the expected package,
+                # so no reason to report it, except for debugging purposes
+                self.log.info("Exception while processing archive: %s", e, exc_info=True)
+                if self.log.isEnabledFor(logging.DEBUG):
+                    raise
 
     @contextmanager
     def unpack_dir_cwd(self):

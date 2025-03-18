@@ -16,6 +16,9 @@ is_external: false
 
 config:
   MAX_EXTRACTED: 500
+  # warn when the package may overwrite files from other packages
+  # downloaded more than this number of times
+  MIN_DOWNLOADS_TO_WARN: 100000
   POPULAR_PATHS_TO_IGNORE: tests,docs,examples,test,data,scripts,example,license,licence,include,authors,doc,bin,etc,src,testing,integration,package,install,flytekitplugins,utils,com,plugins,app,cli,server,assets,frontend,commands,img,config,tools,db
 
 submission_params:
@@ -48,20 +51,21 @@ heuristics:
     max_score: 500
   - description: >
       Files installed by this package can overwrite files installed by other PyPI packages. This
-      technique is often used to add malicious activity to popular packages.
+      technique is often used to add malicious activity to popular packages, but some paths
+      are often used by many packages.
     filetype: "*"
     heur_id: 3
-    name: Overwriting other packages files
-    score: 400
-    max_score: 500
+    name: May overwrite other package files
+    score: 150
+    max_score: 200
   - description: >
-      Some paths where package files are installed does not match the package name. This is not necessarily malicious,
-      but it is sometimes used to overwrite files installed by other packages.
+      Files installed by this package can overwrite files installed by some popular PyPI packages.
+      This technique is often used to add malicious activity to popular packages.
     filetype: "*"
     heur_id: 4
-    name: Files in untypical paths
-    score: 50
-    max_score: 100
+    name: Conflict with popular package directories
+    score: 300
+    max_score: 500
 
 docker_config:
   image: ${REGISTRY}ghcr.io/kam193/assemblyline-service-python-magic:$SERVICE_TAG

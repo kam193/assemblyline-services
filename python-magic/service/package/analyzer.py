@@ -39,8 +39,9 @@ class Analyzer:
         path: str,
         package_type: str,
         requirements_blocklist: dict[str, set[str]] = None,
-        top_package_paths: dict[str, set[str]] = None,
+        top_package_paths: dict[str, dict[str, set[str] | int]] = None,
         paths_to_ignore: list[str] = None,
+        min_popularity_to_warn: int = 100000,
     ):
         self.path = path
         self.package_type = package_type
@@ -50,6 +51,7 @@ class Analyzer:
         }
         self.top_package_paths = top_package_paths or {}
         self.paths_to_ignore = paths_to_ignore or PATHS_TO_IGNORE
+        self.min_popularity_to_warn = min_popularity_to_warn
 
     @staticmethod
     def _normalize_pypi_name(name):
@@ -113,12 +115,9 @@ class Analyzer:
                     module_section.add_line(module)
                 section.add_subsection(module_section)
 
-            non_package_paths, overwrite_top_packages_paths = self.get_suspicious_install_paths(
-                opener
-            )
+            non_package_paths, overwrite_paths = self.get_suspicious_install_paths(opener)
             if non_package_paths:
                 paths_section = ResultTextSection("Files in untypical paths", auto_collapse=True)
-                paths_section.set_heuristic(4)
                 paths_section.add_line(
                     "The following paths are installed by this package and do not match the package name. "
                     "This is not necessarily a malicious activity. \n"
@@ -127,43 +126,60 @@ class Analyzer:
                     paths_section.add_line(path)
                 section.add_subsection(paths_section)
 
-            if overwrite_top_packages_paths:
+            if overwrite_paths:
                 overwrite_section = ResultTextSection(
-                    "Overwriting other packages paths",
+                    "Conflict with other package paths",
                     auto_collapse=False,
                     zeroize_on_tag_safe=True,
                     zeroize_on_sig_safe=True,
                 )
-                overwrite_section.set_heuristic(3)
                 overwrite_section.add_line(
-                    "The following paths are installed by this package and placed in directories used by some "
-                    "other PyPI packages. This may indicate malicious activity by overwriting source code. \n"
+                    "The following directories are installed by this package and may conflict with directories "
+                    "used by some other PyPI packages. This may indicate malicious activity by overwriting source"
+                    " code. This heuristic is prone to false positives especially by source packages, where finding"
+                    " determined paths may be incorrect.\n"
                 )
                 conflicts = dict()
-                for path, top_packages in overwrite_top_packages_paths:
-                    overwrite_section.add_line(path)
+                heuristic_id = 3  # overwrite any analysed package
+
+                detailed_paths_section = ResultTextSection(
+                    "Paths in conflicting directories", auto_collapse=True
+                )
+                overwrite_section.add_subsection(detailed_paths_section)
+
+                signatures = set()
+                for path, data in overwrite_paths:
+                    detailed_paths_section.add_line(path)
                     base = path.split("/")[0]
                     if base not in conflicts:
-                        conflicts[base] = top_packages
-                        # Add to safelist to allow this one package to use this path
-                        overwrite_section.heuristic.add_signature_id(
-                            f"PythonMagic.override_popular_path.{base}.{self._normalize_pypi_name(opener.get_package_name()).lower()}"
+                        overwrite_section.add_line(base)
+                        conflicts[base] = data.get("packages", set())
+                        if data.get("max_popularity", 0) >= self.min_popularity_to_warn:
+                            heuristic_id = 4
+                        # Add to safelist to allow this one package to use this path without warnings
+                        signatures.add(
+                            f"PythonMagic.override_popular_path.{base}.{self._normalize_pypi_name(opener.get_package_name())}"
                         )
 
+                overwrite_section.set_heuristic(heuristic_id)
+                for sig in signatures:
+                    overwrite_section.heuristic.add_signature_id(sig)
+
                 conflicts_section = ResultTextSection("Conflicts with...", auto_collapse=True)
-                for base, top_packages in conflicts.items():
+                for base, data in conflicts.items():
                     conflicts_section.add_line(
-                        f"DIRECTORY {base} has {len(top_packages)} conflicting package(s):"
+                        f"DIRECTORY {base} has {len(data)} conflicting package(s):"
                     )
-                    conflicts_section.add_line(", ".join(top_packages[:10]))
-                    if len(top_packages) > 10:
-                        conflicts_section.add_line(f"... and {len(top_packages) - 10} more")
+                    conflicts_section.add_line(", ".join(list(data)[:10]))
+                    if len(data) > 10:
+                        conflicts_section.add_line(f"... and {len(data) - 10} more")
+
                 overwrite_section.add_subsection(conflicts_section)
                 section.add_subsection(overwrite_section)
             return section
 
     def get_suspicious_install_paths(self, opener: PackageOpener):
-        overwrite_top_packages_paths = []
+        overwrite_paths: list[tuple[str, dict]] = []
         non_package_paths = []
         normalized_package_name = self._normalize_pypi_name(opener.get_package_name()).lower()
         expected_dir = normalized_package_name.replace("-", "_")
@@ -177,7 +193,9 @@ class Analyzer:
                 non_package_paths.append(record)
 
             if first_dir in self.top_package_paths:
-                if normalized_package_name not in self.top_package_paths[first_dir]:
-                    overwrite_top_packages_paths.append((record, self.top_package_paths[first_dir]))
+                if normalized_package_name not in self.top_package_paths[first_dir].get(
+                    "packages", set()
+                ):
+                    overwrite_paths.append((record, self.top_package_paths[first_dir]))
 
-        return non_package_paths, overwrite_top_packages_paths
+        return non_package_paths, overwrite_paths
