@@ -208,11 +208,11 @@ class AssemblylineService(ServiceBase):
             severity = extra.get("severity", "INFO")
             heuristic = SEVERITY_TO_HEURISTIC.get(str(severity).upper(), 0)
 
-            # TODO: Support for attribution
             metadata = self.metadata_cache.get(rule_id, {})
             title = metadata.get("title", metadata.get("name", message[:100]))
             attack_id = metadata.get("attack_id")
             extend_preview = metadata.get("extend_preview", 0)
+            attribution = metadata.get("attribution")
             if not isinstance(extend_preview, int):
                 extend_preview = 0
 
@@ -222,6 +222,20 @@ class AssemblylineService(ServiceBase):
             )
             section.add_line(message)
             section.set_heuristic(heuristic, signature=rule_id, attack_id=attack_id)
+
+            if attribution:
+                for tag in [
+                    "campaign",
+                    "family",
+                    "actor",
+                    "category",
+                    "exploit",
+                    "implant",
+                    "network",
+                ]:
+                    if tag in attribution:
+                        section.add_tag(f"attribution.{tag}", attribution[tag])
+
             for match in matches:
                 line_start, line_end = match["start"]["line"], match["end"]["line"]
 
