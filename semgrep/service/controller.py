@@ -372,6 +372,7 @@ class SemgrepLSPController(SemgrepScanController):
         with suppress(Exception):
             self.client.exit()
             self.client.shutdown()
+        with suppress(Exception):
             self._server_process.terminate()
             self._server_process.wait()
             self._server_stderr_thread.join()

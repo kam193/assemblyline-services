@@ -20,7 +20,7 @@ PATHS_TO_IGNORE = set(
     )
 )
 PATHS_TO_IGNORE.update(
-    "source,simulation,code,tutorial,modules,types,emoji,setup,dockerfiles,tool,sdk,test_data,experiments,api,kubernetes,temp,tutorials,apps,changelog,common,images,web,venv,script,share,backports,lib,samples,version,readme,notice,ci,makefile,dockerfile,changes,build_tools,todo,third_party,news,pylintrc,usr,debian,demo,benchmark,misc,contributors,js,pkg-info,static,plugin_tests,contrib,build_tools,copying,pipfile,copyright,example_project,security,man,integration_tests,conf,test_project,icons,client,package_name,tasks,locale,view,acknowledgements".split(
+    "jenkins,public,executor,shared,rules,mapping,venv_pack,extension,databases,run,scenario,thirdparty,configurations,workspace,pam,module,sphinx,utility,testapp,sql,mock,css,targets,dataset,converters,docker,proto,deps,typings,mkdocstrings_handlers,utilities,official,deprecated,datasets,style,exception,database,annotation,plugin,fixtures,Docker,dist,checksum,diff,git,manual,template,csrc,configs,deploy,local,pybind11,settings,crm,analytics,extras,packaging,interface,pipeline,internal,adapters,views,source,simulation,code,modules,types,emoji,setup,dockerfiles,tool,sdk,experiments,test_data,temp,api,kubernetes,tutorials,apps,tests,docs,examples,test,data,scripts,example,license,licence,include,authors,doc,bin,etc,src,testing,integration,package,install,flytekitplugins,utils,com,plugins,app,cli,server,assets,frontend,commands,img,config,tools,db,models,services,bindings,migrations,dev,backend,auth,hydra_plugins,sample,python,envs,notebooks,workflow,util,benchmarks,requirements,release,build,resources,testsuite,cmake,rust,core,cpp,templates,licenses,devtools,model,helper".split(
         ","
     )
 )
@@ -316,8 +316,8 @@ def enrich_popularity():
         json.dump(top_with_downloads, f)
 
 # extend_for_users()
-# clean_data()
+clean_data()
 # refresh_by_users()
 # refresh_data(already_analysed, popular_paths, analysed_users)
 
-enrich_popularity()
+# enrich_popularity()

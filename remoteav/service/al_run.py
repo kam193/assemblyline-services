@@ -48,6 +48,8 @@ class AssemblylineService(ServiceBase):
             break
 
         av_result = av_response.json()
+        if "status" not in av_result:
+            self.log.error("Invalid response from remote AV server: %s", av_response.text)
         if av_result["status"] == "ok":
             return
 

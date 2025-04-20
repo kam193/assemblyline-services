@@ -33,6 +33,17 @@ submission_params:
     type: int
     default: 1
     value: 1
+  - name: proxy
+    type: str
+    default: ""
+    value: ""
+  # For cases where the simple method change helps
+  # for advanced usage, prepare a right file. Method defined in file takes precedence
+  - name: method
+    type: str
+    default: "GET"
+    value: "GET"
+
 
 # -1000: safe
 # 0 - 299: informative

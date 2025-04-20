@@ -3,6 +3,7 @@ import json
 import os
 import subprocess
 import tempfile
+import logging
 from collections import defaultdict
 from copy import copy
 from threading import RLock

@@ -27,7 +27,9 @@ class AssemblylineService(ServiceBase):
 
         self.log.info(f"{self.service_attributes.name} service started")
 
-    def _download(self, uri: str, output_path: str, headers: dict[str, str], method: str):
+    def _download(
+        self, uri: str, output_path: str, headers: dict[str, str], method: str, proxy: str = None
+    ) -> requests.Response:
         response: requests.Response = requests.request(
             method,
             uri,
@@ -35,6 +37,7 @@ class AssemblylineService(ServiceBase):
             timeout=self.request_timeout,
             stream=True,
             verify=False,
+            proxies={"http": proxy, "https": proxy} if proxy else None,
         )
         with open(output_path, "wb+") as f:
             for content in response.iter_content(5 * 1024):
@@ -54,7 +57,9 @@ class AssemblylineService(ServiceBase):
         with open(request.file_path, "r") as f:
             data = yaml.safe_load(f)
 
-        method = data.get("method", "GET")
+        method = data.get("method")
+        if not method:
+            method = request.get_param("method")
         headers = data.get("headers", {})
         user_agent = request.get_param("user_agent")
         if user_agent:
@@ -65,7 +70,7 @@ class AssemblylineService(ServiceBase):
         response = None
 
         try:
-            response = self._download(uri, output_path, headers, method)
+            response = self._download(uri, output_path, headers, method, request.get_param("proxy"))
         except requests.exceptions.Timeout:
             raise RuntimeError("Timeout") from None
 
@@ -86,6 +91,19 @@ class AssemblylineService(ServiceBase):
             headers_resp.add_row({"Header": header, "Value": value})
         details_section.add_section_part(headers_resp)
         result.add_section(details_section)
+
+        if response.history:
+            redirects_section = ResultMultiSection("Redirects")
+            for resp in response.history:
+                redirect_part = TextSectionBody()
+                redirect_part.add_line(f"Redirected to URL: {resp.url}")
+                redirects_section.add_tag("network.dynamic.uri", resp.url)
+                headers_resp = TableSectionBody()
+                headers_resp.set_column_order(["Header", "Value"])
+                for header, value in resp.headers.items():
+                    headers_resp.add_row({"Header": header, "Value": value})
+                redirects_section.add_section_part(redirect_part)
+                redirects_section.add_section_part(headers_resp)
 
         if request.get_param("extract_dir_listing_as_urls"):
             extract_depth = request.get_param("extraction_depth")

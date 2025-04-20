@@ -1,9 +1,9 @@
 REGISTRY?=
 PUSH_REGISTRY?=
-BASE_IMAGE?=${REGISTRY}/cccs/assemblyline-v4-service-base:4.5.stable
+BASE_IMAGE?=${REGISTRY}/cccs/assemblyline-v4-service-base:4.6.stable
 AL_SERVICE_NAME=Template
 SERVICE_NAME=assemblyline-service-$(shell echo ${AL_SERVICE_NAME} | tr '[:upper:]' '[:lower:]')
-BASE_TAG?=4.5.0.stable
+BASE_TAG?=4.6.0.stable
 APT_CFG_MOUNT?=../empty
 PYPI_CFG?=../empty
 
