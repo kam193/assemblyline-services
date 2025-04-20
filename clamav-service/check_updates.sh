@@ -2,7 +2,7 @@
 
 # This script checks if there is a new version of clamav available
 
-BASE_TAG=4.5.0.stable
+BASE_TAG=4.6.0.stable
 TAG=$(cat VERSION)
 REGISTRY=packages.lab.kam193.eu:9443
 

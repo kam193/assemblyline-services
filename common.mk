@@ -4,6 +4,7 @@ BASE_IMAGE?=${REGISTRY}/cccs/assemblyline-v4-service-base:4.6.stable
 AL_SERVICE_NAME=Template
 SERVICE_NAME=assemblyline-service-$(shell echo ${AL_SERVICE_NAME} | tr '[:upper:]' '[:lower:]')
 BASE_TAG?=4.6.0.stable
+SERVICE_TAG=4.6.stable
 APT_CFG_MOUNT?=../empty
 PYPI_CFG?=../empty
 
@@ -116,7 +117,6 @@ al-service:
 		${ARGS_INT} \
 		--name ${CONTAINER_NAME} ${SERVICE_IMAGE} ${COMMAND}
 
-SERVICE_TAG=4.5.stable
 service-extract: CONTAINER_NAME=al-service-extract
 service-extract: SERVICE_IMAGE=${REGISTRY}/cccs/assemblyline-service-extract:${SERVICE_TAG}
 service-extract: al-service
