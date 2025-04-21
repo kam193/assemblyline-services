@@ -293,5 +293,5 @@ class ClamavServiceUpdater(ServiceUpdater):
 
 
 if __name__ == "__main__":
-    with ClamavServiceUpdater(default_pattern=".*") as server:
+    with ClamavServiceUpdater() as server:
         server.serve_forever()

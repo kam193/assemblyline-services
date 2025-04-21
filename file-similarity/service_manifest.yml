@@ -54,6 +54,7 @@ update_config:
   update_interval_seconds: 7200 # 2 hours
   generates_signatures: false
   wait_for_update: true
+  default_pattern: .*
   sources:
     - name: Badlist # This name is reserved to collect data from dynamic badlist
       uri: http://badlist/

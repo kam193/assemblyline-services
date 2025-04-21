@@ -61,6 +61,7 @@ update_config:
   update_interval_seconds: 7200 # 2 hours
   generates_signatures: false
   wait_for_update: true
+  default_pattern: .*
   sources:
     # Source named "freshclam" is reserved for updates using FreshClam utility
     # Configuration is treated as freshclam.conf options
