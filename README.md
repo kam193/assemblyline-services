@@ -57,16 +57,6 @@ Supported heuristics:
 
 - newly created domains (based on WHOIS data).
 
-### OOPreview (deprecated)
-
-  > [!NOTE]
-  > Deprecated as the same preview builder is now used by the official AL DocumentPreview
-  > service (starting version 4.5.0.stable36).
-
-Simple service that uses [OnlyOffice Document Builder](https://api.onlyoffice.com/docbuilder/basic)
-to generate documents previews, with the high compatibility with Microsoft Office formats. Supported
-generating the preview for the first or all pages.
-
 ### PCAP Extractor
 
 This service list TCP flows from a pcap file using Tshark. If supported by Tshark, it can also extract files.
@@ -101,7 +91,8 @@ Very simple service to download URLs, without running a whole browser. User-agen
 
 Additional features:
 
-  - extract URLs from directory listings as URI files allowing to download automatically download them.
+  - extract URLs from directory listings as URI files allowing to download automatically download them (see [README](./simple-downloader/README.md) for configuration).
+  - proxy support (standard `requests` HTTP&HTTPS proxy configuration).
 
 ## License
 
