@@ -65,3 +65,51 @@ metadata:
         {"func": "math_eval", "source": "EXPRESSION"}
       ]
     }
+
+---
+
+yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/main/schemas/rule.json
+
+id: python-static-string-replace
+message: Evaluate static replacement in strings
+language: Python
+rule:
+  # "aaaaa".replace("a", "b")
+  kind: call
+  all:
+    - has:
+        field: function
+        has:
+          field: object
+          kind: string
+          pattern: $SOURCE
+        all:
+          - has:
+              field: attribute
+              pattern: replace
+    - has:
+        field: arguments
+        all:
+          - has:
+              nthChild: 1
+              kind: string
+              pattern: $PATTERN
+          - has:
+              nthChild: 2
+              kind: string
+              pattern: $REPLACEMENT
+
+metadata:
+  extended-obfuscation: no
+  confirmed-obfuscation: no
+  deobfuscate: |
+    {
+      "type": "fix-generate",
+      "steps": [
+        {"func": "dequote", "source": "SOURCE", "output": "SOURCE"},
+        {"func": "dequote", "source": "PATTERN", "output": "PATTERN"},
+        {"func": "dequote", "source": "REPLACEMENT", "output": "REPLACEMENT"},
+        {"func": "replace", "source": "SOURCE", "pattern": "PATTERN", "replacement": "REPLACEMENT", "output": "SOURCE"},
+        {"func": "quote", "source": "SOURCE"}
+      ]
+    }

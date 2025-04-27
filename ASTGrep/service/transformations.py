@@ -489,3 +489,10 @@ def unpad_function(config: dict, context: dict) -> bytes:
         raise TransformationRejected("Unsupported block size")
 
     return unpad(context[data], block_size)
+
+
+def replace(config: dict, context: dict) -> str:
+    source = config.get("source", "DATA")
+    pattern = config.get("pattern", "PATTERN")
+    replacement = config.get("replacement", "REPLACEMENT")
+    return context[source].replace(context[pattern], context[replacement])
