@@ -67,6 +67,9 @@ rule:
 
 fix: $BUILTIN
 
+metadata:
+  score: 25
+
 ---
 # yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/main/schemas/rule.json
 

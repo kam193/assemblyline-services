@@ -86,6 +86,10 @@ CMD_TIMEOUT = 15
 
 RULE_SANITIZE_SLASH_NLTAB = re.compile(r"\\\n\t")
 
+DEFAULT_NOT_CONF_SCORE = 10
+CONFIRMED_OBFUSCATION = 100
+POSSIBLE_OBFUSCATION = 50
+
 
 class UnsupportedLanguageError(ValueError):
     pass
@@ -557,7 +561,7 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
             self.log.error("Error applying rule: %s", e)
             self.log.debug("Rule: %s", rule)
 
-    def _get_type(self, result: dict) -> tuple[str, bool]:
+    def _get_type(self, result: dict) -> tuple[str, bool, bool]:
         rule_id = result.get("ruleId")
         look_in = self._rules_transformations
         if rule_id in self._persistent_transformations:
@@ -617,10 +621,6 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
         if "{{{DOLLARPLACEHOLDER}}}" in rule_data:
             self._persistent_escape_dollar = True
 
-    def _set_confirmed(self, rule_id: str):
-        self._last_confirmation_rule = rule_id
-        self.confirmed_obfuscation = True
-
     def _load_generated_rules(self):
         if self._current_config == self.config_file:
             self._current_config = tempfile.NamedTemporaryFile(prefix="astgrep_config_").name
@@ -642,6 +642,27 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
             [self._persistent_rules_dir.name]
         )
 
+    def _score_rule(self, result: dict, type_: str, confirmed: bool):
+        if type_ in ["context"]:
+            return
+        # TODO: multiple rules matching the same line?
+        matched = result.get("text")
+        if not matched or matched in self._scored_lines:
+            return
+        rule_id = result.get("ruleId")
+        try:
+            score = self._metadata[rule_id].get("score")
+        except KeyError:
+            # no metadata = rule was generated, no score
+            return
+        if score is None and confirmed:
+            score = CONFIRMED_OBFUSCATION
+        elif score is None:
+            score = DEFAULT_NOT_CONF_SCORE
+
+        self._scored_lines[matched] = score
+        self._scoring_rules.add(rule_id)
+
     def _process_result(self, result: dict, secondary=False):
         if not result:
             return
@@ -655,11 +676,13 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
             if type_ == "extract":
                 extract = True
 
+        scoring_rule = True
         try:
             if type_ == "auto-fix":
                 self._run_auto_fixes = True
             elif type_ == "context":
                 output, _ = self.transform(result)
+                scoring_rule = False
                 if output:
                     self._global_variable_context.update(output)
             elif type_.startswith("secondary-"):
@@ -667,17 +690,10 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
             elif type_ == "fix-generate":
                 match = result.get("text")
                 if match in self._generated_fixes:
+                    scoring_rule = False
                     return
                 try:
                     self._generated_fixes[match], _ = self.transform(result)
-                    if confirmed:
-                        if not extract:
-                            self._set_confirmed(rule_id)
-                        elif (
-                            self._generated_fixes[match]
-                            and len(self._generated_fixes[match]) >= self.min_length_for_confirmed
-                        ):
-                            self._set_confirmed(rule_id)
                     if extract:
                         return self._generated_fixes[match]
                 except Exception as exc:
@@ -687,14 +703,12 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
             elif type_ == "fix-template":
                 match = result.get("text")
                 if match in self._generated_fixes:
+                    scoring_rule = False
                     return
                 try:
                     self._generated_fixes[match], output = self.transform_template(result)
-                    if confirmed:
-                        if not extract:
-                            self._set_confirmed(rule_id)
-                        elif output and len(output) >= self.min_length_for_confirmed:
-                            self._set_confirmed(rule_id)
+                    if confirmed and output and len(output) < self.min_length_for_confirmed:
+                        scoring_rule = False
                     if extract:
                         return output
                 except Exception as exc:
@@ -715,6 +729,7 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
                     )
                 if not match:
                     self.log.error("No match for template %s", result.get("ruleId"))
+                    scoring_rule = False
                     return
 
                 # persistent means that the rule is generated only once and kept in all iterations
@@ -735,9 +750,11 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
                         current_value = self._persistent_rules[(result.get("ruleId"), p_key)]
                         if current_value == p_value:
                             # no changes - nothing to do
+                            scoring_rule = False
                             return
                 else:
                     if not override_fix and match in self._generated_templates:
+                        scoring_rule = False
                         return
                     if match in self._generated_templates:
                         self.log.debug(
@@ -762,23 +779,24 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
                         if type_ == "template-rule":
                             self._load_generated_rules()
                             self._force_next_run = True
-                    if confirmed:
-                        self._set_confirmed(rule_id)
                 except Exception as exc:
                     self.log.error(
                         "Error transforming template '%s' result: %r", result.get("ruleId"), exc
                     )
             elif type_ == "extract":
                 output, _ = self.transform(result)
-                if output and len(output) >= self.min_length_for_confirmed:
-                    self._set_confirmed(rule_id)
-                return output
+                if not output or len(output) < self.min_length_for_confirmed:
+                    scoring_rule = False
             elif type_ == "detection":
-                self._set_confirmed(rule_id)
+                scoring_rule = True
                 return None
         except Exception as exc:
             self.log.error("Error processing result for rule %s: %r", result.get("ruleId"), exc)
+            scoring_rule = False
             return None
+        finally:
+            if scoring_rule:
+                self._score_rule(result, type_, confirmed)
 
     def _should_extract(self, data: str | bytes) -> bool:
         if not data:
@@ -892,8 +910,6 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
         self._iterations = 0
         self.status = ""
         self._extracted_cache = set()
-        self.confirmed_obfuscation = False
-        self._last_confirmation_rule = None
         original_timestamp = last_timestamp = os.stat(self._working_file).st_mtime_ns
         last_size = os.stat(self._working_file).st_size
         file_not_changed = False
@@ -912,6 +928,8 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
 
         self._persistent_metadata = {}
         self._persistent_transformations = {}
+        self._scored_lines = {}
+        self._scoring_rules = set()
 
         start = time.monotonic()
         while time.monotonic() - start < self.deobfuscation_timeout:
@@ -990,9 +1008,9 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
 
         self.status = (
             f"Deobfuscation done in {self.work_time:.3f} seconds ({self._iterations} iterations,"
-            f" {self._sg_process_time:.3f} AST-Grep time)."
+            f" {self._sg_process_time:.3f} AST-Grep time). Score: {self.score}"
         )
-        if self.confirmed_obfuscation:
+        if self.score >= CONFIRMED_OBFUSCATION:
             self.status += "\n - Confirmed obfuscation."
         if self.work_time > self.deobfuscation_timeout:
             self.status += "\n - Timeout exceeded, potentially not all fixes applied."
@@ -1001,6 +1019,10 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
         self._persistent_rules_dir.cleanup()
         if self._current_config != self.config_file:
             os.remove(self._current_config)
+
+    @property
+    def score(self) -> int:
+        return sum(self._scored_lines.values())
 
     def _build_context(self, result: dict) -> dict:
         context = {
@@ -1077,25 +1099,6 @@ def main(
     max_iterations: Annotated[int, typer.Option(help="Maximum iterations")] = None,
     timeout: Annotated[int, typer.Option(help="Obfuscation timeout in seconds")] = 120,
 ):
-    # parser = argparse.ArgumentParser()
-    # parser.add_argument(
-    #     "--lang",
-    #     "-l",
-    #     # required=True,
-    #     type=str,
-    #     help="Language as in AL convention",
-    #     default="code/python",
-    # )
-    # parser.add_argument("--verbose", help="Verbose output", default=False, action="store_true")
-    # parser.add_argument(
-    #     "--final-only", help="Print only final layer", default=False, action="store_true"
-    # )
-    # parser.add_argument("--output", help="Output file", default=None)
-    # parser.add_argument("--max-iterations", help="Maximum iterations", default=None, type=int)
-    # parser.add_argument("--timeout", help="Obfuscation timeout in seconds", default=120, type=int)
-    # parser.add_argument("file", type=str, help="File path")
-    # args = parser.parse_args()
-
     deobfuscator = ASTGrepDeobfuscationController(
         rules_dirs=["./rules/"],
         max_iterations=max_iterations,

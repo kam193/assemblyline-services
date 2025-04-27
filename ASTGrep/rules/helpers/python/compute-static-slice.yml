@@ -34,6 +34,7 @@ rule:
 metadata:
   extended-obfuscation: yes
   alone-unimportant: yes
+  score: 5
   deobfuscate: |
     {
       "type": "fix-generate",

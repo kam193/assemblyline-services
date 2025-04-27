@@ -18,6 +18,7 @@ constraints:
 metadata:
   extended-obfuscation: yes
   alone-unimportant: yes
+  score: 0
   deobfuscate: |
     {
       "type": "fix-generate",
@@ -59,7 +60,7 @@ rule:
 
 metadata:
   extended-obfuscation: yes
-  confirmed-obfuscation: yes
+  score: 35
   deobfuscate: |
     {
       "type": "fix-generate",
@@ -87,6 +88,7 @@ rule:
 metadata:
   extended-obfuscation: yes
   alone-unimportant: yes
+  score: 15
   deobfuscate: |
     {
       "type": "fix-generate",
@@ -130,7 +132,8 @@ constraints:
 
 metadata:
   extended-obfuscation: yes
-  confirmed-obfuscation: yes
+  # confirmed-obfuscation: yes
+  score: 20
   deobfuscate: |
     {
       "type": "fix-generate",
@@ -159,7 +162,8 @@ rule:
 
 metadata:
   extended-obfuscation: yes
-  confirmed-obfuscation: yes
+  # confirmed-obfuscation: yes
+  score: 15
   deobfuscate: |
     {
       "type": "fix-generate",

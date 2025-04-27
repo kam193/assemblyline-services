@@ -11,3 +11,4 @@ rule:
 metadata:
   extended-obfuscation: yes
   confirmed-obfuscation: no
+  score: 5

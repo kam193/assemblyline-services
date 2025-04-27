@@ -117,6 +117,7 @@ rule:
 
 metadata:
   extended-obfuscation: yes
+  score: 20
   deobfuscate: |
     {
       "type": "fix-generate",
@@ -156,6 +157,7 @@ rule:
 metadata:
   extended-obfuscation: yes
   alone-unimportant: yes
+  score: 20
   deobfuscate: |
     {
       "type": "fix-generate",

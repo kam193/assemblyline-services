@@ -6,6 +6,7 @@ severity: error
 metadata:
   category: obfuscation
   extended-obfuscation: yes
+  score: 100
   template_file: javascript/const-var-tpl.j2
   deobfuscate: |
     {

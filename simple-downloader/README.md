@@ -26,7 +26,7 @@ submission:
       display_name: "Download directory listings"
       params:
         services:
-          selected: ["Filtering", "Antivirus", "Static Analysis", "Extract", "Networking", "Simple-Downloader"]
+          selected: ["Filtering", "Antivirus", "Static Analysis", "Extraction", "Networking", "Simple-Downloader"]
         service_spec:
           Simple-Downloader:
             extract_dir_listing_as_urls: true

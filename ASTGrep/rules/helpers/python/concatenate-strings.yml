@@ -35,6 +35,7 @@ utils:
 metadata:
   extended-obfuscation: no
   alone-unimportant: yes
+  score: 0
   deobfuscate: |
     {
       "type": "fix-generate",

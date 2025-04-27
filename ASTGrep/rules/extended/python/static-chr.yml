@@ -26,6 +26,7 @@ rule:
 metadata:
   extended-obfuscation: yes
   confirmed-obfuscation: no
+  score: 5
   deobfuscate: |
     {
       "type": "fix-generate",

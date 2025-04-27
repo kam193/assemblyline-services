@@ -56,9 +56,9 @@ def detect_sample(
     if not detection_result:
         rule_id = "/"
 
-    assert (
-        detection_result == expected
-    ), f"Sample was {'not' if expected else ''} detected as {metadata_field} by {rule_id}"
+    assert detection_result == expected, (
+        f"Sample was {'not' if expected else ''} detected as {metadata_field} by {rule_id}"
+    )
 
 
 def rstrip_lines(data: str | list[str]) -> str:
@@ -87,13 +87,14 @@ def deobfuscate_example(deobfuscator):
             )
         if deobfuscator.work_time > warning_time:
             warnings.warn(f"Deobfuscation took {deobfuscator.work_time:.3f} seconds")
-        assert (
-            deobfuscator.work_time < deobfuscator.deobfuscation_timeout
-        ), "Deobfuscation took too long"
+        assert deobfuscator.work_time < deobfuscator.deobfuscation_timeout, (
+            "Deobfuscation took too long"
+        )
         if check_confirmed:
-            assert deobfuscator.confirmed_obfuscation == confirmed_obfuscation, (
+            confirmed = True if deobfuscator.score >= 100 else False
+            assert confirmed == confirmed_obfuscation, (
                 f"Deobfuscation was {'not' if confirmed_obfuscation else ''}"
-                f" confirmed by {deobfuscator._last_confirmation_rule}"
+                f" confirmed by {'/'.join(deobfuscator._scoring_rules)}"
             )
         return results
 

@@ -3,7 +3,6 @@ import json
 import os
 import subprocess
 import tempfile
-import logging
 from collections import defaultdict
 from copy import copy
 from threading import RLock
@@ -22,7 +21,9 @@ from assemblyline_v4_service.common.result import (
 
 from .controller import (
     AL_TO_SG_LANGUAGE,
+    CONFIRMED_OBFUSCATION,
     LANGUAGE_TO_EXT,
+    POSSIBLE_OBFUSCATION,
     ASTGrepDeobfuscationController,
     ASTGrepLSPController,
     ASTGrepScanController,
@@ -217,6 +218,7 @@ class AssemblylineService(ServiceBase):
             extract_not_confirmed = request.get_param("extract_not_confirmed")
             extracted_layers = []
             result_no = 1
+            score = 0
             for deobf_result, layer in self._deobfuscator.deobfuscate_file(file_path, file_type):
                 path = f"{self.working_directory}/_deobfuscated_code_{result_no}{LANGUAGE_TO_EXT[file_type]}"
                 with open(path, "w+") as f:
@@ -236,10 +238,17 @@ class AssemblylineService(ServiceBase):
                                 ["ruff", "format", "--no-cache", "--isolated", path],
                                 timeout=5,
                                 check=False,
+                                stdout=subprocess.DEVNULL,
+                                stderr=subprocess.DEVNULL,
                             )
                         except Exception:
                             self.log.warning("Error reformatting deobfuscated code", exc_info=True)
-                    if self._deobfuscator.confirmed_obfuscation or extract_not_confirmed:
+
+                    score = self._deobfuscator.score
+
+                    if score >= CONFIRMED_OBFUSCATION or (
+                        extract_not_confirmed and score >= POSSIBLE_OBFUSCATION
+                    ):
                         request.add_extracted(
                             path,
                             f"_deobfuscated_code_FINAL{LANGUAGE_TO_EXT[file_type]}",
@@ -247,30 +256,32 @@ class AssemblylineService(ServiceBase):
                             safelist_interface=self.api_interface,
                         )
                 result_no += 1
-            deobf_section = ResultTextSection(
-                "Obfuscation found"
-                if self._deobfuscator.confirmed_obfuscation
-                else "Possible obfuscation"
-            )
-            deobf_section.add_line(self._deobfuscator.status)
-            deobf_section.set_heuristic(4 if self._deobfuscator.confirmed_obfuscation else 5)
-            main_section.add_subsection(deobf_section)
 
-            if extracted_layers:
-                for args in extracted_layers[:-10:-1]:
-                    if self.extract_intermediate_layers:
-                        request.add_extracted(*args)
-                    # else:
-                    #     request.add_supplementary(*args)
-            if len(extracted_layers) > 10:
-                layers_section = ResultTextSection(
-                    f"Found {len(extracted_layers)} layers of obfuscation"
+            if score >= POSSIBLE_OBFUSCATION:
+                deobf_section = ResultTextSection(
+                    "Obfuscation found"
+                    if score >= CONFIRMED_OBFUSCATION
+                    else "Possible obfuscation"
                 )
-                layers_section.add_line(
-                    "Only last 10 extracted layers and the final layer are shown"
-                )
-                layers_section.set_heuristic(6)
-                main_section.add_subsection(layers_section)
+                deobf_section.add_line(self._deobfuscator.status)
+                deobf_section.set_heuristic(4 if score >= POSSIBLE_OBFUSCATION else 5)
+                main_section.add_subsection(deobf_section)
+
+                if extracted_layers:
+                    for args in extracted_layers[:-10:-1]:
+                        if self.extract_intermediate_layers:
+                            request.add_extracted(*args, safelist_interface=self.api_interface)
+                        # else:
+                        #     request.add_supplementary(*args)
+                if len(extracted_layers) > 10:
+                    layers_section = ResultTextSection(
+                        f"Found {len(extracted_layers)} layers of obfuscation"
+                    )
+                    layers_section.add_line(
+                        "Only last 10 extracted layers and the final layer are shown"
+                    )
+                    layers_section.set_heuristic(6)
+                    main_section.add_subsection(layers_section)
 
         if main_section.subsections:
             request.result.add_section(main_section)

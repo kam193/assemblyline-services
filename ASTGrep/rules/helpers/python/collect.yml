@@ -20,6 +20,7 @@ rule:
 metadata:
   extended-obfuscation: yes
   alone-unimportant: yes
+  score: 0
   deobfuscate: |
     {
       "type": "context",

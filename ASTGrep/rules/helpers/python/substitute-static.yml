@@ -1534,6 +1534,7 @@ utils:
 metadata:
   extended-obfuscation: no
   alone-unimportant: yes
+  score: 0
   template_file: python-replace-static-var.yml.j2
   deobfuscate: |
     {

@@ -39,3 +39,4 @@ metadata:
   # extended-obfuscation: yes
   confirmed-obfuscation: no
   alone-unimportant: yes
+  score: 5
