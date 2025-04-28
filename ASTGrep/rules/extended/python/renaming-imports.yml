@@ -35,6 +35,7 @@ constraints:
 
 metadata:
   extended-obfuscation: yes
+  score: 0
   # confirmed-obfuscation: no
   template_file: python-rename-identifier.yml.j2
   deobfuscate: |
