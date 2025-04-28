@@ -264,7 +264,7 @@ class AssemblylineService(ServiceBase):
                     else "Possible obfuscation"
                 )
                 deobf_section.add_line(self._deobfuscator.status)
-                deobf_section.set_heuristic(4 if score >= POSSIBLE_OBFUSCATION else 5)
+                deobf_section.set_heuristic(4 if score >= CONFIRMED_OBFUSCATION else 5)
                 main_section.add_subsection(deobf_section)
 
                 if extracted_layers:

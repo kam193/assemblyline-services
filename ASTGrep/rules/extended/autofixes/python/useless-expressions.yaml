@@ -22,6 +22,7 @@ fix: $VALUE
 metadata:
   extended-obfuscation: yes
   confirmed-obfuscation: yes
+  score: 50
   deobfuscate: |
     {
       "type": "auto-fix"
@@ -49,3 +50,4 @@ fix: $FUNC
 metadata:
   extended-obfuscation: yes
   confirmed-obfuscation: yes
+  score: 50
