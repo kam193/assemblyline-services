@@ -2,3 +2,8 @@ def I1I1I1lI(l11lIllI):
     return True
 
 True
+
+def I2(var):
+    return f"{var}"
+
+I2(123)

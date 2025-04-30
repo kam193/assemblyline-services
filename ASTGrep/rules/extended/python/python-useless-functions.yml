@@ -28,6 +28,9 @@ rule:
               - kind: integer
               - kind: float
               - kind: string
+                not:
+                  has:
+                    kind: interpolation
 
 metadata:
   extended-obfuscation: yes
@@ -45,7 +48,6 @@ metadata:
     }
 
 ---
-
 id: python-staticmethod-returns-always-static-value
 message: Static method is always returning a static value
 language: Python
@@ -100,7 +102,6 @@ metadata:
     }
 
 ---
-
 id: python-staticmethod-returns-always-the-argument
 message: Static method is always returning the given argument
 language: Python
@@ -154,7 +155,6 @@ metadata:
     }
 
 ---
-
 # yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/main/schemas/rule.json
 
 id: python-function-returns-always-the-argument

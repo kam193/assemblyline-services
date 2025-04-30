@@ -1045,7 +1045,7 @@ utils:
 metadata:
   extended-obfuscation: yes
   confirmed-obfuscation: no
-  score: 30
+  score: 15
   template_file: python-rename-func.yml.j2
   deobfuscate: |
     {
