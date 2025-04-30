@@ -75,6 +75,7 @@ utils:
 metadata:
   extended-obfuscation: yes
   # alone-unimportant: yes
+  score: 50
   deobfuscate: |
     {
       "type": "fix-generate",

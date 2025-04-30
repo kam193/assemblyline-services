@@ -39,7 +39,7 @@ fix: $DATA
 metadata:
   extended-obfuscation: yes
   alone-unimportant: yes
-  score: 20
+  score: 50
   deobfuscate: |
     {
       "type": "fix-generate",
