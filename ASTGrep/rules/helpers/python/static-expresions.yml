@@ -58,6 +58,9 @@ utils:
 metadata:
   extended-obfuscation: no
   confirmed-obfuscation: no
+  # currently, the substitution of static vars is too generous and
+  # leads to overuse this rule
+  score: 1
   deobfuscate: |
     {
       "type": "fix-generate",

@@ -668,7 +668,12 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
             return
         type_, extract, confirmed = self._get_type(result)
         rule_id = result.get("ruleId")
-        self.log.debug("Matched rule: %s [%s]", rule_id, type_)
+        self.log.debug(
+            "Matched rule: %s [%s] (%d)",
+            rule_id,
+            type_,
+            self._metadata.get(rule_id, {}).get("score", 100 if confirmed else 10),
+        )
         if not type_:
             return
         if secondary and type_.startswith("secondary-"):
