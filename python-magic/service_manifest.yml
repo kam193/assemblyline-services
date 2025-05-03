@@ -30,6 +30,10 @@ submission_params:
     default: false
     type: bool
     value: false
+  - name: check_conflicting_package_directories
+    default: false
+    type: bool
+    value: false
 
 # -1000: safe
 # 0 - 299: informative

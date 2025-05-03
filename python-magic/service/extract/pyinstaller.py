@@ -41,12 +41,22 @@ PYINSTALLER_BUILDINS = set(
 class PyInstallerExtractor(ExtractorBase):
     PEX_VERSION = None
 
-    def __init__(self, request: ServiceRequest, unpack_dir: str, logger: Logger, config: dict):
-        super().__init__(request, unpack_dir, logger, config)
+    def __init__(
+        self,
+        request: ServiceRequest,
+        unpack_dir: str,
+        logger: Logger,
+        config: dict,
+        safelist_interface=None,
+    ):
+        super().__init__(request, unpack_dir, logger, config, safelist_interface)
+        self.detailed_toc = set()
 
     def _filter_out_common_entries(self, toclist: list[pex.CTOCEntry]):
         self.filtered_entries = set()
+        self.detailed_toc = set()
         for entry in toclist:
+            self.detailed_toc.add(entry.name + " (" + entry.typeCmprsData.decode() + ")")
             if (
                 entry.typeCmprsData
                 in [
@@ -59,6 +69,24 @@ class PyInstallerExtractor(ExtractorBase):
                 and entry.name not in PYINSTALLER_BUILDINS
             ):
                 self.filtered_entries.add(entry.name)
+
+            # attempt to detect untypical binary files in the main directory
+            if entry.typeCmprsData == PKG_ITEM_BINARY:
+                extension = os.path.splitext(entry.name)[1]
+                self.log.debug("Found binary file: %s", extension)
+                if (
+                    extension
+                    and extension not in [".pyd", ".dll", ".so"]
+                    and entry.name not in PYINSTALLER_BUILDINS
+                    and (
+                        # zip can contain windows or unix paths
+                        # TODO: detect unusual binaries in subdirectories
+                        # (it looks that now all files in subdirs are treated as binaries)
+                        len(entry.name.split("\\")) == 1 and len(entry.name.split("/")) == 1
+                    )
+                ):
+                    self.filtered_entries.add(entry.name)
+                    self.log.debug("Found untypical binary file: %s", entry.name)
         self.log.debug("Expected to extract: %s", self.filtered_entries)
         return self.filtered_entries
 
@@ -145,11 +173,14 @@ class PyInstallerExtractor(ExtractorBase):
                     continue
 
                 self.request.add_extracted(
-                    path, path_in_archive, "Extracted from PyInstaller archive"
+                    path,
+                    path_in_archive,
+                    "Extracted from PyInstaller archive",
+                    safelist_interface=self.safelist_interface,
                 )
                 extracted += 1
 
-        structure.add_lines(sorted(files_in_arch))
+        structure.add_lines(sorted(self.detailed_toc or files_in_arch))
 
         main_section.add_line(
             f"Extracted {extracted} files using pyinstxtractor-ng {self.PEX_VERSION}"

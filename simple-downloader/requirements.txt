@@ -2,6 +2,7 @@ assemblyline-v4-service
 requests
 beautifulsoup4
 lxml
+pyrfc6266
 
 # dev-only
 pytest

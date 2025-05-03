@@ -38,6 +38,7 @@ class Analyzer:
         self,
         path: str,
         package_type: str,
+        check_conflicting_paths: bool = True,
         requirements_blocklist: dict[str, set[str]] = None,
         top_package_paths: dict[str, dict[str, set[str] | int]] = None,
         paths_to_ignore: list[str] = None,
@@ -52,6 +53,7 @@ class Analyzer:
         self.top_package_paths = top_package_paths or {}
         self.paths_to_ignore = paths_to_ignore or PATHS_TO_IGNORE
         self.min_popularity_to_warn = min_popularity_to_warn
+        self.check_conflicting_paths = check_conflicting_paths
 
     @staticmethod
     def _normalize_pypi_name(name):
@@ -115,7 +117,10 @@ class Analyzer:
                     module_section.add_line(module)
                 section.add_subsection(module_section)
 
-            non_package_paths, overwrite_paths = self.get_suspicious_install_paths(opener)
+            non_package_paths = overwrite_paths = None
+            if self.check_conflicting_paths:
+                non_package_paths, overwrite_paths = self.get_suspicious_install_paths(opener)
+
             if non_package_paths:
                 paths_section = ResultTextSection("Files in untypical paths", auto_collapse=True)
                 paths_section.add_line(

@@ -73,6 +73,7 @@ class AssemblylineService(ServiceBase):
                     section = Analyzer(
                         request.file_path,
                         pkg_type,
+                        request.get_param("check_conflicting_package_directories"),
                         self._requirements_blocklist,
                         self._popular_paths,
                         self._popular_paths_to_ignore,

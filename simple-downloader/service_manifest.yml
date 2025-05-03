@@ -14,7 +14,10 @@ is_external: true
 file_required: true
 
 config:
-  request_timeout: 60
+  request_timeout: 150
+  # TODO: get it from AL config
+  max_file_size: 524288000 # 500MB
+
 
 submission_params:
   - default: "python-requests/2.25.0"
