@@ -31,6 +31,14 @@ paths is not trivial), there are two ways to control the behaviour:
   `PythonMagic.override_popular_path.google.examplepkg`; once safelisted, it will ignore the given directory for the
   given package.
 
+Submission params:
+- `check_conflicting_package_directories` - whether to check for conflicting package directories (default: `False`)
+
+Service config:
+- `POPULAR_PATHS_TO_IGNORE` - directories that should be ignored when checking for conflicting package directories.
+- `MIN_DOWNLOADS_TO_WARN` - when analysing directories, warn only if potentially overwriting a directory from
+  a package with at least this many downloads. Note that download stats are not regularly updated.
+
 ### Decompyling Python bytecode
 
 > [!NOTE]

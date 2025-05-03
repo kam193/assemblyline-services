@@ -14,6 +14,16 @@ In addition, it can extract URLs from directory listings as URI files allowing t
 | proxy                            | str  | Proxy to use for the request (as http&https)         | None                   |
 | method                           | str  | HTTP method to use for the request                   | GET                    |
 
+In addition, you can specify following service parameters:
+
+| Name                             | Type | Description                                          | Default                |
+| -------------------------------- | ---- | ---------------------------------------------------- | ---------------------- |
+| timeout                          | int  | Timeout for the request in seconds                   | 150                    |
+| max_file_size                    | int  | Maximum file size to download in bytes               | 524288000 (500 MB)     |
+
+Service will abort downloading if file size is larger than the configured limit, but will still return related metadata
+(headers, redirects, etc.).
+
 ## Directory listing using profile
 
 You can use a [AL submission profile](https://cybercentrecanada.github.io/assemblyline4_docs/odm/models/config/#submissionprofile) to pre-configure service to download files from directory listing. For example:

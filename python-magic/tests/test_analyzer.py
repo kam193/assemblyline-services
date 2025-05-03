@@ -14,6 +14,7 @@ def get_analyzer():
         return Analyzer(
             path,
             package_type,
+            True,
             requirements_blocklist,
             top_package_paths,
             paths_to_ignore=paths_to_ignore or ["src"],
