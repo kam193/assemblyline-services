@@ -20,6 +20,8 @@ config:
   enable_whois_lookup: true
   warn_domain_newer_than: 31
   whois_result_cache_ttl: 604800
+  # number of threads used to process the data
+  worker_count: 7
 
 submission_params:
   - name: ip_mmdb_lookup

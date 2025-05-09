@@ -4,6 +4,7 @@ import os
 from contextlib import suppress
 from datetime import datetime, timedelta, timezone
 from enum import Enum
+from multiprocessing.pool import ThreadPool
 
 import maxminddb
 import redis
@@ -56,12 +57,19 @@ class AssemblylineService(ServiceBase):
         self._warn_newer_than = self.config.get("warn_domain_newer_than", 31)
         if isinstance(self._warn_newer_than, int):
             self._warn_newer_than = timedelta(days=self._warn_newer_than)
+        self._worker_count = self.config.get("worker_count", 7)
 
     def start(self):
         self.log.info(f"start() from {self.service_attributes.name} service called")
         self._load_config()
 
+        self.worker_pool = ThreadPool(self._worker_count)
+
         self.log.info(f"{self.service_attributes.name} service started")
+
+    def stop(self):
+        self.worker_pool.close()
+        super().stop()
 
     @property
     def redis_client(self):
@@ -121,7 +129,7 @@ class AssemblylineService(ServiceBase):
         if not ip_info:
             return None
 
-        section = ResultTableSection(f"IP: {ip_address}")
+        section = ResultTableSection(f"IP: {ip_address}", auto_collapse=True)
         for source_name, data in ip_info.items():
             if data:
                 subsection = ResultTableSection(f"[MMDB] Data from {source_name}")
@@ -154,11 +162,10 @@ class AssemblylineService(ServiceBase):
             return None
 
         main_section = ResultTextSection("IP Information")
-        for ip in ips:
-            ip_section = self._handle_ip(ip)
-            if ip_section:
-                main_section.add_subsection(ip_section)
-
+        results = self.worker_pool.map(self._handle_ip, sorted(ips))
+        for section in results:
+            if section:
+                main_section.add_subsection(section)
         if main_section.subsections:
             return main_section
         return None
@@ -246,7 +253,7 @@ class AssemblylineService(ServiceBase):
         domains_to_check_creation = set()
 
         top_domains = set()
-        for path in itertools.chain(domains, uris):
+        for path in itertools.chain(sorted(domains), uris):
             try:
                 parsed = tldextract.extract(path)
                 domain = f"{parsed.domain}.{parsed.suffix}"
@@ -263,12 +270,13 @@ class AssemblylineService(ServiceBase):
                 self.log.warning("Error parsing URI/Domain %s: %s", path, exc, exc_info=True)
 
         main_section = ResultTextSection("Domain Information")
-        for domain in sorted(top_domains):
-            domain_section = self._handle_domain(
-                domain, warn_new_domain=domain in domains_to_check_creation
-            )
-            if domain_section:
-                main_section.add_subsection(domain_section)
+        domain_sections = self.worker_pool.starmap(
+            self._handle_domain,
+            ((domain, domain in domains_to_check_creation) for domain in sorted(top_domains)),
+        )
+        for section in domain_sections:
+            if section:
+                main_section.add_subsection(section)
 
         if main_section.subsections:
             return main_section
