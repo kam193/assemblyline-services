@@ -37,6 +37,7 @@ metadata:
   confirmed-obfuscation: no
   template_file: call-replace-tpl.yml.j2
   TPL_ANY_CALL: "true"
+  max-score: 30 # this is often a false positive
   deobfuscate: |
     {
       "type": "template",
@@ -188,6 +189,7 @@ metadata:
   extended-obfuscation: yes
   confirmed-obfuscation: no
   template_file: call-replace-tpl.yml.j2
+  max-score: 30 # this is often a false positive
   TPL_FIX: $X
   deobfuscate: |
     {

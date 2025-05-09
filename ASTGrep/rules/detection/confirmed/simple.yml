@@ -22,6 +22,7 @@ rule:
 metadata:
   extended-obfuscation: yes
   confirmed-obfuscation: yes
+  score: 80
   deobfuscate: |
     {
       "type": "detection"

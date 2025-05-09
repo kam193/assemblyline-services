@@ -1,4 +1,5 @@
 import codecs
+from collections import defaultdict
 import json
 import logging
 import os
@@ -646,6 +647,7 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
         if type_ in ["context"]:
             return
         # TODO: multiple rules matching the same line?
+        # TODO: score the highest rule matching the line
         matched = result.get("text")
         if not matched or matched in self._scored_lines:
             return
@@ -660,7 +662,7 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
         elif score is None:
             score = DEFAULT_NOT_CONF_SCORE
 
-        self._scored_lines[matched] = score
+        self._scored_lines[matched] = (score, rule_id)
         self._scoring_rules.add(rule_id)
 
     def _process_result(self, result: dict, secondary=False):
@@ -1011,11 +1013,12 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
         if original_timestamp != os.stat(self._working_file).st_mtime:
             yield open(self._working_file).read(), "#final-layer#"
 
+        score = self.get_score()
         self.status = (
             f"Deobfuscation done in {self.work_time:.3f} seconds ({self._iterations} iterations,"
-            f" {self._sg_process_time:.3f} AST-Grep time). Score: {self.score}"
+            f" {self._sg_process_time:.3f} AST-Grep time). Score: {score}"
         )
-        if self.score >= CONFIRMED_OBFUSCATION:
+        if score >= CONFIRMED_OBFUSCATION:
             self.status += "\n - Confirmed obfuscation."
         if self.work_time > self.deobfuscation_timeout:
             self.status += "\n - Timeout exceeded, potentially not all fixes applied."
@@ -1025,9 +1028,25 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
         if self._current_config != self.config_file:
             os.remove(self._current_config)
 
-    @property
-    def score(self) -> int:
-        return sum(self._scored_lines.values())
+    def get_score(self) -> int:
+        return sum(self._get_scoring_details().values())
+
+    def _get_scoring_details(self) -> dict:
+        score_by_rule = defaultdict(int)
+        for score, rule_id in self._scored_lines.values():
+            score_by_rule[rule_id] += score
+        for rule_id, score in score_by_rule.items():
+            max_score = self._metadata.get(rule_id, {}).get("max-score")
+            if max_score is None and not self._metadata.get(rule_id, {}).get(
+                "confirmed-obfuscation", False
+            ):
+                max_score = max(
+                    CONFIRMED_OBFUSCATION / 2, self._metadata.get(rule_id, {}).get("score", 0)
+                )
+            if max_score is not None:
+                score = min(score, max_score)
+            score_by_rule[rule_id] = score
+        return score_by_rule
 
     def _build_context(self, result: dict) -> dict:
         context = {
@@ -1086,11 +1105,14 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
         if "OUTPUT" not in context:
             context["OUTPUT"] = output
         counter = len(self._generated_templates)
-        return jinja2.Template(template).render(
-            TEMPLATE_COUNTER=counter,
+        tpl_values = {
             **metadata[rule_id],
             **self._global_variable_context,
             **context,
+        }
+        return jinja2.Template(template).render(
+            TEMPLATE_COUNTER=counter,
+            **tpl_values,
         ), output
 
 

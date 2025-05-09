@@ -91,10 +91,10 @@ def deobfuscate_example(deobfuscator):
             "Deobfuscation took too long"
         )
         if check_confirmed:
-            confirmed = True if deobfuscator.score >= 100 else False
+            confirmed = True if deobfuscator.get_score() >= 100 else False
             assert confirmed == confirmed_obfuscation, (
                 f"Deobfuscation was {'not' if confirmed_obfuscation else ''}"
-                f" confirmed by {'/'.join(deobfuscator._scoring_rules)}"
+                f" confirmed by {'/'.join(f'{r}[{s}]' for r, s in deobfuscator._get_scoring_details().items())}"
             )
         return results
 

@@ -244,7 +244,7 @@ class AssemblylineService(ServiceBase):
                         except Exception:
                             self.log.warning("Error reformatting deobfuscated code", exc_info=True)
 
-                    score = self._deobfuscator.score
+                    score = self._deobfuscator.get_score()
 
                     if score >= CONFIRMED_OBFUSCATION or (
                         extract_not_confirmed and score >= POSSIBLE_OBFUSCATION

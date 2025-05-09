@@ -31,4 +31,5 @@ fix: $FUNC($DATA)
 
 metadata:
   extended-obfuscation: yes
+  score: 0
 
