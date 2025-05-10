@@ -1,7 +1,7 @@
 import json
 import logging
 import os
-from contextlib import contextmanager, suppress
+from contextlib import contextmanager
 
 from assemblyline_v4_service.common.base import ServiceBase
 from assemblyline_v4_service.common.request import ServiceRequest

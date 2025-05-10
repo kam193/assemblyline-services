@@ -15,3 +15,5 @@ def open_pkg():
 
 SAMPLE1_SDIST = "tests/samples/examplepkg-2.0.0.tar.gz"
 SAMPLE1_WHEEL = "tests/samples/examplepkg-2.0.0-py3-none-any.whl"
+STUBS1_SDIST = "tests/samples/examplepkg-stubs-2.0.0.tar.gz"
+STUBS1_WHEEL = "tests/samples/examplepkg-stubs-2.0.0-py3-none-any.whl"

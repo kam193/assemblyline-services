@@ -2,7 +2,7 @@ import pytest
 from service.package import identify_python_package
 from service.package.analyzer import Analyzer
 
-from .conftest import SAMPLE1_SDIST, SAMPLE1_WHEEL
+from .conftest import SAMPLE1_SDIST, SAMPLE1_WHEEL, STUBS1_SDIST, STUBS1_WHEEL
 
 
 @pytest.fixture
@@ -80,5 +80,19 @@ def test_analyzer_no_overwrite_top_package_paths_when_package_matches_wheel(
     )
     assert analyzer.get_suspicious_install_paths(open_pkg(path)) == (
         ["example/__init__.py", "example/console.py"],
+        [],
+    )
+
+
+@pytest.mark.parametrize("path", [STUBS1_SDIST, STUBS1_WHEEL])
+def test_analyzer_ignore_overwriting_paths_stubs(get_analyzer, open_pkg, path):
+    analyzer: Analyzer = get_analyzer(
+        path,
+        top_package_paths={
+            "example": {"packages": set(["veryimportantpackage"]), "max_popularity": 100}
+        },
+    )
+    assert analyzer.get_suspicious_install_paths(open_pkg(path)) == (
+        ["example/__init__.pyi", "example/console.pyi"],
         [],
     )

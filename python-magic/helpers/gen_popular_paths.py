@@ -3,7 +3,6 @@ import json
 import re
 import time
 import xmlrpc.client
-import re
 from collections import defaultdict
 
 import requests
@@ -91,7 +90,10 @@ def get_package_uploaders_xmlrpc(package_name):
         time.sleep(30)
         return None
 
+
 last_time = time.time()
+
+
 def get_other_packages(user):
     global last_time
     if time.time() - last_time < 1:
@@ -291,7 +293,10 @@ def refresh_by_users():
                 already_analysed, popular_paths, analysed_users
             )
         if omitted_pkgs % 100 == 0:
-            print(f"Stats: omitted {omitted_pkgs} packages, reanalysed {reanalysed} packages, {counter} users")
+            print(
+                f"Stats: omitted {omitted_pkgs} packages, reanalysed {reanalysed} packages, {counter} users"
+            )
+
 
 def enrich_popularity():
     """Mark paths that are related to top 5000 packages"""
@@ -304,9 +309,7 @@ def enrich_popularity():
 
     top_with_downloads = dict()
     for path, pkgs in popular_paths.items():
-        max_popularity = max(
-            [packages_by_popularity.get(pkg, 0) for pkg in pkgs], default=0
-        )
+        max_popularity = max([packages_by_popularity.get(pkg, 0) for pkg in pkgs], default=0)
         top_with_downloads[path] = {
             "packages": list(pkgs),
             "max_popularity": max_popularity,
@@ -314,6 +317,7 @@ def enrich_popularity():
 
     with open(TOP_WITH_DOWNLOADS_PATH, "w") as f:
         json.dump(top_with_downloads, f)
+
 
 # extend_for_users()
 clean_data()
