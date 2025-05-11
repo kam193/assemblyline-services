@@ -85,7 +85,7 @@ class ClamAVService(ServiceBase):
             self.log.info("Handling updates done.")
 
     def execute(self, request: ServiceRequest) -> None:
-        if request.deep_scan:
+        if request.deep_scan or request.get_param("find_all_matches"):
             scanning_result = self.clamd.allmatchscan(request.file_path)
         else:
             scanning_result = self.clamd.scan_file(request.file_path)
@@ -105,10 +105,10 @@ class ClamAVService(ServiceBase):
 
         result = Result()
 
-        viruses = ResultSection("Matched malicious signatures")
-        puas = ResultSection("Matched PUA signatures")
-        heuristics = ResultSection("Matched heuristic rules")
-        errors = ResultSection("Errors during scanning")
+        viruses = ResultSection("Matched malicious signatures", zeroize_on_tag_safe=True)
+        puas = ResultSection("Matched PUA signatures", zeroize_on_tag_safe=True)
+        heuristics = ResultSection("Matched heuristic rules", zeroize_on_tag_safe=True)
+        errors = ResultSection("Errors during scanning", zeroize_on_tag_safe=True)
 
         # TODO: Add more tags from https://docs.clamav.net/manual/Signatures/SignatureNames.html
 

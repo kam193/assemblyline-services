@@ -12,6 +12,12 @@ category: Antivirus
 file_required: true
 timeout: 240
 
+submission_params:
+  - name: find_all_matches
+    default: false
+    type: bool
+    value: false
+
 # Any config key not starting with _ will be added to the clamd.conf file
 config:
   ConcurrentDatabaseReload: no
@@ -37,7 +43,7 @@ heuristics:
   - description: ClamAV found file to be malicious
     filetype: "*"
     heur_id: 1
-    name: ClamAV VIRUS detection
+    name: ClamAV virus detection
     score: 1000
   - description: ClamAV found file to contain a Potentially Unwanted Application
     filetype: "*"
