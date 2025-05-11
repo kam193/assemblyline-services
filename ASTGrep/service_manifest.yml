@@ -31,6 +31,10 @@ submission_params:
     name: extract_not_confirmed
     type: bool
     value: false
+  - default: true
+    name: extract_binary_data
+    type: bool
+    value: true
 
 heuristics:
   - description: Suspicious code pattern

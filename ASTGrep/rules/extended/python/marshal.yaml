@@ -1,0 +1,30 @@
+id: python-marshal-loads-static-data
+message: Static code is being loaded by marshal.loads
+language: Python
+rule:
+  kind: call
+  all:
+    - has:
+        field: function
+        pattern: marshal.loads
+    - has:
+        field: arguments
+        has:
+          nthChild: 1
+          kind: string
+          pattern: $BINARY_DATA
+          has:
+            kind: string_start
+            regex: b['"]+
+
+metadata:
+  extended-obfuscation: yes
+  confirmed-obfuscation: yes
+  deobfuscate: |
+    {
+      "type": "extract",
+      "steps": [
+        {"func": "dequote", "source": "BINARY_DATA", "output": "BINARY_DATA", "decode": false},
+        {"func": "to_pyc_format", "source": "BINARY_DATA", "output": "BINARY_DATA"}
+      ]
+    }

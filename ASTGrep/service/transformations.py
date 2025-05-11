@@ -6,6 +6,7 @@ import codecs
 import hashlib
 import lzma
 import re
+import struct
 import zlib
 
 import cryptography
@@ -496,3 +497,24 @@ def replace(config: dict, context: dict) -> str:
     pattern = config.get("pattern", "PATTERN")
     replacement = config.get("replacement", "REPLACEMENT")
     return context[source].replace(context[pattern], context[replacement])
+
+
+def to_pyc_format(config: dict, context: dict) -> bytes:
+    # Building a pyc file based on:
+    # https://github.com/google/pytype/blob/7a0e7b9e70fe91c191ac58dc5311e8a380a54322/pytype/pyc/compile_bytecode.py
+    # and
+    # https://gist.github.com/stecman/3751ac494795164efa82a683130cabe5?permalink_comment_id=3505634#file-marshal-to-pyc-py
+    # note: this is just an approximation, marshalled code is not compatible
+    # between versions, but by building a pyc format with some version, we
+    # can at least try to analyse it
+
+    import importlib.util
+
+    MAGIC = importlib.util.MAGIC_NUMBER
+
+    source = config.get("source", "DATA")
+    code = context[source]
+    if not isinstance(code, bytes):
+        raise RuntimeError("Code is not bytes")
+
+    return MAGIC + struct.pack("<I", 0) + struct.pack("<I", 0) + struct.pack("<I", len(code)) + code

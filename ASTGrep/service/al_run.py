@@ -221,16 +221,30 @@ class AssemblylineService(ServiceBase):
             score = 0
             for deobf_result, layer in self._deobfuscator.deobfuscate_file(file_path, file_type):
                 path = f"{self.working_directory}/_deobfuscated_code_{result_no}{LANGUAGE_TO_EXT[file_type]}"
-                with open(path, "w+") as f:
+                self.log.debug(f"Deobfuscation layer: {layer} {type(deobf_result)}")
+
+                mode = "wb+"
+                if isinstance(deobf_result, str):
+                    mode = "w+"
+
+                with open(path, mode) as f:
                     f.write(deobf_result)
+
                 if layer != "#final-layer#":
-                    extracted_layers.append(
-                        (
+                    if isinstance(deobf_result, bytes) and request.get_param("extract_binary_data"):
+                        request.add_extracted(
+                            path,
+                            f"_extracted_binary_{result_no}",
+                            f"Deobfuscated binary data extracted by {layer}",
+                            safelist_interface=self.api_interface,
+                        )
+                    else:
+                        extracted_layers.append(
                             path,
                             f"_deobfuscated_code_{result_no}{LANGUAGE_TO_EXT[file_type]}",
                             f"Deobfuscated code extracted by {layer}",
                         )
-                    )
+
                 else:
                     if reformat_code:
                         try:

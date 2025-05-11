@@ -794,6 +794,7 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
                 output, _ = self.transform(result)
                 if not output or len(output) < self.min_length_for_confirmed:
                     scoring_rule = False
+                return output
             elif type_ == "detection":
                 scoring_rule = True
                 return None
@@ -806,6 +807,7 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
                 self._score_rule(result, type_, confirmed)
 
     def _should_extract(self, data: str | bytes) -> bool:
+        self.log.debug("Checking if we should extract %s", (data or "")[:10])
         if not data:
             return False
         hashed = hash(data)
@@ -947,7 +949,11 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
                 outcome = self._process_result(result)
                 if self._should_extract(outcome):
                     if isinstance(outcome, bytes):
-                        yield outcome.decode(), result.get("ruleId")
+                        try:
+                            yield outcome.decode(), result.get("ruleId")
+                        except UnicodeDecodeError:
+                            # The output is a binary data
+                            yield outcome, result.get("ruleId")
                     else:
                         yield outcome, result.get("ruleId")
 
