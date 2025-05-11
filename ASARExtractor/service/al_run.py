@@ -68,7 +68,9 @@ class AssemblylineService(ServiceBase):
             if not os.path.isfile(path):
                 continue
             try:
-                request.add_extracted(path, file, "Extracted from ASAR archive")
+                request.add_extracted(
+                    path, file, "Extracted from ASAR archive", safelist_interface=self.api_interface
+                )
             except MaxExtractedExceeded:
                 main_section.add_line(
                     "Maximum number of extracted files reached - not all were extracted"
