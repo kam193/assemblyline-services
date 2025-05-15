@@ -240,9 +240,11 @@ class AssemblylineService(ServiceBase):
                         )
                     else:
                         extracted_layers.append(
-                            path,
-                            f"_deobfuscated_code_{result_no}{LANGUAGE_TO_EXT[file_type]}",
-                            f"Deobfuscated code extracted by {layer}",
+                            (
+                                path,
+                                f"_deobfuscated_code_{result_no}{LANGUAGE_TO_EXT[file_type]}",
+                                f"Deobfuscated code extracted by {layer}",
+                            )
                         )
 
                 else:
