@@ -96,6 +96,10 @@ class UnsupportedLanguageError(ValueError):
     pass
 
 
+class FileNotTextError(ValueError):
+    pass
+
+
 def get_language_id(file_format: str) -> str:
     language = file_format.split("/")[1].lower()
     if language == "jscript":
@@ -411,13 +415,20 @@ class ASTGrepLSPController(ASTGrepScanController):
             self._prepare_file_with_extension(file_path, file_type)
             self._current_uri = f"file://{self._working_file}"
 
+            # TODO: this is a bad workaround, LSP should get the file
+            try:
+                with open(self._working_file, "r") as f:
+                    content = f.read()
+            except UnicodeDecodeError:
+                raise FileNotTextError("File appears not to be a text file") from None
+
             # self.client.didCreateFiles(self._current_uri)
             self.client.didOpen(
                 pylspclient.lsp_pydantic_strcuts.TextDocumentItem(
                     uri=self._current_uri,
                     languageId=get_language_id(file_type),  # file_type.split("/")[1],
                     version=1,
-                    text=open(file_path, "r").read(),
+                    text=content,
                 )
             )
 

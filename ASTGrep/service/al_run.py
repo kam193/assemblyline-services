@@ -27,6 +27,7 @@ from .controller import (
     ASTGrepDeobfuscationController,
     ASTGrepLSPController,
     ASTGrepScanController,
+    FileNotTextError,
     UnsupportedLanguageError,
 )
 from .helpers import configure_yaml
@@ -206,6 +207,9 @@ class AssemblylineService(ServiceBase):
                 main_section.add_subsection(result_section)
         except UnsupportedLanguageError:
             self.log.warning(f"Unsupported language: {file_type}")
+            return
+        except FileNotTextError:
+            self.log.warning(f"File is not text: {file_path}")
             return
 
         if artgrep.last_results:
