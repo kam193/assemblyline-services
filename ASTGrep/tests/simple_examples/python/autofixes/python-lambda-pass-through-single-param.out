@@ -4,3 +4,4 @@ int
 lambda NMNNMMMNNMNNMNMMNMNMNNNM:int(NMNNMMMNNMNNMNMMNMNMNNNM + "aaaa")
 lambda (a, b):not_changed_yet(a, b)
 lambda: func
+lambda x:not_changed_now(x, 123)

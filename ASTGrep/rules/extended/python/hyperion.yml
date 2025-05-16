@@ -35,8 +35,6 @@ rule:
               field: name
               pattern: $METHOD_NAME
 
-
-
 metadata:
   extended-obfuscation: yes
   confirmed-obfuscation: yes
@@ -78,8 +76,6 @@ rule:
               field: name
               pattern: $METHOD_NAME
 
-
-
 metadata:
   extended-obfuscation: yes
   confirmed-obfuscation: yes
@@ -102,18 +98,23 @@ rule:
     - any:
         - pattern: eval(compile($$$))
         - pattern: exec(compile($$$))
-    - any:
-        - has:
-           field: arguments
-           has:
-            kind: call # compile
+    - has:
+        field: arguments
+        has:
+          kind: call # compile
+          has:
+            field: arguments
             has:
-              field: arguments
+              nthChild: 1
+              # stopBy: end
+              kind: string
+              pattern: $CODE
+            not:
               has:
-                nthChild: 1
-                # stopBy: end
+                nthChild: 2
                 kind: string
-                pattern: $CODE
+                # special case for popular bottle.py usage
+                regex: "<py3fix>"
 
 metadata:
   extended-obfuscation: yes

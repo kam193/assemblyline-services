@@ -193,6 +193,15 @@ utils:
             any:
               - pattern: $ARG[$SLICE]
               - pattern: $ARG
+        not:
+          has:
+            field: function
+            any:
+              # special case for popular bottle.py usage
+              - pattern: hasattr
+              # numpy
+              # example f = lambda l: np.median(l)
+              - pattern: np.$METHOD
       - kind: call
         has:
           field: function
@@ -220,6 +229,7 @@ utils:
 metadata:
   extended-obfuscation: yes
   alone-unimportant: yes
+  score: 5
   template_file: call-replace-tpl.yml.j2
   deobfuscate: |
     {

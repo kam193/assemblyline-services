@@ -14,10 +14,18 @@ rule:
           has:
             field: function
             pattern: __import__
+          # prevents triggering when using with "fromlist=" what is common legitimate usage
+          not:
+              has:
+                field: arguments
+                has:
+                  kind: keyword_argument
 
 # Examples:
 # getattr(__import__("builtins"), $ANY)
 # getattr(__import__(bytes([1, 2, 3, 4][::-1]).decode()), xxx)
+# but NOT:
+# getattr(__import__(".".join(mod_split[0:-1]), fromlist=[mod_split[-1]]), mod_split[-1])
 
 metadata:
   extended-obfuscation: yes

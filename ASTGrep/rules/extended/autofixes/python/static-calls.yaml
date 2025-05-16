@@ -50,12 +50,19 @@ rule:
           - has:
               field: function
               pattern: $FUNC
+              # numpy
+              # example f = lambda l: np.median(l)
+              not:
+                pattern: np.$METHOD
           - has:
               field: arguments
               kind: argument_list
               has:
                 nthChild: 1
                 pattern: $PARAM
+              not:
+                has:
+                  nthChild: 2
     - has:
         field: parameters
         pattern: $PARAM

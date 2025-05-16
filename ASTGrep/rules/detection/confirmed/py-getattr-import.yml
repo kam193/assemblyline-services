@@ -1,4 +1,4 @@
-id: python-getattr-import
+id: python-getattr-import-detection
 message: Uses getattr and import to obfuscate using a method
 language: Python
 # getattr(__import__("builtins"), "exec")("print('hello')")
