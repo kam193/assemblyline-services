@@ -197,14 +197,14 @@ class Analyzer:
             if first_dir != expected_dir:
                 non_package_paths.append(record)
 
-            if record.endswith(".pyi"):
-                # Skip .pyi files for overwrite checks
+            if record.endswith(".pyi") or record.endswith(".typed"):
+                # Skip .pyi and .typed files for overwrite checks
                 continue
 
             if first_dir in self.top_package_paths:
                 if normalized_package_name not in self.top_package_paths[first_dir].get(
                     "packages", set()
-                ):
+                ): # type: ignore
                     overwrite_paths.append((record, self.top_package_paths[first_dir]))
 
         return non_package_paths, overwrite_paths
