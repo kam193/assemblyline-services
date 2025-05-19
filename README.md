@@ -67,11 +67,15 @@ Supported heuristics:
 - external HTTP/non-HTTP connections,
 - data exfiltration threshold (based on total data sent out).
 
+### Pylingual (experimental)
+
+Decompiling PYC files using [PyLingual](https://github.com/syssec-utd/pylingual/tree/main) [GPLv3 license].
+
 ### Python Magic
 
 Designed to help with analysis of Python artifacts. Currently supported:
 
-- unpacking PyInstaller executables (using [pyinstxtractor-ng](https://github.com/pyinstxtractor/pyinstxtractor-ng)),
+- unpacking PyInstaller executables (using [pyinstxtractor-ng](https://github.com/pyinstxtractor/pyinstxtractor-ng)) [GPLv3 license],
 - extracting declared dependencies and matching them against configurable lists of suspicious and malicious packages,
 - detecting overwriting popular packages paths.
 
@@ -98,3 +102,8 @@ Additional features:
 
 Although the code is licensed under the MIT license, the services may use third-party data or dependencies.
 Please respect the applicable licenses.
+
+Noticeable third-party licenses:
+
+- [PyLingual](https://github.com/syssec-utd/pylingual/tree/main) [GPLv3 license],
+- [Pyinstextractor-ng](https://github.com/pyinstxtractor/pyinstxtractor-ng) [GPLv3 license],

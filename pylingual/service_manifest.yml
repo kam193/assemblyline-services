@@ -1,0 +1,30 @@
+name: Pylingual
+version: $SERVICE_TAG
+description: |
+  Run the PyLingual service to disassemble PYC files.
+enabled: true
+accepts: resource/pyc
+rejects: empty
+stage: EXTRACT
+category: Static Analysis
+file_required: true
+timeout: 600
+is_external: false
+
+config: {}
+
+submission_params: []
+
+# -1000: safe
+# 0 - 299: informative
+# 300 - 699: suspicious
+# 700 - 999: highly suspicious
+# >= 1000: malicious
+
+heuristics: []
+
+docker_config:
+  image: ${REGISTRY}ghcr.io/kam193/assemblyline-service-pylingual:$SERVICE_TAG
+  cpu_cores: 3.0
+  ram_mb: 4096
+  allow_internet_access: false
