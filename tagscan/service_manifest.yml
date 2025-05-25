@@ -151,3 +151,4 @@ dependencies:
       command: ["python", "-m", "service.updater"]
       image: ${REGISTRY}ghcr.io/kam193/assemblyline-service-tagscan:$SERVICE_TAG
       ports: ["5003"]
+    run_as_core: true
