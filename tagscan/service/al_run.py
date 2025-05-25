@@ -1,6 +1,7 @@
 from collections import defaultdict
 import hashlib
 from threading import RLock
+import re
 
 import hyperscan
 import yaml
@@ -63,7 +64,8 @@ class AssemblylineService(ServiceBase):
                     if not rule or not isinstance(rule, dict):
                         self.log.error(f"Invalid rule format in {rule_file}, skipping.")
                         continue
-
+                    if "exclude_files" in rule:
+                        rule["exclude_files"] = re.compile(rule["exclude_files"])
                     new_meta[rule.get("tag") or ""].append(rule)
 
         if not new_meta:
@@ -152,6 +154,10 @@ class AssemblylineService(ServiceBase):
         for tag_name, matches in self._matches.items():
             for tag, id_ in matches:
                 rule = self.rules_meta.get(tag_name, [])[id_]
+                if rule.get("exclude_files") and rule["exclude_files"].search(request.file_name):
+                    self.log.debug(f"Skipping rule {rule['name']} for file {request.file_name}")
+                    continue
+
                 tag_section = ResultTextSection(
                     f"Tag matched {rule['name']}", zeroize_on_tag_safe=True
                 )
