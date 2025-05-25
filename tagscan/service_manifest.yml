@@ -140,7 +140,7 @@ update_config:
   custom_delimiter: "\n---\n"
   sources:
     - uri: https://gist.githubusercontent.com/kam193/63a8ed6b26de0d9384c4ebd4724f5d6f/raw/cc9478021e4c7db9c7c8ddec46120ad47372e1d7/sample.rules
-      name: Sample Rules
+      name: sample_rules
 
 dependencies:
   updates:
