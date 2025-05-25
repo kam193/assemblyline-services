@@ -5,6 +5,11 @@ rule:
     - any:
       - inside:
           kind: call
+      # $FUNC_NAME.a(b)
+      - inside:
+          kind: attribute
+          inside:
+            kind: call
       - inside:
           kind: parenthesized_expression
           inside:
@@ -18,6 +23,6 @@ rule:
 utils:
   renamed:
     kind: identifier
-    pattern: {{FUNC_NAME}}
+    pattern: {{FUNC_NAME | tojson }}
 
-fix: {{ORIGINAL_NAME}}
+fix: {{ORIGINAL_NAME | tojson}}

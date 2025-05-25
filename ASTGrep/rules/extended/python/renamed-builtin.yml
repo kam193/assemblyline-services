@@ -1037,6 +1037,7 @@ utils:
           - pattern: system
           - pattern: winreg
           - pattern: base64
+          - pattern: dict
           - pattern: gc.get_referents
           # TODO: better patterns
           # - pattern: "''.join"

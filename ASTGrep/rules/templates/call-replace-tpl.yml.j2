@@ -21,5 +21,5 @@ constraints:
 {% else %}
     kind: identifier
 {% endif %}
-    pattern: {{FUNC}}
+    pattern: {{FUNC | tojson}}
 fix: {{ TPL_FIX | tojson }}

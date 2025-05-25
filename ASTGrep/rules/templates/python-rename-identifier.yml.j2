@@ -1,7 +1,7 @@
 id: python-rename-identifier-{{TEMPLATE_COUNTER}}
 language: Python
 rule:
-  pattern: {{RENAMED}}
+  pattern: {{RENAMED | tojson }}
   kind: identifier
   not:
     any:
@@ -15,7 +15,7 @@ rule:
           kind: import_from_statement
           stopBy: end
       - inside:
-          pattern: {{ORIGINAL}}
+          pattern: {{ORIGINAL | tojson }}
           stopBy: end
       - all:
           - inside:
@@ -31,7 +31,7 @@ rule:
             kind: parameters
             has:
               stopBy: end
-              pattern: {{RENAMED}}
+              pattern: {{RENAMED | tojson }}
       - inside:
           kind: function_definition
 {% if "." in ORIGINAL %}
@@ -39,4 +39,4 @@ rule:
       - inside:
             kind: global_statement
 {% endif %}
-fix: {{ORIGINAL}}
+fix: {{ORIGINAL | tojson}}

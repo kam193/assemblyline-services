@@ -4,8 +4,7 @@ id: python-renaming-builtin-{{TEMPLATE_COUNTER}}
 message: Renaming builtin is often used as obfuscation method
 language: Python
 rule:
-  pattern: |
-    {{ PATTERN | indent(4) }}
+  pattern: {{ PATTERN | tojson }}
 
 
 fix: |

@@ -1,5 +1,4 @@
 import codecs
-from collections import defaultdict
 import json
 import logging
 import os
@@ -10,6 +9,7 @@ import sys
 import tempfile
 import threading
 import time
+from collections import defaultdict
 from contextlib import suppress
 from pathlib import Path
 from threading import RLock
@@ -473,7 +473,7 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
         self,
         logger: logging.Logger = None,
         rules_dirs: list[str] = None,
-        cli_timeout: int = 20,
+        cli_timeout: int = 30,
         max_iterations: int = None,
         min_length_for_confirmed: int = 100,
         group_fixes: bool = True,
@@ -585,7 +585,7 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
         confirmed = extract or look_in[rule_id].get("confirmed-obfuscation", False)
         return type_, extract, confirmed
 
-    def _get_fix_config(self, result: dict) -> dict:
+    def _get_fix_config(self, result: dict):
         rule_id = result.get("ruleId")
         look_in = self._rules_transformations
         if rule_id in self._persistent_transformations:
@@ -657,10 +657,8 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
     def _score_rule(self, result: dict, type_: str, confirmed: bool):
         if type_ in ["context"]:
             return
-        # TODO: multiple rules matching the same line?
-        # TODO: score the highest rule matching the line
         matched = result.get("text")
-        if not matched or matched in self._scored_lines:
+        if not matched:
             return
         rule_id = result.get("ruleId")
         try:
@@ -668,10 +666,16 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
         except KeyError:
             # no metadata = rule was generated, no score
             return
+
         if score is None and confirmed:
             score = CONFIRMED_OBFUSCATION
         elif score is None:
             score = DEFAULT_NOT_CONF_SCORE
+
+        if matched in self._scored_lines:
+            current_score, _ = self._scored_lines[matched]
+            if score <= current_score:
+                return
 
         self._scored_lines[matched] = (score, rule_id)
         self._scoring_rules.add(rule_id)
@@ -701,7 +705,7 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
             elif type_ == "context":
                 output, _ = self.transform(result)
                 scoring_rule = False
-                if output:
+                if output and isinstance(output, dict):
                     self._global_variable_context.update(output)
             elif type_.startswith("secondary-"):
                 self._secondary_transformations.append(result)
@@ -1045,9 +1049,6 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
         if self._current_config != self.config_file:
             os.remove(self._current_config)
 
-    def get_score(self) -> int:
-        return sum(self._get_scoring_details().values())
-
     def _get_scoring_details(self) -> dict:
         score_by_rule = defaultdict(int)
         for score, rule_id in self._scored_lines.values():
@@ -1065,6 +1066,9 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
             score_by_rule[rule_id] = score
         return score_by_rule
 
+    def get_score(self) -> int:
+        return sum(self._get_scoring_details().values())
+
     def _build_context(self, result: dict) -> dict:
         context = {
             "vars": self._global_variable_context,
@@ -1079,7 +1083,7 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
             context[name] = [x.get("text") for x in data]
         return context
 
-    def transform(self, result: dict) -> tuple[str, dict]:
+    def transform(self, result: dict) -> tuple[str | dict, dict]:
         rule_id = result.get("ruleId")
         look_in = self._rules_transformations
         if rule_id in self._persistent_transformations:
@@ -1142,11 +1146,13 @@ def main(
     output: Annotated[str, typer.Option(help="Output file")] = None,
     max_iterations: Annotated[int, typer.Option(help="Maximum iterations")] = None,
     timeout: Annotated[int, typer.Option(help="Obfuscation timeout in seconds")] = 120,
+    cli_timeout: Annotated[int, typer.Option(help="Timeout for single CLI call in seconds")] = 30,
 ):
     deobfuscator = ASTGrepDeobfuscationController(
         rules_dirs=["./rules/"],
         max_iterations=max_iterations,
         deobfuscation_timeout=timeout,
+        cli_timeout=cli_timeout,
     )
     deobfuscator.log.setLevel(logging.DEBUG if verbose else logging.INFO)
 

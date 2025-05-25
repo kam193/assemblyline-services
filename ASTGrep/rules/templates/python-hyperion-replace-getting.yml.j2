@@ -18,7 +18,7 @@ rule:
               all:
                 - has:
                     field: name
-                    pattern: {{NAME_PAR}}
+                    pattern: {{NAME_PAR | tojson }}
                 - has:
                     field: value
                     has:

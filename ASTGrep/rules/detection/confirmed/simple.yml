@@ -54,11 +54,13 @@ rule:
           kind: string
           has:
             kind: string_content
-            regex: zlib|base64|requests
+            regex: zlib|base64|requests|subprocess|pathlib|importlib|os|urllib|threading
 
 metadata:
   extended-obfuscation: yes
   obfuscation-confirmed: yes
+  score: 50
+  max-score: 150
   deobfuscate: |
     {
       "type": "detection"

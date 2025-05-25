@@ -63,7 +63,7 @@ rule:
   kind: call
   has:
     field: function
-    regex: "^__import__$"
+    pattern: __import__
   all:
     - has:
        field: arguments
@@ -79,3 +79,5 @@ fix: $MODULE
 metadata:
   extended-obfuscation: yes
   alone-unimportant: yes
+  score: 20
+  max-score: 50
