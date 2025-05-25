@@ -1,13 +1,16 @@
 from collections import defaultdict
+import hashlib
 from threading import RLock
 
 import hyperscan
 import yaml
+from assemblyline.common.chunk import chunk
 from assemblyline.common.exceptions import RecoverableError
 from assemblyline_v4_service.common.base import ServiceBase
 from assemblyline_v4_service.common.request import ServiceRequest
 from assemblyline_v4_service.common.result import Result, ResultTextSection
 
+CHUNK_SIZE = 1000
 RULES_LOCK = RLock()
 HEURISTICS_MAP = dict(
     info=1,
@@ -90,6 +93,27 @@ class AssemblylineService(ServiceBase):
         tag_name, tag = context
         self._matches.setdefault(tag_name, []).append((tag, id))
 
+    def _exist_safelisted_tags(self, tag_map: dict) -> dict:
+        # Based on the badlist implementation from assemblyline-common
+        safelist_ds = self.api_interface.safelist_client.datastore.safelist
+
+        lookup_keys = []
+        for tag_type, tag_values in tag_map.items():
+            for tag_value in tag_values:
+                lookup_keys.append(
+                    hashlib.sha256(f"{tag_type}: {tag_value}".encode("utf8")).hexdigest()
+                )
+
+        results = defaultdict(list)
+        for key_chunk in chunk(lookup_keys, CHUNK_SIZE):
+            result_chunk = safelist_ds.search(
+                "*", fl="*", rows=CHUNK_SIZE, as_obj=False, key_space=key_chunk
+            )["items"]
+            for item in result_chunk:
+                results[item["tag"]["type"]].append(item["tag"]["value"])
+
+        return results
+
     def execute(self, request: ServiceRequest) -> None:
         with RULES_LOCK:
             if not self.rules_loaded:
@@ -99,6 +123,10 @@ class AssemblylineService(ServiceBase):
 
         self._matches = {}
 
+        safelisted_tags = self._exist_safelisted_tags(
+            {tag_name: request.task.tags.get(tag_name, []) for tag_name in self.hs_dbs.keys()}
+        )
+
         for tag_name, db in self.hs_dbs.items():
             self.log.info(f"Scanning tags: {tag_name}")
             tags = request.task.tags.get(tag_name, [])
@@ -106,6 +134,9 @@ class AssemblylineService(ServiceBase):
                 continue
 
             for tag in tags:
+                if tag in safelisted_tags.get(tag_name, []):
+                    continue  # Skip safelisted tags
+
                 try:
                     db.scan(
                         tag.encode("utf-8"),
@@ -129,9 +160,9 @@ class AssemblylineService(ServiceBase):
 
                 if not sig_meta or sig_meta.get("status", "") != "NOISY":
                     tag_section.set_heuristic(
-                        HEURISTICS_MAP.get(rule.get("heuristic", "TL3").lower())
+                        HEURISTICS_MAP.get(rule.get("heuristic", "TL3").lower()),
+                        signature=rule.get("id"),
                     )
-                    tag_section.heuristic.add_signature_id(rule.get("id"))
                 tag_section.add_tag(tag_name, tag)
 
                 result.add_section(tag_section)

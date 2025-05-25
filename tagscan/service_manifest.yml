@@ -11,6 +11,7 @@ uses_tags: true
 file_required: false
 timeout: 90
 is_external: false
+privileged: true
 
 # config:
 #   KEY: "VALUE"
