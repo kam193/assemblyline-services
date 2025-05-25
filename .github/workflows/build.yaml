@@ -49,9 +49,6 @@ jobs:
         run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
       - name: Authorize to Github Docker Registry
         run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login docker.pkg.github.com -u ${{ github.actor }} --password-stdin
-      - name: Build container
-        run: |
-          make build
       - name: Check service was changed in the commit
         id: check-service-changed
         run: |
@@ -59,6 +56,10 @@ jobs:
           echo exit-code=$? >> $GITHUB_OUTPUT
         shell: bash {0}
         continue-on-error: true
+      - name: Build container
+        if: steps.check-service-changed.outputs.exit-code != 0
+        run: |
+          make build
         # Tests based on real examples, not suitable to keep in the public repo
       - name: Checkout repository with test samples
         if: steps.check-service-changed.outputs.exit-code != 0 && matrix.service == 'ASTGrep'
