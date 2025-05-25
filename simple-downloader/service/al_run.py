@@ -155,5 +155,4 @@ class AssemblylineService(ServiceBase):
                         "Extracted from directory listing",
                         self._build_sub_uri(uri, path),
                         params=sub_params,
-                        safelist_interface=self.api_interface,
                     )
