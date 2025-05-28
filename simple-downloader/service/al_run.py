@@ -1,5 +1,6 @@
 import os
 import uuid
+from urllib.parse import urljoin
 
 import pyrfc6266
 import requests
@@ -63,17 +64,17 @@ class AssemblylineService(ServiceBase):
         return response
 
     def _build_sub_uri(self, uri: str, path: str) -> str:
-        if uri.endswith("/"):
-            return f"{uri}{path}"
-        else:
-            return f"{uri}/{path}"
+        if not uri.endswith("/") and "." not in uri.split("/")[-1]:
+            # In this case, we assume it's a directory and append the path directly.
+            return urljoin(uri + "/", path)
+        return urljoin(uri, path)
 
     def execute(self, request: ServiceRequest) -> None:
         result = Result()
         request.result = result
 
         with open(request.file_path, "r") as f:
-            data = yaml.safe_load(f)
+            data: dict = yaml.safe_load(f)  # type: ignore
 
         method = data.get("method")
         if not method:
