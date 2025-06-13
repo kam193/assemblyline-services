@@ -13,7 +13,7 @@ func = 123
 
 def func(var1):
     r = var1
-    return r
+    return var1
 
 def f2(var1):
     x = var1 + "aaaa"
@@ -42,7 +42,7 @@ def f(b, c, d=7):
     x=7
 
 sth.aaaa()
-"aaaa".decode()
+var2.decode()
 
 var4, var5 = 1, "a"
 (var6, var7) = 8, True

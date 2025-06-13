@@ -1,0 +1,12 @@
+def some_func():
+    a = 17
+    call_sth(17)
+
+    if sth > 19:
+       b = 32
+    c = b
+
+    d = 87
+    if sth > 19:
+        x, d = cl(), 32
+    e = d

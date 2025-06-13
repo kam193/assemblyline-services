@@ -1,9 +1,34 @@
-id: python-substitute-static-vars-{{TEMPLATE_COUNTER}}
+{% set preprocessed_val = VALUE | replace("$", "{{{DOLLARPLACEHOLDER}}}") | tojson | strip_problematic %}
+{% if tpl_in_function|default(false) %}
+{% set _func = FUNCTION|default(None) %}
+{% endif %}
+id: python-substitute-static-vars-{{TEMPLATE_COUNTER}}-{{ vars.get("FUNCTION", None) }}
 message: Substitute static variables
 language: Python
 rule:
   kind: identifier
   pattern: {{ VAR }}
+{% if (tpl_in_function|default(false) and _func) or IF_CONDITION|default(None) %}
+  all:
+{% if tpl_in_function|default(false) and _func %}
+    - inside:
+        stopBy: end
+        kind: function_definition
+        has:
+          field: name
+          pattern: {{ _func }}
+{% endif %}
+{% if IF_CONDITION|default(None) %}
+    - inside:
+        stopBy: end
+        kind: block
+        inside:
+          kind: if_statement
+          has:
+            field: condition
+            pattern: {{ IF_CONDITION | tojson }}
+{% endif %}
+{% endif %}
   not:
     any:
       - nthChild: 1
@@ -14,19 +39,33 @@ rule:
               kind: keyword_argument
           - inside:
               kind: default_parameter
+{% if not tpl_in_function|default(false) or not _func %}
           - inside:
               kind: function_definition
+{% endif %}
           - inside:
               kind: class_definition
           - inside:
               kind: augmented_assignment
           - inside:
               kind: call # for now
+          - inside:
+              kind: for_statement
+      - inside:
+          # kind: expression_statement
+          stopBy: end
+          follows:
+            kind: global_statement
+            stopBy: end
+            has:
+              kind: identifier
+              pattern: {{ VAR }}
       - inside:
           stopBy: end
           any:
             - kind: import_statement
             - kind: import_from_statement
+            - kind: ERROR
             - kind: function_definition
               has:
                 field: parameters
@@ -50,6 +89,13 @@ rule:
               matches: var_used_in_for
             - kind: list_comprehension
               matches: var_used_in_for
+            - kind: for_statement
+              has:
+                field: left
+                any:
+                  - pattern: {{ VAR }}
+                  - has:
+                      pattern: {{ VAR }}
             #- kind: assignment
             #  has:
             #    field: left
@@ -98,7 +144,8 @@ rule:
                     - kind: "false"
                     - kind: float
                     - kind: "none"
-                    - pattern: {{ VALUE | replace("$", "{{{DOLLARPLACEHOLDER}}}") | tojson }}
+                    - pattern: {{ preprocessed_val }}
+                  # TODO: https://stackoverflow.com/questions/92438/stripping-non-printable-characters-from-a-string-in-python
                   # TODO: good regex sanitization to exclude only specific string
                   #has:
                   #  kind: string_content
@@ -149,4 +196,4 @@ utils:
           - has:
               pattern: {{ VAR }}
 
-fix: {{ VALUE | replace("$", "{{{DOLLARPLACEHOLDER}}}") | tojson }}
+fix: {{ preprocessed_val }}

@@ -86,6 +86,14 @@ AL_TO_SG_LANGUAGE = {
 CMD_TIMEOUT = 15
 
 RULE_SANITIZE_SLASH_NLTAB = re.compile(r"\\\n\t")
+# e.g.:
+# X = (
+#   'I' +
+#   'l' +
+#   'c')
+# and rule want to match 'I' + 'l', then it looks like two
+# separate nodes, so we need to sanitize it and put altogether
+RULE_SANITIZE_NEW_LINE_ADD = re.compile(r"\n\s+\+")
 
 DEFAULT_NOT_CONF_SCORE = 10
 CONFIRMED_OBFUSCATION = 100
@@ -109,6 +117,30 @@ def get_language_id(file_format: str) -> str:
     except ValueError:
         raise UnsupportedLanguageError(f"Unsupported language: {language}")
     return language
+
+
+# jinja filters
+
+# YAML/JSON parsers complain when certain unicode characters are present in the string
+# they are mostly in fact emojis or unprintable characters
+# this is very specific solution to replace double-chars emojis with REPLACEMENT CHARACTER (\uFFFD)
+# after the code is transformed to JSON by "tojson" filter
+# Example: \ud83d\udfe2 \ud83c\udd94
+
+# the problem appears to be double unicode characters with high surrogates marks:
+# https://util.unicode.org/UnicodeJsps/list-unicodeset.jsp?a=[:Block=High_Surrogates:]
+# for simplification, matching only \ud83X
+problematic_chars_re = re.compile(r"\\ud83[0-9a-f]\\u[0-9a-fA-F]{4}")
+
+
+def strip_problematic(value: str) -> str:
+    """Used to prevent YAML parsing issues with high surrogate unicode characters."""
+    return problematic_chars_re.sub(r"\\uFFFD", value)
+
+
+JINJA_LOADER = jinja2.FileSystemLoader("rules/templates")
+JINJA_ENV = jinja2.Environment(loader=JINJA_LOADER)
+JINJA_ENV.filters["strip_problematic"] = strip_problematic
 
 
 class ASTGrepScanController:
@@ -503,7 +535,8 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
                         with open(os.path.join(root, file), "r") as f:
                             yaml_docs = yaml.safe_load_all(f)
 
-                            for yaml_doc in yaml_docs:
+                            for yaml_doc in yaml_docs:  # type: ignore
+                                yaml_doc: dict
                                 if not yaml_doc:
                                     continue
                                 metadata = yaml_doc.get("metadata", {})
@@ -517,11 +550,6 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
                                     if yaml_doc.get("id") not in output:
                                         output[yaml_doc.get("id")] = {}
                                     output[yaml_doc.get("id")]["confirmed-obfuscation"] = True
-
-                                if tpl := metadata.get("template_file"):
-                                    out_metadata[yaml_doc.get("id")]["template"] = open(
-                                        os.path.join("rules/templates", tpl)
-                                    ).read()
 
         return output, out_metadata
 
@@ -630,8 +658,6 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
         self.log.debug("Saving persistent rule (%s, %s)", rule_id, key)
         with open(os.path.join(directory, f"{hash_key}.yaml"), "w+") as f:
             f.write(rule_data)
-        if "{{{DOLLARPLACEHOLDER}}}" in rule_data:
-            self._persistent_escape_dollar = True
 
     def _load_generated_rules(self):
         if self._current_config == self.config_file:
@@ -680,6 +706,19 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
         self._scored_lines[matched] = (score, rule_id)
         self._scoring_rules.add(rule_id)
 
+    def _sanitize_pattern(self, pattern: str) -> str:
+        """Sanitize match to be useful as a pattern"""
+
+        # Apparently, the pattern that has "\\n\t" causes confusions,
+        # in the ASTGrep. Maybe because of removing the newline later?
+        # pattern = RULE_SANITIZE_SLASH_NLTAB.sub("", pattern)
+
+        # Match had to be a single node, but if it had a newline,
+        # the pattern would treat it as multiple nodes
+        # cleaner = re.compile(r"\n\s+\+")
+        pattern = RULE_SANITIZE_NEW_LINE_ADD.sub(" +", pattern)
+        return pattern
+
     def _process_result(self, result: dict, secondary=False):
         if not result:
             return
@@ -711,6 +750,8 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
                 self._secondary_transformations.append(result)
             elif type_ == "fix-generate":
                 match = result.get("text")
+                if self._metadata.get(rule_id, {}).get("sanitize-match", False):
+                    match = self._sanitize_pattern(match)
                 if match in self._generated_fixes:
                     scoring_rule = False
                     return
@@ -724,6 +765,8 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
                     )
             elif type_ == "fix-template":
                 match = result.get("text")
+                if self._metadata.get(rule_id, {}).get("sanitize-match", False):
+                    match = self._sanitize_pattern(match)
                 if match in self._generated_fixes:
                     scoring_rule = False
                     return
@@ -778,12 +821,6 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
                     if not override_fix and match in self._generated_templates:
                         scoring_rule = False
                         return
-                    if match in self._generated_templates:
-                        self.log.debug(
-                            "Overriding template %s for rule %s",
-                            match,
-                            result.get("ruleId"),
-                        )
                 try:
                     template, _ = self.transform_template(result)
                     if not persistent_key:
@@ -831,18 +868,6 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
         self._extracted_cache.add(hashed)
         return True
 
-    def _sanitize_pattern(self, pattern: str) -> str:
-        """Sanitize match to be useful as a pattern"""
-
-        # Apparently, the pattern that has "\\n\t" causes confusions,
-        # in the ASTGrep. Maybe because of removing the newline later?
-        pattern = RULE_SANITIZE_SLASH_NLTAB.sub("", pattern)
-
-        # Match had to be a single node, but if it had a newline,
-        # the pattern would treat it as multiple nodes
-        pattern = pattern.replace("\n", "")
-        return pattern
-
     def _generate_fix_documents(self) -> Iterable[dict]:
         for match, fix in self._generated_fixes.items():
             if fix == match:
@@ -853,21 +878,18 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
                 fix = f"{fix:.5f}"
             elif not isinstance(fix, str):
                 fix = str(fix)
-            if "$" in fix:
-                fix = fix.replace("$", "{{{DOLLARPLACEHOLDER}}}")
-                self._escape_dollar = True
+            fix = fix.replace("$", "{{{DOLLARPLACEHOLDER}}}")
             yield {
                 "id": f"fix-rule-{self._fix_number}",
                 "message": f"Fixing {match[:50]}...",
                 "language": self.current_language,
-                "rule": {"pattern": self._sanitize_pattern(match)},
+                "rule": {"pattern": match},
                 "fix": fix,
             }
 
     def _batch_apply_fixes(self):
         apply_rule_dirs = set()
         self._fix_number = 0
-        self._escape_dollar = False
         with tempfile.TemporaryDirectory(suffix="rules") as tmpdir:
             fixes_dir = os.path.join(tmpdir, "rules")
             os.makedirs(fixes_dir, exist_ok=True)
@@ -893,8 +915,6 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
                             f.write("\n---\n")
                         first_template = False
                         f.write(template)
-                        if not self._escape_dollar and "{{{DOLLARPLACEHOLDER}}}" in template:
-                            self._escape_dollar = True
 
             if self._persistent_rules:
                 apply_rule_dirs.add(self._persistent_fixes_dir.name)
@@ -921,12 +941,12 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
                         dirs_exist_ok=True,
                     )
                 raise
-        if self._escape_dollar or self._persistent_escape_dollar:
-            subprocess.run(
-                ["sed", "-i", "s/{{{DOLLARPLACEHOLDER}}}/$/g", self._working_file],
-                check=True,
-                timeout=self.cli_timeout,
-            )
+
+        subprocess.run(
+            ["sed", "-i", "s/{{{DOLLARPLACEHOLDER}}}/$/g", self._working_file],
+            check=True,
+            timeout=self.cli_timeout,
+        )
 
     def deobfuscate_file(self, file_path: str, file_type: str):
         self._prepare_file_with_extension(file_path, file_type, copy=True)
@@ -948,7 +968,6 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
         self._persistent_fixes_dir = tempfile.TemporaryDirectory(prefix="astgrep_rules_")
         self._persistent_rules_dir = tempfile.TemporaryDirectory(prefix="astgrep_rules_")
         self._persistent_rules = dict()  # (rule name, key) -> value
-        self._persistent_escape_dollar = False
 
         self._persistent_metadata = {}
         self._persistent_transformations = {}
@@ -1102,7 +1121,12 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
                 raise RuntimeError("Not implemented")
             output_field = step.get("output", step.get("source"))
             func = getattr(transformations, func)
-            output = func(step, context)
+            try:
+                output = func(step, context)
+            except Exception:
+                if step.get("continue_on_fail", False):
+                    continue
+                raise
             if output_field:
                 context[output_field] = output
 
@@ -1117,8 +1141,8 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
             metadata = self._persistent_metadata
         if rule_id not in look_in:
             return
-        template = metadata[rule_id].get("template")
-        if not template:
+        template_file = metadata[rule_id].get("template_file")
+        if not template_file:
             self.log.error("Template not found for rule %s", rule_id)
             return
 
@@ -1131,7 +1155,7 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
             **self._global_variable_context,
             **context,
         }
-        return jinja2.Template(template).render(
+        return JINJA_ENV.get_template(template_file).render(
             TEMPLATE_COUNTER=counter,
             **tpl_values,
         ), output

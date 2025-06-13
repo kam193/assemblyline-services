@@ -15,7 +15,9 @@ rule:
         kind: string
         pattern: $VALUE
         # exclude f-strings
-        regex: "^[bB\"']"
+        not:
+          has:
+            kind: interpolation
 
 metadata:
   extended-obfuscation: yes

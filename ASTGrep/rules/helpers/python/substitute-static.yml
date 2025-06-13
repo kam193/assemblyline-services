@@ -4,12 +4,6 @@ id: python-substitute-static-vars
 message: Substitute static variables
 language: Python
 rule:
-  not:
-    inside:
-      stopBy: end
-      any:
-        - kind: function_definition
-        - kind: except_clause
   any:
     - all:
         - kind: assignment
@@ -20,6 +14,8 @@ rule:
         - has:
             field: right
             matches: static
+        - not:
+            matches: precedes_assignment
     - all:
         - kind: identifier
           pattern: $VAR
@@ -38,6 +34,8 @@ rule:
                     any:
                       - kind: expression_list
                       - kind: tuple
+              - not:
+                  matches: precedes_assignment
         - any:
             - nthChild: 1
               inside:
@@ -1480,6 +1478,41 @@ rule:
                       nthChild: 180
                       matches: static
 
+  not:
+    inside:
+      stopBy: end
+      any:
+        - kind: except_clause
+        # - kind: if_statement
+        - follows:
+            kind: global_statement
+            stopBy: end
+            has:
+              kind: identifier
+              pattern: $VAR
+
+  all:
+    - any:
+        - inside:
+            stopBy: end
+            kind: function_definition
+            has:
+              field: name
+              pattern: $FUNCTION
+        - not:
+            inside:
+              stopBy: end
+              kind: function_definition
+    - any:
+        - inside:
+            stopBy: end
+            kind: if_statement
+            has:
+              field: condition
+              pattern: $IF_CONDITION
+        - not:
+            inside:
+              kind: if_statement
 utils:
   static:
     pattern: $VALUE
@@ -1489,6 +1522,9 @@ utils:
       - kind: "false"
       - kind: float
       - kind: string
+        not:
+          has:
+            kind: interpolation
       - kind: "none"
       - kind: identifier
         not:
@@ -1531,11 +1567,45 @@ utils:
             # - pattern: "''.join"
             - pattern: binascii.unhexlify
 
+  # This prevents replacing variables that are later changed,
+  # but only in the function definitions - we should change it
+  # to be more generic and just ensure replacement BEFORE the next
+  # assignment or augmented assignment.
+  precedes_assignment:
+    inside:
+      stopBy: end
+      kind: expression_statement
+      inside:
+        stopBy: end
+        kind: function_definition
+        # Optimization? shortcut - skip checking which function
+        has:
+          field: name
+          pattern: $FUNCTION
+      precedes:
+        # kind: expression_statement
+        stopBy: end
+        has:
+          stopBy: end
+          any:
+            - kind: augmented_assignment
+            - kind: assignment
+          has:
+            field: left
+            any:
+              - kind: identifier
+                pattern: $VAR
+              - kind: pattern_list
+                has:
+                  kind: identifier
+                  pattern: $VAR
+
 metadata:
   extended-obfuscation: no
   alone-unimportant: yes
   score: 0
   template_file: python-replace-static-var.yml.j2
+  tpl_in_function: FUNCTION
   deobfuscate: |
     {
       "type": "template",

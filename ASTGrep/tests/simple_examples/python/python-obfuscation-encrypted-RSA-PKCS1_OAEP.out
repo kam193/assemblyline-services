@@ -30,8 +30,8 @@ def decrypt_rsa(cipher_text, private_key):
     rsa_cipher = PKCS1_OAEP.new(private_key)
     decrypted_data = bytearray()
     block_size = 256
-    for block_start in range(0, len(cipher_text), block_size):
-        block = cipher_text[block_start:block_start + block_size]
+    for block_start in range(0, len(cipher_text), 256):
+        block = cipher_text[block_start:block_start + 256]
         decrypted_data.extend(rsa_cipher.decrypt(block))
     return bytes(decrypted_data)
 

@@ -26,16 +26,23 @@ rule:
             has:
               pattern: $RIGHT_OP
               matches: static_string
+    - not:
+        has:
+          kind: ERROR
 
 utils:
   static_string:
     kind: string
-    regex: '^[bB"'']'
+    not:
+      has:
+        kind: interpolation
+    # regex: '^[bB"'']'
 
 metadata:
   extended-obfuscation: no
   alone-unimportant: yes
   score: 0
+  sanitize-match: true
   deobfuscate: |
     {
       "type": "fix-generate",

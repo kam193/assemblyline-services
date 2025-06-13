@@ -5,7 +5,6 @@ rule:
   all:
     - kind: call
       has:
-        # kqind: identifier
         any:
           - pattern: exec
           - pattern: eval
@@ -18,23 +17,8 @@ rule:
           has:
             kind: string_content
             pattern: $DATA
-    # - any:
-    #     - pattern: $FUNC("$DATA")
-    #     - pattern: $FUNC('$DATA')
-    #     - pattern: $FUNC(b"$DATA")
-    #     - pattern: $FUNC(b'$DATA')
-    #     - pattern: $FUNC("""$DATA""")
-    #     - pattern: $FUNC('''$DATA''')
-    #     - pattern: $FUNC(b"""$DATA""")
-    #     - pattern: $FUNC(b'''$DATA''')
 
 fix: $DATA
-
-# constraints:
-#   FUNC:
-#     any:
-#       - pattern: exec
-#       - pattern: eval
 
 metadata:
   extended-obfuscation: yes
@@ -44,6 +28,7 @@ metadata:
     {
       "type": "fix-generate",
       "steps": [
-        {"func": "decode", "source": "DATA"}
+        {"func": "decode", "source": "DATA"},
+        {"func": "math_eval", "source": "DATA", "continue_on_fail": true}
       ]
     }

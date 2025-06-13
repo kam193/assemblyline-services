@@ -10,7 +10,7 @@ funcx(var2 + var2)
 
 func = 123
 
-# Functions not supported yet
+# Functions already supported
 def func(var1):
     r = var1
     return r
