@@ -4,7 +4,6 @@ description: |
   Scan files using a remote antivirus. It requires a host with running service
   exposing API (see `openapi.json` in the repository for definition).
 enabled: true
-
 accepts: .* # All files
 rejects: empty
 stage: CORE
@@ -16,14 +15,15 @@ is_external: false
 
 config:
   remoteav_server: "http://localhost:5556"
+  remoteav_servers: { "server1": "http://localhost:5556", "server2": "http://localhost:5557" }
   max_file_size: 524288000
 
-# submission_params:
-#   - default: "auto"
-#     name: platform
-#     type: list
-#     value: "auto"
-#     list: ["auto", "linux"]
+submission_params:
+  - default: "all"
+    name: use_remote_servers
+    type: list
+    value: "all"
+    list: ["all", "server1", "server2"]
 
 # -1000: safe
 # 0 - 299: informative
@@ -32,7 +32,7 @@ config:
 # >= 1000: malicious
 
 heuristics:
-  - description: Remote antivirus detected a file as malicious
+  - description: Remote antivirus marked the file as malicious
     filetype: "*"
     heur_id: 1
     name: Infected file
@@ -46,4 +46,3 @@ docker_config:
   ram_mb: 768
   ram_mb_min: 256
   allow_internet_access: true
-
