@@ -1,0 +1,4 @@
+b"aaa   ".rstrip()
+"vvvsss".rstrip("s")
+
+not_a_string.rstrip()

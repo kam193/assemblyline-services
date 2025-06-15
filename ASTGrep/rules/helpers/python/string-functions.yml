@@ -1,0 +1,52 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/main/schemas/rule.json
+
+id: python-string-rstrip
+message: Applies rstrip to a string
+language: Python
+rule:
+  kind: call
+  has:
+      field: function
+      kind: attribute
+      all:
+        - has:
+            field: object
+            kind: string
+            pattern: $STRING
+        - has:
+            field: attribute
+            kind: identifier
+            pattern: rstrip
+  any:
+    - has:
+        field: arguments
+        kind: argument_list
+        has:
+          pattern: $CHARS
+          kind: string
+    - not:
+        has:
+          field: arguments
+          kind: argument_list
+          has:
+            nthChild: 1
+metadata:
+  extended-obfuscation: no
+  confirmed-obfuscation: no
+  score: 0
+  deobfuscate:
+    type: fix-generate
+    steps:
+      - func: dequote
+        source: STRING
+        decode: false
+      - func: dequote
+        source: CHARS
+        decode: false
+        continue_on_fail: true
+      - func: rstrip
+        source: STRING
+        chars: CHARS
+      - func: quote
+        source: STRING
+        output: STRING

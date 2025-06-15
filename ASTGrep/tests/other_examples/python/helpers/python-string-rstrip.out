@@ -1,0 +1,4 @@
+b'aaa'
+'vvv'
+
+not_a_string.rstrip()

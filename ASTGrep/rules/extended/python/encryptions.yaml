@@ -33,7 +33,6 @@ constraints:
     kind: string
 
 ---
-
 # yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/main/schemas/rule.json
 id: python-encryption-blowfish
 language: Python
@@ -69,7 +68,6 @@ constraints:
     kind: string
 
 ---
-
 # yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/main/schemas/rule.json
 id: python-encryption-aes
 language: Python
@@ -110,12 +108,9 @@ rule:
   any:
     - pattern: AES.new($KEY, AES.$MODE, iv=$IV).decrypt($DATA)
     - pattern: $CIPHER.decrypt_and_verify($DATA, $AUTH_TAG)
-      inside:
-        stopBy: end
-        follows:
-          stopBy: end
-          has:
-            pattern: $CIPHER = AES.new($KEY, AES.$MODE, nonce=$IV)
+      matches: follows_cipher
+    - pattern: $CIPHER.decrypt($DATA)
+      matches: follows_cipher
 
 constraints:
   KEY:
@@ -127,8 +122,18 @@ constraints:
   AUTH_TAG:
     kind: string
 
----
+utils:
+  follows_cipher:
+    inside:
+      stopBy: end
+      follows:
+        stopBy: end
+        has:
+          any:
+            - pattern: $CIPHER = AES.new($KEY, AES.$MODE, nonce=$IV)
+            - pattern: $CIPHER = AES.new($KEY, AES.$MODE, $IV)
 
+---
 # yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/main/schemas/rule.json
 id: python-encryption-unpad
 language: Python

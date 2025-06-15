@@ -520,3 +520,10 @@ def to_pyc_format(config: dict, context: dict) -> bytes:
         raise RuntimeError("Code is not bytes")
 
     return MAGIC + struct.pack("<I", 0) + struct.pack("<I", 0) + struct.pack("<I", len(code)) + code
+
+def rstrip(config: dict, context: dict) -> str:
+    source = config.get("source", "STRING")
+    chars = config.get("chars", None)
+    if chars is not None and context.get(chars):
+        return context[source].rstrip(context[chars])
+    return context[source].rstrip()
