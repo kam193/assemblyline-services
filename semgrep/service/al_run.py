@@ -5,7 +5,7 @@ import tempfile
 from collections import defaultdict
 from copy import copy
 from threading import RLock
-from typing import Iterable
+from typing import Any, Generator, Iterable
 
 import yaml
 from assemblyline.common.exceptions import RecoverableError
@@ -14,7 +14,7 @@ from assemblyline_v4_service.common.request import ServiceRequest
 from assemblyline_v4_service.common.result import (
     Result,
     ResultMemoryDumpSection,
-    ResultMultiSection,
+    ResultSection,
     ResultTextSection,
 )
 
@@ -178,8 +178,8 @@ class AssemblylineService(ServiceBase):
         return {k: "".join(v) for k, v in lines.items()}
 
     def _process_results(
-        self, results: list[dict], first_line_no: int
-    ) -> Iterable[ResultMultiSection]:
+        self, results: Iterable[dict], first_line_no: int
+    ) -> Generator[ResultSection, Any, Any]:
         result_by_rule = defaultdict(list)
         lines_by_rule = defaultdict(set)
         line_no = set()
@@ -269,10 +269,11 @@ class AssemblylineService(ServiceBase):
             self.log.debug("File is not supported by given semgrep")
             raise UnsupportedFileError()
 
+        sections_by_heuristic = defaultdict(list)
         # TODO: better tests if we should retry by default
         results = semgrep.process_file(self._request.file_path, self._request.file_type)
         for result_section in self._process_results(results, semgrep.LINE_START):
-            result.add_section(result_section)
+            sections_by_heuristic[result_section.heuristic.heur_id].append(result_section)
 
         if semgrep.last_results:
             with tempfile.NamedTemporaryFile("w", delete=False) as f:
@@ -280,6 +281,11 @@ class AssemblylineService(ServiceBase):
             self._request.add_supplementary(
                 f.name, "semgrep_raw_results.json", "Semgrep™ OSS Results"
             )
+
+        for heur_id in (2, 1, 3):  # ERROR, WARNING, INFO
+            if heur_id in sections_by_heuristic:
+                for section in sections_by_heuristic[heur_id]:
+                    result.add_section(section)
 
         self._request.set_service_context(f"Semgrep™ OSS {semgrep.version}")
 
@@ -311,7 +317,7 @@ class AssemblylineService(ServiceBase):
             )
             err_section.set_heuristic(5)
             result.add_section(err_section)
-            return result
+            return
         finally:
             self._request.result = result
 

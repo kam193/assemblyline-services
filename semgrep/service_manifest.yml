@@ -63,12 +63,6 @@ heuristics:
     name: Informative code pattern
     score: 10
     max_score: 50
-  - description: Code was obfuscated
-    filetype: "*"
-    heur_id: 4
-    name: Code was obfuscated
-    score: 500
-    # max_score: 500
   - description: |
       Semgrep failed to scan the file. The file may be too large, too complex
       or it's an issue with the Semgrep OSS engine.
