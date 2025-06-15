@@ -680,7 +680,9 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
             [self._persistent_rules_dir.name]
         )
 
-    def _score_rule(self, result: dict, type_: str, confirmed: bool):
+    def _score_rule(
+        self, result: dict, type_: str, confirmed: bool, current_context: dict | None = None
+    ):
         if type_ in ["context"]:
             return
         matched = result.get("text")
@@ -692,6 +694,10 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
         except KeyError:
             # no metadata = rule was generated, no score
             return
+
+        # allow contextual overwriting score
+        if self._metadata[rule_id].get("context-score", False) and current_context:
+            score = current_context.get("score", score)
 
         if score is None and confirmed:
             score = CONFIRMED_OBFUSCATION
@@ -738,11 +744,12 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
                 extract = True
 
         scoring_rule = True
+        current_context = None
         try:
             if type_ == "auto-fix":
                 self._run_auto_fixes = True
             elif type_ == "context":
-                output, _ = self.transform(result)
+                output, current_context = self.transform(result)
                 scoring_rule = False
                 if output and isinstance(output, dict):
                     self._global_variable_context.update(output)
@@ -756,7 +763,7 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
                     scoring_rule = False
                     return
                 try:
-                    self._generated_fixes[match], _ = self.transform(result)
+                    self._generated_fixes[match], current_context = self.transform(result)
                     if extract:
                         return self._generated_fixes[match]
                 except Exception as exc:
@@ -843,7 +850,7 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
                         "Error transforming template '%s' result: %r", result.get("ruleId"), exc
                     )
             elif type_ == "extract":
-                output, _ = self.transform(result)
+                output, current_context = self.transform(result)
                 if not output or len(output) < self.min_length_for_confirmed:
                     scoring_rule = False
                 return output
@@ -856,7 +863,7 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
             return None
         finally:
             if scoring_rule:
-                self._score_rule(result, type_, confirmed)
+                self._score_rule(result, type_, confirmed, current_context)
 
     def _should_extract(self, data: str | bytes) -> bool:
         self.log.debug("Checking if we should extract %s", (data or "")[:10])

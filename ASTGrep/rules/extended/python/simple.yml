@@ -89,6 +89,8 @@ metadata:
   extended-obfuscation: yes
   alone-unimportant: yes
   score: 0
+  max-score: 50
+  context-score: yes
   deobfuscate: |
     {
       "type": "fix-generate",

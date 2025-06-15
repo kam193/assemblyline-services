@@ -373,7 +373,7 @@ ascii_varname = re.compile(r"[a-zA-Z_][a-zA-Z0-9_]*$")
 
 
 def rename(config: dict, context: dict):
-    prefix = config.get("prefix", "renabmed_during_deobfuscation")
+    prefix = config.get("prefix", "renamed_during_deobfuscation")
     source = config.get("source", "VAR")
     source_value = context[source]
     if "rename_cache" not in context["cache"]:
@@ -387,6 +387,8 @@ def rename(config: dict, context: dict):
             # catches cases when name is changed by normalization
             if ascii_varname.match(parsed_name):
                 new_name = parsed_name
+                # variable renamed by normalization is very likely to be an obfuscation attempt
+                context["score"] = 50
             var_config = (new_name, True)
         except Exception as exc:
             print(exc)
