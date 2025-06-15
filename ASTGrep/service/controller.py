@@ -542,7 +542,9 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
                                 metadata = yaml_doc.get("metadata", {})
                                 out_metadata[yaml_doc.get("id")] = metadata
                                 if transformation := metadata.get("deobfuscate", ""):
-                                    output[yaml_doc.get("id")] = json.loads(transformation)
+                                    if isinstance(transformation, str):
+                                        transformation = json.loads(transformation)
+                                    output[yaml_doc.get("id")] = transformation
                                 elif "fix" in yaml_doc:
                                     output[yaml_doc.get("id")] = {"type": "auto-fix"}
 

@@ -80,21 +80,42 @@ metadata:
   extended-obfuscation: yes
   obfuscation-confirmed: yes
   # TODO: more generic pattern
-  deobfuscate: |
-    {
-      "type": "fix-generate",
-      "extract": true,
-      "steps": [
-        {"func": "dequote", "source": "DATA", "decode": false},
-        {"func": "dequote", "source": "KEY", "decode": false},
-        {"func": "dequote", "source": "IV", "decode": false},
-        {"func": "aes", "source": "DATA", "key": "KEY", "iv": "IV", "mode": "MODE", "decode": false},
-        {"func": "quote", "source": "DATA"}
-      ]
-    }
+  deobfuscate:
+    type: fix-generate
+    extract: true
+    steps:
+      - func: dequote
+        source: DATA
+        decode: false
+      - func: dequote
+        source: KEY
+        decode: false
+      - func: dequote
+        source: IV
+        decode: false
+      - func: dequote
+        source: AUTH_TAG
+        decode: false
+        continue_on_fail: true
+      - func: aes
+        source: DATA
+        key: KEY
+        iv: IV
+        mode: MODE
+        decode: false
+      - func: quote
+        source: DATA
 rule:
   kind: call
-  pattern: AES.new($KEY, AES.$MODE, iv=$IV).decrypt($DATA)
+  any:
+    - pattern: AES.new($KEY, AES.$MODE, iv=$IV).decrypt($DATA)
+    - pattern: $CIPHER.decrypt_and_verify($DATA, $AUTH_TAG)
+      inside:
+        stopBy: end
+        follows:
+          stopBy: end
+          has:
+            pattern: $CIPHER = AES.new($KEY, AES.$MODE, nonce=$IV)
 
 constraints:
   KEY:
@@ -102,6 +123,8 @@ constraints:
   IV:
     kind: string
   DATA:
+    kind: string
+  AUTH_TAG:
     kind: string
 
 ---
