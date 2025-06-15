@@ -25,3 +25,22 @@ rule:
 metadata:
   extended-obfuscation: yes
   confirmed-obfuscation: no
+
+---
+
+# yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/main/schemas/rule.json
+
+id: python-trigger-extended-obfuscation
+message: Extend obfuscation anytime one of following calls are used
+severity: info
+language: Python
+rule:
+  kind: call
+  any:
+    - pattern: exec($$$)
+    - pattern: AES.new($$$)
+
+metadata:
+  extended-obfuscation: yes
+  confirmed-obfuscation: no
+  score: 0
