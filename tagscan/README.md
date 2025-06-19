@@ -17,11 +17,21 @@ name: <name> # name of the rule
 pattern: <regex> # regex pattern to match
 tag: <tag> # tag to match
 heuristic: <heuristic> # heuristic of the rule (optional, default is TL3 - the same set as in TagCheck)
+exclude_files: <regex> # standard regex to exclude matches based on filename (optional)
+not: # list of standard regexes to reject a match (optional)
+    - <regex1>
+    - <regex2>
 meta:
     description: <description> # description of the rule (optional)
     category: <category> # category of the rule (optional)
     # additional metadata (optional)
 ```
+
+Fields `exclude_files` and `not` will be evaluated using the standard `re` module. It makes them
+slower, but allows using features like backtracing which are not available in performance-optimized
+evaluators. However, this also means they should be used very carefully to keep the overall performance.
+
+Any metadata with "." will be set as tag.
 
 Some docs about hyperscan vs. re2:
 

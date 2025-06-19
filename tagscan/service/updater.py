@@ -1,8 +1,10 @@
 import os
 import pathlib
+import re
 import shutil
 import tempfile
 
+import hyperscan
 import yaml
 from assemblyline.odm.models.signature import Signature
 from assemblyline_v4_service.updater.updater import ServiceUpdater
@@ -28,8 +30,9 @@ class AssemblylineServiceUpdater(ServiceUpdater):
     #     pass
 
     def is_valid(self, file_path) -> bool:
-        # TODO: attempt to compile
         # TODO: check for duplicated names
+        last_rule_name = None
+        names = set()
         try:
             with open(file_path, "r") as f:
                 # TODO: support when file contains only one rule
@@ -46,8 +49,30 @@ class AssemblylineServiceUpdater(ServiceUpdater):
                             file_path,
                         )
                         return False
+
+                    last_rule_name = doc.get("name")
+                    if last_rule_name in names:
+                        self.log.error(
+                            "Duplicate rule name '%s' found in file %s", last_rule_name, file_path
+                        )
+                        return False
+                    names.add(last_rule_name)
+
+                    # Check main pattern
+                    tmp_db = hyperscan.Database()
+                    tmp_db.compile(
+                        expressions=[doc["pattern"].encode("utf-8")],
+                    )
+
+                    # Check additional patterns
+                    if "exclude_files" in doc:
+                        re.compile(doc["exclude_files"])
+                    for not_rule in doc.get("not", []):
+                        re.compile(not_rule)
         except Exception as e:
-            self.log.error("Error reading YAML file %s: %s", file_path, e)
+            self.log.error(
+                "Error processing rules file %s [around %s]: %s", file_path, last_rule_name, e
+            )
             return False
 
         return True

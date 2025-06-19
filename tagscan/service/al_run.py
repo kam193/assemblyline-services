@@ -1,7 +1,7 @@
-from collections import defaultdict
 import hashlib
-from threading import RLock
 import re
+from collections import defaultdict
+from threading import RLock
 
 import hyperscan
 import yaml
@@ -9,7 +9,7 @@ from assemblyline.common.chunk import chunk
 from assemblyline.common.exceptions import RecoverableError
 from assemblyline_v4_service.common.base import ServiceBase
 from assemblyline_v4_service.common.request import ServiceRequest
-from assemblyline_v4_service.common.result import Result, ResultTextSection
+from assemblyline_v4_service.common.result import Result, ResultKeyValueSection
 
 CHUNK_SIZE = 1000
 RULES_LOCK = RLock()
@@ -64,8 +64,14 @@ class AssemblylineService(ServiceBase):
                     if not rule or not isinstance(rule, dict):
                         self.log.error(f"Invalid rule format in {rule_file}, skipping.")
                         continue
+
                     if "exclude_files" in rule:
                         rule["exclude_files"] = re.compile(rule["exclude_files"])
+                    not_ = list()
+                    for not_rule in rule.get("not", []):
+                        not_.append(re.compile(not_rule))
+                    rule["not"] = not_
+
                     new_meta[rule.get("tag") or ""].append(rule)
 
         if not new_meta:
@@ -157,12 +163,26 @@ class AssemblylineService(ServiceBase):
                 if rule.get("exclude_files") and rule["exclude_files"].search(request.file_name):
                     self.log.debug(f"Skipping rule {rule['name']} for file {request.file_name}")
                     continue
+                for not_rule in rule.get("not", []):
+                    if not_rule.search(tag):
+                        self.log.debug(
+                            "Skipping rule %s for tag '%s' due to 'not' rule match",
+                            rule["name"],
+                            tag,
+                        )
+                        continue
 
-                tag_section = ResultTextSection(
-                    f"Tag matched {rule['name']}", zeroize_on_tag_safe=True
+                sig_meta = self.signatures_meta.get(rule.get("id"), {})
+                body_data = {
+                    k: rule.get("meta", {}).get(k, "")
+                    for k in sorted(rule.get("meta", {}).keys())
+                    if "." not in k
+                }
+                tag_section = ResultKeyValueSection(
+                    f"[{sig_meta.get('source', '')}] {sig_meta.get('name', '')}",
+                    body=body_data,
+                    zeroize_on_tag_safe=True,
                 )
-                self.log.debug(rule)
-                sig_meta = self.signatures_meta.get(rule.get("id"))
 
                 if not sig_meta or sig_meta.get("status", "") != "NOISY":
                     tag_section.set_heuristic(
@@ -170,6 +190,24 @@ class AssemblylineService(ServiceBase):
                         signature=rule.get("id"),
                     )
                 tag_section.add_tag(tag_name, tag)
+                tag_section.add_tag("file.rule.tagscan", sig_meta["signature_id"])
+
+                for k, v in rule.get("meta", {}).items():
+                    if "." in k:
+                        tag_section.add_tag(k, v)
+
+                # https://cybercentrecanada.github.io/assemblyline4_docs/odm/models/tagging/#attribution
+                for key in [
+                    "actor",
+                    "campaign",
+                    "category",
+                    "exploit",
+                    "implant",
+                    "family",
+                    "network",
+                ]:
+                    if key in rule.get("meta", {}):
+                        tag_section.add_tag(f"attribution.{key}", rule["meta"][key])
 
                 result.add_section(tag_section)
         request.result = result

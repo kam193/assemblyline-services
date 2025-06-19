@@ -98,6 +98,15 @@ Additional features:
   - extract URLs from directory listings as URI files allowing to download automatically download them (see [README](./simple-downloader/README.md) for configuration).
   - proxy support (standard `requests` HTTP&HTTPS proxy configuration).
 
+## TagScan
+
+Service matching tags based on regular expressions (in the possibly performant way using
+[Vectorscan](https://github.com/VectorCamp/vectorscan)). Matched tags are respectively marked and
+easily visible in results. In addition, safelisted tags are excluded from matching.
+
+This is similar to TagCheck service, but can match only one tag at the time. However, TagScan can
+highlighting tags and respects the safelist.
+
 ## License
 
 Although the code is licensed under the MIT license, the services may use third-party data or dependencies.
