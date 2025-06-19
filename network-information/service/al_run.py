@@ -19,6 +19,7 @@ from assemblyline_v4_service.common.result import (
     ResultTextSection,
     TableRow,
 )
+from whois import NICClient, WhoisEntry
 
 REDIS_SERVER = os.getenv("netinfo_cache_host", "netinfo_cache")
 CACHE_TEMPLATE = "domain:{}"
@@ -49,6 +50,7 @@ class AssemblylineService(ServiceBase):
 
         self._mmdb_paths = dict()
         self._mmdb_readers: dict[str, maxminddb.Reader] = dict()
+        self.worker_pool: ThreadPool = None
 
     def _load_config(self):
         self._mmdb_enabled = self.config.get("enable_mmdb_lookup", True)
@@ -68,7 +70,9 @@ class AssemblylineService(ServiceBase):
         self.log.info(f"{self.service_attributes.name} service started")
 
     def stop(self):
-        self.worker_pool.close()
+        if self.worker_pool:
+            with suppress(Exception):
+                self.worker_pool.close()
         super().stop()
 
     @property
@@ -170,6 +174,11 @@ class AssemblylineService(ServiceBase):
             return main_section
         return None
 
+    def _whois_lookup(self, domain: str) -> dict | None:
+        nic_client = NICClient()
+        result = nic_client.whois_lookup(None, domain.encode("idna"), 0, quiet=True)
+        return WhoisEntry.load(domain, result)
+
     def _call_cached_whois(self, domain: str) -> dict | None:
         cache_key = CACHE_TEMPLATE.format(domain)
         if cached := self.redis_client.get(cache_key):
@@ -178,7 +187,7 @@ class AssemblylineService(ServiceBase):
         domain_info = None
         # PywhoisError is raised when the domain is not found
         with suppress(whois.parser.PywhoisError):
-            domain_info = whois.whois(domain)
+            domain_info = self._whois_lookup(domain)
 
         if domain_info:
             for key, value in domain_info.items():
@@ -189,7 +198,7 @@ class AssemblylineService(ServiceBase):
                     if "redacted" in domain_info[key].lower():
                         domain_info[key] = None
         else:
-            self.log.info("No WHOIS information found for domain %s", domain)
+            self.log.debug("No WHOIS information found for domain %s", domain)
 
         self.redis_client.set(cache_key, json.dumps(domain_info or {}), ex=self._cache_ttl)
         return domain_info or None
