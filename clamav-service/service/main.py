@@ -1,3 +1,4 @@
+from contextlib import suppress
 import os
 import shutil
 import subprocess
@@ -58,14 +59,16 @@ class ClamAVService(ServiceBase):
                 break
             except ConnectionError:
                 self.log.debug("ClamAV daemon not ready yet, waiting...", exc_info=True)
-                if self.daemon_process.returncode:
+                if self.daemon_process.poll() is not None:
                     # Break and go to else clause
                     start_time = time() - self._wait_for_daemon
                 sleep(0.5)
         else:
-            self.log.error(f"ClamAV daemon not ready after {time() - start_time} seconds, aborting")
-            if self.daemon_process.returncode:
-                self.log.error(f"ClamAV daemon exited with code {self.daemon_process.returncode}")
+            self.log.error(
+                "ClamAV daemon not ready after %s seconds, aborting", time() - start_time
+            )
+            if self.daemon_process.returncode is not None:
+                self.log.error("ClamAV daemon exited with code %s", self.daemon_process.returncode)
             raise RuntimeError("Cannot start ClamAV daemon")
 
     def _load_rules(self) -> None:
@@ -84,7 +87,41 @@ class ClamAVService(ServiceBase):
                 self.clamd.reload()
             self.log.info("Handling updates done.")
 
+    def is_clamd_running(self) -> bool:
+        start_time = time()
+        while time() - start_time <= self._wait_for_daemon:
+            if not self.daemon_process or not self.clamd:
+                # we're during the initial start, just wait a bit
+                sleep(0.5)
+                continue
+            try:
+                self.clamd.ping()
+                return True
+            except ConnectionError:
+                if self.daemon_process.poll() is not None:  # Daemon died
+                    break
+                sleep(0.5)
+
+        self.log.error(
+            "Cannot connect to ClamAV daemon after %s seconds, aborting", time() - start_time
+        )
+        if self.daemon_process.returncode is not None:
+            self.log.error(
+                "ClamAV daemon unexpectedly exited with code %s", self.daemon_process.returncode
+            )
+        return False
+
+    def stop(self):
+        if self.daemon_process:
+            self.log.info("Terminating ClamAV daemon process")
+            with suppress(Exception):
+                self.daemon_process.terminate()
+
     def execute(self, request: ServiceRequest) -> None:
+        if not self.is_clamd_running():
+            # Daemon seems to be dead, no way to recover
+            exit(1)
+
         if request.deep_scan or request.get_param("find_all_matches"):
             scanning_result = self.clamd.allmatchscan(request.file_path)
         else:
