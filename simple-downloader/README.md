@@ -13,6 +13,7 @@ In addition, it can extract URLs from directory listings as URI files allowing t
 | extraction_depth                 | int  | Maximum depth to extract from directory listing      | 1                      |
 | proxy                            | str  | Proxy to use for the request (as http&https)         | None                   |
 | method                           | str  | HTTP method to use for the request                   | GET                    |
+| predefined_proxy                 | list | Select a predefined proxy to use                     | `none`                 |
 
 In addition, you can specify following service parameters:
 
@@ -20,6 +21,7 @@ In addition, you can specify following service parameters:
 | -------------------------------- | ---- | ---------------------------------------------------- | ---------------------- |
 | timeout                          | int  | Timeout for the request in seconds                   | 150                    |
 | max_file_size                    | int  | Maximum file size to download in bytes               | 524288000 (500 MB)     |
+| proxies                          | dict | Dictionary of available predefined proxies           | `{"name": "uri"}`      |
 
 Service will abort downloading if file size is larger than the configured limit, but will still return related metadata
 (headers, redirects, etc.).
@@ -55,3 +57,13 @@ headers:
     Header1: Value1
     Header2: Value2
 ```
+
+## Proxies
+
+You can ad-hock define a proxy in the submission (using `proxy` parameter) or
+predefine proxies. To do that, you have to modify the `proxies` service parameter:
+this is a dictionary with keys as proxy identifiers and values as proxy URIs.
+After adding new proxies, modify the available options for the `predefined_proxy`
+submission parameter. Select it during the submission to use one of those proxies.
+
+The ad-hock proxy takes precedence over predefined one, if both are specified.

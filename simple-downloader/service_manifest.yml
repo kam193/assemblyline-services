@@ -17,6 +17,8 @@ config:
   request_timeout: 150
   # TODO: get it from AL config
   max_file_size: 524288000 # 500MB
+  # Define the proxies here, and then select them in the predefined_proxy parameter
+  proxies: {"name": "uri"}
 
 
 submission_params:
@@ -46,6 +48,12 @@ submission_params:
     type: str
     default: "GET"
     value: "GET"
+  - name: predefined_proxy
+    type: list
+    default: "none"
+    value: "none"
+    list:
+      - none
 
 
 # -1000: safe
