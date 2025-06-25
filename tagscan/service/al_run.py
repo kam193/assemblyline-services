@@ -163,6 +163,8 @@ class AssemblylineService(ServiceBase):
                 if rule.get("exclude_files") and rule["exclude_files"].search(request.file_name):
                     self.log.debug(f"Skipping rule {rule['name']} for file {request.file_name}")
                     continue
+
+                skip = False
                 for not_rule in rule.get("not", []):
                     if not_rule.search(tag):
                         self.log.debug(
@@ -170,7 +172,10 @@ class AssemblylineService(ServiceBase):
                             rule["name"],
                             tag,
                         )
-                        continue
+                        skip = True
+                        break
+                if skip:
+                    continue
 
                 sig_meta = self.signatures_meta.get(rule.get("id"), {})
                 body_data = {
