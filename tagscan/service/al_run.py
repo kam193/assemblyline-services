@@ -40,7 +40,7 @@ class AssemblylineService(ServiceBase):
         self.hs_dbs: dict[str, hyperscan.Database] = {}
         self.rules_meta: dict[str, list] = {}
         self.tags_to_scan: set[str] = set()
-        self._matches: dict[str, list[tuple[str, int]]] = {}
+        self._matches: dict[str, set[tuple[str, int]]] = {}
 
     def _load_config(self):
         pass
@@ -99,7 +99,7 @@ class AssemblylineService(ServiceBase):
         self, id: int, from_offset: int, to_offset: int, flags: int, context: tuple[str, str]
     ) -> None:
         tag_name, tag = context
-        self._matches.setdefault(tag_name, []).append((tag, id))
+        self._matches.setdefault(tag_name, set()).add((tag, id))
 
     def _exist_safelisted_tags(self, tag_map: dict) -> dict:
         # Based on the badlist implementation from assemblyline-common

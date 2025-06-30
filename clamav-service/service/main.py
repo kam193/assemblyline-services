@@ -149,7 +149,11 @@ class ClamAVService(ServiceBase):
 
         # TODO: Add more tags from https://docs.clamav.net/manual/Signatures/SignatureNames.html
 
+        processed_results = set()
         for scan_result, comment in clamav_results:
+            if (scan_result, comment) in processed_results:
+                continue
+            processed_results.add((scan_result, comment))
             if scan_result == "FOUND":
                 if comment.startswith("PUA.") or ".PUA." in comment:
                     puas.add_line(comment)
