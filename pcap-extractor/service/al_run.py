@@ -25,6 +25,8 @@ class AssemblylineService(ServiceBase):
     def _load_config(self):
         self.local_networks = []
         self.ignore_ips = []
+        self.no_score_domains: list[str] = []
+        self.no_score_ips: list[ipaddress.IPv4Address | ipaddress.IPv6Address] = []
 
         # Local - do not tag IPs from these networks
         local_networks = self.config.get("local_networks", "").split(",")
@@ -37,6 +39,15 @@ class AssemblylineService(ServiceBase):
         for ip in ignore_ips:
             if ip:
                 self.ignore_ips.append(ipaddress.ip_address(ip))
+
+        # No score domains - do not set heuristics for these domains
+        self.no_score_domains = self.config.get("no_score_domains", "").split(",") or []
+        self.no_score_domains = [domain.strip() for domain in self.no_score_domains]
+        # No score IPs - do not set heuristics for these IPs
+        no_score_ips = self.config.get("no_score_ips", "").split(",") or []
+        for ip in no_score_ips:
+            if ip:
+                self.no_score_ips.append(ipaddress.ip_address(ip))
 
         self.command_timeout = int(self.config.get("command_timeout", 30))
         self.exfiltration_threshold = int(self.config.get("exfiltration_threshold_mb", 10)) * 10**6
@@ -89,6 +100,8 @@ class AssemblylineService(ServiceBase):
         max_packets = int(request.get_param("max_packets_analyzed") or 0)
         extract_files = bool(request.get_param("extract_files"))
         extract_streams = bool(request.get_param("extract_streams"))
+        score_external_http = bool(request.get_param("score_external_http"))
+        score_non_http_port = bool(request.get_param("score_non_http_port"))
 
         extractor = Extractor(
             request.file_path,
@@ -103,7 +116,7 @@ class AssemblylineService(ServiceBase):
         # 1) all IPs are safelisted, or
         # 2) all domains are safelisted, or
         # 3) all URIs are safelisted.
-        # Check in the service to avoid unnecessary data extraction fro PCAP.
+        # Check in the service to avoid unnecessary data extraction from PCAP.
         ips, domains, uris = extractor.get_iocs()
         safelisted_tags = self._exist_safelisted_tags(
             {
@@ -117,6 +130,7 @@ class AssemblylineService(ServiceBase):
         tcp_section.add_line(f"Found {len(extractor.conversations)} TCP conversations")
         for conv in extractor.conversations:
             is_safelisted = False
+            is_non_scoring = False
 
             protocol = conv.protocol.upper()
             conversation_section = ResultTextSection(
@@ -135,6 +149,8 @@ class AssemblylineService(ServiceBase):
                 conversation_section.add_tag("network.dynamic.ip", conv.dst_ip)
                 if str(conv.dst_ip) in safelisted_tags["network.dynamic.ip"]:
                     is_safelisted = True
+                if conv.dst_ip in self.no_score_ips:
+                    is_non_scoring = True
 
             if conv.hosts:
                 if not is_safelisted and all(
@@ -148,11 +164,17 @@ class AssemblylineService(ServiceBase):
                 for host, path in zip(conv.hosts, conv.uris):
                     conversation_section.add_tag("network.dynamic.domain", host)
                     conversation_section.add_tag("network.dynamic.uri", path)
+                    if host in self.no_score_domains:
+                        is_non_scoring = True
 
             if not is_safelisted:
-                if not conv.is_http:
+                if not conv.is_http and score_non_http_port and not is_non_scoring:
                     conversation_section.set_heuristic(2)
-                elif not source_local or not destination_local:
+                elif (
+                    (not source_local or not destination_local)
+                    and score_external_http
+                    and not is_non_scoring
+                ):
                     conversation_section.set_heuristic(1)
 
                 if extract_streams:

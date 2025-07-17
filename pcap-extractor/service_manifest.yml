@@ -19,6 +19,9 @@ config:
   ignore_ips: "192.168.0.1"
   command_timeout: 30
   exfiltration_threshold_mb: 10
+  # Following will still be extracted if not safelisted, but without attaching any heuristics
+  no_score_domains: ""
+  no_score_ips: ""
 
 submission_params:
   - default: 0
@@ -31,6 +34,14 @@ submission_params:
     value: true
   - default: true
     name: extract_streams
+    type: bool
+    value: true
+  - default: true
+    name: score_external_http
+    type: bool
+    value: true
+  - default: true
+    name: score_non_http_port
     type: bool
     value: true
 

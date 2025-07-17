@@ -47,7 +47,7 @@ COMMAND=
 ARGS=
 ARGS_INT=
 CONTAINER_NAME=${SERVICE_NAME}
-CONTAINER_NETWORK=al_registration
+CONTAINER_NETWORK=external
 PRIVILEGED=false
 run: build
 	docker run --rm --env SERVICE_API_HOST=http://al_service_server:5003 --network=${CONTAINER_NETWORK} \
