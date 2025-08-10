@@ -14,14 +14,15 @@ In addition, it can extract URLs from directory listings as URI files allowing t
 | proxy                            | str  | Proxy to use for the request (as http&https)         | None                   |
 | method                           | str  | HTTP method to use for the request                   | GET                    |
 | predefined_proxy                 | list | Select a predefined proxy to use                     | `none`                 |
+| timeout                          | int  | Timeout for the request                              | 60                     |
 
 In addition, you can specify following service parameters:
 
-| Name                             | Type | Description                                          | Default                |
-| -------------------------------- | ---- | ---------------------------------------------------- | ---------------------- |
-| timeout                          | int  | Timeout for the request in seconds                   | 150                    |
-| max_file_size                    | int  | Maximum file size to download in bytes               | 524288000 (500 MB)     |
-| proxies                          | dict | Dictionary of available predefined proxies           | `{"name": "uri"}`      |
+| Name                | Type | Description                                | Default            |
+| ------------------- | ---- | ------------------------------------------ | ------------------ |
+| max_request_timeout | int  | Maximum timeout for the request in seconds | 150                |
+| max_file_size       | int  | Maximum file size to download in bytes     | 524288000 (500 MB) |
+| proxies             | dict | Dictionary of available predefined proxies | `{"name": "uri"}`  |
 
 Service will abort downloading if file size is larger than the configured limit, but will still return related metadata
 (headers, redirects, etc.).
@@ -38,7 +39,15 @@ submission:
       display_name: "Download directory listings"
       params:
         services:
-          selected: ["Filtering", "Antivirus", "Static Analysis", "Extraction", "Networking", "Simple-Downloader"]
+          selected:
+            [
+              "Filtering",
+              "Antivirus",
+              "Static Analysis",
+              "Extraction",
+              "Networking",
+              "Simple-Downloader",
+            ]
         service_spec:
           Simple-Downloader:
             extract_dir_listing_as_urls: true
@@ -47,6 +56,7 @@ submission:
 ```
 
 ## AL URI file
+
 The request can also be controlled by submitting an AssemblyLine URI file. Example with the supported schema:
 
 ```yaml
@@ -54,8 +64,8 @@ The request can also be controlled by submitting an AssemblyLine URI file. Examp
 uri: http://xxx
 method: xxx
 headers:
-    Header1: Value1
-    Header2: Value2
+  Header1: Value1
+  Header2: Value2
 ```
 
 ## Proxies

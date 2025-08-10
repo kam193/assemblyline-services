@@ -29,7 +29,7 @@ class AssemblylineService(ServiceBase):
         super().__init__(config)
 
     def _load_config(self):
-        self.request_timeout = self.config.get("request_timeout", 60)
+        self.max_request_timeout = self.config.get("max_request_timeout", 150)
         self.max_file_size = self.config.get("max_file_size", 100 * 1024 * 1024)
         self.proxies = self.config.get("proxies", {})
 
@@ -40,13 +40,19 @@ class AssemblylineService(ServiceBase):
         self.log.info(f"{self.service_attributes.name} service started")
 
     def _download(
-        self, uri: str, output_path: str, headers: dict[str, str], method: str, proxy: str = None
+        self,
+        uri: str,
+        output_path: str,
+        headers: dict[str, str],
+        method: str,
+        proxy: str = None,
+        timeout: int = 60,
     ) -> requests.Response:
         response: requests.Response = requests.request(
             method,
             uri,
             headers=headers,
-            timeout=self.request_timeout,
+            timeout=timeout,
             stream=True,
             verify=False,
             proxies={"http": proxy, "https": proxy} if proxy else None,
@@ -101,8 +107,9 @@ class AssemblylineService(ServiceBase):
                 if not proxy:
                     raise ValueError(f"Predefined proxy '{predefined}' not found in configuration.")
 
+        timeout = min(self.max_request_timeout, request.get_param("timeout"))
         try:
-            response = self._download(uri, output_path, headers, method, proxy)
+            response = self._download(uri, output_path, headers, method, proxy, timeout)
 
             file_name = "downloaded_file"
             try:

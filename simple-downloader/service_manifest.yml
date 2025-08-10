@@ -14,7 +14,7 @@ is_external: true
 file_required: true
 
 config:
-  request_timeout: 150
+  max_request_timeout: 150
   # TODO: get it from AL config
   max_file_size: 524288000 # 500MB
   # Define the proxies here, and then select them in the predefined_proxy parameter
@@ -54,6 +54,10 @@ submission_params:
     value: "none"
     list:
       - none
+  - name: timeout
+    type: int
+    default: 60
+    value: 60
 
 
 # -1000: safe
