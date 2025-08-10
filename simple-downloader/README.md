@@ -15,6 +15,7 @@ In addition, it can extract URLs from directory listings as URI files allowing t
 | method                           | str  | HTTP method to use for the request                   | GET                    |
 | predefined_proxy                 | list | Select a predefined proxy to use                     | `none`                 |
 | timeout                          | int  | Timeout for the request                              | 60                     |
+| ignore_safelisted_hosts          | bool | Ignore URLs to hosts in the Safelist                 | false                  |
 
 In addition, you can specify following service parameters:
 

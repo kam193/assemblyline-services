@@ -1,6 +1,8 @@
+import hashlib
 import os
 import uuid
-from urllib.parse import urljoin
+from urllib.parse import urljoin, urlparse
+from ipaddress import ip_address
 
 import pyrfc6266
 import requests
@@ -76,6 +78,21 @@ class AssemblylineService(ServiceBase):
             return urljoin(uri + "/", path)
         return urljoin(uri, path)
 
+    def _is_safelisted(self, host: str) -> bool:
+        tag_type = "network.{}.domain"
+        try:
+            ip_address(host)
+            tag_type = "network.{}.ip"
+        except ValueError:
+            pass
+
+        for type_ in ["dynamic", "static"]:
+            qhash = hashlib.sha256(f"{tag_type.format(type_)}: {host}".encode("utf8")).hexdigest()
+            if self.api_interface.lookup_safelist(qhash):
+                return True
+
+        return False
+
     def execute(self, request: ServiceRequest) -> None:
         result = Result()
         request.result = result
@@ -94,6 +111,21 @@ class AssemblylineService(ServiceBase):
         uri = request.task.fileinfo.uri_info.uri.strip()
         output_path = f"{request.task.working_directory}/{uuid.uuid4()}"
         response = None
+
+        parts = urlparse(uri)
+        ignore_safelisted_hosts = request.get_param("ignore_safelisted_hosts")
+        if ignore_safelisted_hosts and self._is_safelisted(parts.hostname):
+            self.log.info("Ignoring safelisted host: %s", parts.hostname)
+            return
+
+        if not request.get_param("download_private_ip"):
+            try:
+                ip = ip_address(parts.hostname)
+                if ip.is_private:
+                    self.log.info("Ignoring private IP: %s", parts.hostname)
+                    return
+            except ValueError:
+                pass
 
         details_section = ResultMultiSection("Downloading details")
         status_part = TextSectionBody()

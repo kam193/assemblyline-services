@@ -19,6 +19,8 @@ config:
   max_file_size: 524288000 # 500MB
   # Define the proxies here, and then select them in the predefined_proxy parameter
   proxies: {"name": "uri"}
+  ignore_safelisted_hosts: false
+  download_private_ip: false
 
 
 submission_params:
