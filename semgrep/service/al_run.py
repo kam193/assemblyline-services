@@ -154,8 +154,7 @@ class AssemblylineService(ServiceBase):
         code = "".join(line.strip() for line in code.split("\n"))
         if not code:
             return ""
-        code_hash = hashlib.sha256(code.encode()).hexdigest()
-        return f"code.{code_hash}"
+        return hashlib.sha256(code.encode()).hexdigest()
 
     def _read_lines(self, lines_no: set[tuple[int, int]], first_line_no: int):
         lines = defaultdict(list)
@@ -255,9 +254,9 @@ class AssemblylineService(ServiceBase):
                     body=line[:MAX_LINE_SIZE],
                     parent=section,
                     zeroize_on_tag_safe=True,
-                    tags={"file.rule.semgrep": [code_hash, rule_id]},
+                    tags={"code.sha256": [code_hash], "file.rule.semgrep": [rule_id]},
                 )
-                section.add_tag("file.rule.semgrep", code_hash)
+                section.add_tag("code.sha256", code_hash)
                 # Looks like heuristic in subsections causes zeroization to fail
                 # subsection.set_heuristic(heuristic, signature=rule_id, attack_id=attack_id)
             yield section
