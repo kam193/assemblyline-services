@@ -1,6 +1,9 @@
 name: Kunai
 version: $SERVICE_TAG
-description: FIXME
+description: |
+  Simple service to submit files for dynamic analysis to Kunai sandbox (https://kunai.rocks/).
+  At the moment, the service does not generate any heuristics, but can extract network PCAPs and
+  execution graphs.
 enabled: true
 
 accepts: executable/linux/.*|code/shell
@@ -14,13 +17,33 @@ is_external: true
 
 config:
   KUNAI_URL: "https://sandbox.kunai.rocks/"
+  MAX_FILE_SIZE: 209715200 # 200 MB
+  ANALYSIS_TIMEOUT: 600 # 10 minutes
 
-# submission_params:
-#   - default: "auto"
-#     name: platform
-#     type: list
-#     value: "auto"
-#     list: ["auto", "linux"]
+submission_params:
+  # https://sandbox.kunai.rocks/api/sandboxes/list
+  - default: "auto"
+    name: sandbox
+    type: list
+    value: "auto"
+    list:
+      [
+        "auto",
+        "debian-12-amd64",
+        "debian-11-amd64",
+        "ubuntu-noble-amd64",
+        "ubuntu-oracular-amd64",
+        "ubuntu-jammy-amd64",
+        "ubuntu-focal-amd64",
+      ]
+  - default: false
+    name: force_resubmit
+    type: bool
+    value: false
+  - default: true
+    name: extract_pcap
+    type: bool
+    value: true
 
 # -1000: safe
 # 0 - 299: informative
@@ -41,7 +64,6 @@ docker_config:
   ram_mb: 512
   ram_mb_min: 256
   allow_internet_access: true
-
 # update_config:
 #   update_interval_seconds: 7200 # 2 hours
 #   generates_signatures: false

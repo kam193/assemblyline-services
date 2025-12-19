@@ -37,9 +37,9 @@ class AssemblylineService(ServiceBase):
     # def _load_rules(self) -> None:
     #     pass
 
-    def search_for_analysis(self, file_hash: str) -> str | None:
+    def search_for_analysis(self, file_hash: str, sandbox: str) -> str | None:
         search_url = urljoin(self.kunai_url, "/api/analyses/search")
-        results = requests.get(
+        results = self._session.get(
             search_url,
             params={"hash": file_hash},
         )
@@ -53,17 +53,22 @@ class AssemblylineService(ServiceBase):
         terminated = [a for a in analyses if a.get("status") in ["terminated", "completed"]]
         if terminated:
             terminated.sort(key=lambda x: x.get("date"), reverse=True)
-            return terminated[0].get("uuid")
+            if not sandbox or sandbox == "auto":
+                return terminated[0].get("uuid")
+            else:
+                for analysis in terminated:
+                    sandbox_info = self.get_sandbox_details(analysis.get("uuid"))
+                    if sandbox_info.get("name", "") == sandbox:
+                        return analysis.get("uuid")
         return None
 
-    def upload_file_for_analysis(self, file_handle) -> str:
+    def upload_file_for_analysis(self, file_handle, sandbox) -> str:
         upload_url = urljoin(self.kunai_url, "/api/analyze")
-        # FIXME: sandbox selection should be configurable
-        # FIXME: upload does not work
-        response = requests.post(
+        # TODO: allow sending original filename
+        response = self._session.post(
             upload_url,
-            data={"sandbox": "ubuntu-jammy-amd64"},
-            files={"file": ("file.ext", file_handle)},
+            data={"sandbox": sandbox} if sandbox and sandbox != "auto" else {},
+            files={"file": ("file.ext", file_handle, "multipart/form-data")},
             stream=True,
             headers={"Accept": "application/json"},
         )
@@ -71,11 +76,11 @@ class AssemblylineService(ServiceBase):
         if response.status_code != 200 or response.json().get("error"):
             self.log.error("Error uploading file for analysis: %s", response.text)
             raise RuntimeError(f"Error when uploading file for analysis: {response.text}")
-        return response.json().get("data", {}).get("uuid")
+        return response.json().get("data", "")
 
     def check_analysis_status(self, analysis_id: str) -> str:
         status_url = urljoin(self.kunai_url, f"/api/analysis/{analysis_id}/status")
-        response = requests.get(status_url)
+        response = self._session.get(status_url)
         if response.status_code != 200 or response.json().get("error"):
             self.log.error("Error checking analysis status: %s", response.text)
             raise RuntimeError(f"Error when checking analysis status {response.text}")
@@ -87,7 +92,7 @@ class AssemblylineService(ServiceBase):
     def download_graph_image(self, analysis_id: str) -> str:
         graph_url = urljoin(self.kunai_url, f"/api/analysis/{analysis_id}/graph")
         graph_path = path_join(self.working_directory, f"{analysis_id}_graph.svg")
-        with requests.get(graph_url, stream=True) as r:
+        with self._session.get(graph_url, stream=True) as r:
             r.raise_for_status()
             with open(graph_path, "wb") as f:
                 for chunk in r.iter_content(chunk_size=8192):
@@ -114,13 +119,12 @@ class AssemblylineService(ServiceBase):
         kv_body.set_item("Analysis Status", status)
 
         metadata_url = urljoin(self.kunai_url, f"/api/analysis/{analysis_id}/metadata")
-        metadata = requests.get(metadata_url).json().get("data", {})
+        metadata = self._session.get(metadata_url).json().get("data", {})
         kv_body.set_item("Analysis Date", metadata.get("analysis_date", "N/A"))
         kv_body.set_item("Magic", metadata.get("magic", "N/A"))
         kv_body.set_item("Submission Name", metadata.get("submission_name", "N/A"))
 
-        sandbox_url = urljoin(self.kunai_url, f"/api/analysis/{analysis_id}/sandbox")
-        sandbox_info = requests.get(sandbox_url).json().get("data", {})
+        sandbox_info = self.get_sandbox_details(analysis_id)
         for key, value in sandbox_info.items():
             kv_body.set_item(f"Sandbox {key.capitalize()}", str(value))
 
@@ -132,46 +136,64 @@ class AssemblylineService(ServiceBase):
         except Exception as e:
             self.log.exception("Error retrieving graph image: %r", e)
 
-        try:
-            pcap_path = path_join(self.working_directory, f"{analysis_id}_network.pcap")
-            pcap_url = urljoin(self.kunai_url, f"/api/analysis/{analysis_id}/pcap")
-            total_size = 0
-            with requests.get(pcap_url, stream=True) as r:
-                r.raise_for_status()
-                with open(pcap_path, "wb") as f:
-                    for chunk in r.iter_content(chunk_size=8192):
-                        f.write(chunk)
-                        total_size += len(chunk)
-                        if total_size > self.max_file_size:
-                            self.log.warning(
-                                "PCAP file size exceeded maximum limit, stopping download."
-                            )
-                            error_body = TextSectionBody()
-                            error_body.add_line(
-                                "PCAP file size exceeded maximum limit, not included."
-                            )
-                            section.add_section_part(error_body)
-                            raise RuntimeError("PCAP file size limit exceeded")
-            request.add_extracted(
-                pcap_path, f"{analysis_id}_network.pcap", "Network PCAP from Kunai Sandbox"
-            )
-        except Exception as e:
-            self.log.exception("Error retrieving PCAP file: %r", e)
+        if request.get_param("extract_pcap"):
+            try:
+                self._extract_pcap(analysis_id, request, section)
+            except Exception as e:
+                self.log.exception("Error retrieving PCAP file: %r", e)
 
-        # TODO: logs
+        # TODO: logs & process tree + heuristics
 
         return section
+
+    def _extract_pcap(self, analysis_id, request, section):
+        pcap_path = path_join(self.working_directory, f"{analysis_id}_network.pcap")
+        pcap_url = urljoin(self.kunai_url, f"/api/analysis/{analysis_id}/pcap")
+        total_size = 0
+        with self._session.get(pcap_url, stream=True) as r:
+            r.raise_for_status()
+            with open(pcap_path, "wb") as f:
+                for chunk in r.iter_content(chunk_size=8192):
+                    f.write(chunk)
+                    total_size += len(chunk)
+                    if total_size > self.max_file_size:
+                        self.log.warning(
+                            "PCAP file size exceeded maximum limit, stopping download."
+                        )
+                        error_body = TextSectionBody()
+                        error_body.add_line("PCAP file size exceeded maximum limit, not included.")
+                        section.add_section_part(error_body)
+                        raise RuntimeError("PCAP file size limit exceeded")
+        request.add_extracted(
+            pcap_path, f"{analysis_id}_network.pcap", "Network PCAP from Kunai Sandbox"
+        )
+
+    def get_sandbox_details(self, analysis_id):
+        sandbox_url = urljoin(self.kunai_url, f"/api/analysis/{analysis_id}/sandbox")
+        sandbox_info = self._session.get(sandbox_url).json().get("data", {})
+        return sandbox_info
 
     def execute(self, request: ServiceRequest) -> None:
         result = Result()
         request.result = result
 
+        self._session = requests.Session()
+        self._session.headers["User-Agent"] = "Assemblyline Kunai Service"
+
         file_hash = request.sha256
-        analysis_id = self.search_for_analysis(file_hash)
+        analysis_id = None
+        if not request.get_param("force_resubmit"):
+            analysis_id = self.search_for_analysis(file_hash, request.get_param("sandbox"))
+        if analysis_id:
+            self.log.info("Found existing analysis with ID: %s", analysis_id)
+
         if not analysis_id:
             with open(request.file_path, "rb") as f:
-                analysis_id = self.upload_file_for_analysis(f)
+                analysis_id = self.upload_file_for_analysis(f, request.get_param("sandbox"))
 
+            self.log.info(
+                "Uploaded file for analysis, received ID: %s. Awaiting completion...", analysis_id
+            )
             start_time = time.time()
             while time.time() - start_time < self.analysis_timeout:
                 status = self.check_analysis_status(analysis_id)

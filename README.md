@@ -46,6 +46,13 @@ files. Responses are cached. Currently supported services:
 - [Cymru Malware Hash Registr](https://www.team-cymru.com/mhr): identify well-known malware files. Only
   DNS queries are used. This service does not offer extended details (e.g. no malware name).
 
+### [Kunai](./kunai/)
+
+This is a simple service supporting analysis through [Kunai sandbox](https://kunai.rocks).
+The current version is a Work-In-Progress with a very simple functionality and no
+heuristics generated. By default, the public sandbox under https://sandbox.kunai.rocks/
+is used - please note, all submissions there are public!
+
 ### [Network Information](./network-information/)
 
 Service to get information about IPs and domains. Currently supported:
