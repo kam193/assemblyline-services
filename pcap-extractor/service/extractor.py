@@ -146,10 +146,11 @@ class Conversation:
         if "layers" in data:
             data = data["layers"]
         protocol = data.get("frame_protocols", [""])[0].split(":")[-1]
-        if protocol in IMPORTANT_PROTOCOLS and IMPORTANT_PROTOCOLS.index(
-            protocol
-        ) < IMPORTANT_PROTOCOLS.index(self.protocol):
-            self.protocol = protocol
+        if protocol in IMPORTANT_PROTOCOLS:
+            if self.protocol not in IMPORTANT_PROTOCOLS or IMPORTANT_PROTOCOLS.index(
+                protocol
+            ) < IMPORTANT_PROTOCOLS.index(self.protocol):
+                self.protocol = protocol
 
         if protocol == "http2":
             headers = data.get("http2_header_name", [])
