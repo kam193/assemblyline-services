@@ -17,6 +17,8 @@ TIMEOUT = 600
 FRESHCLAM_SOURCE_NAME = "freshclam"
 GENERATED_IGNORE_NAME = "_generated_ignore"
 
+NAME_VALIDATOR = re.compile(r"^[a-zA-Z0-9_\-\.]+$")
+
 
 class ClamavServiceUpdater(ServiceUpdater):
     def __init__(self, *args, **kwargs):
@@ -203,6 +205,10 @@ class ClamavServiceUpdater(ServiceUpdater):
         preprocessed = list()
         for sign in safelisted_av_signs["match"].get("av.virus_name", []):
             sign: str
+            if not NAME_VALIDATOR.match(sign):
+                # This is not a valid ClamAV signature name
+                # https://docs.clamav.net/manual/Signatures/SignatureNames.html
+                continue
             sign = sign.removeprefix("YARA.")
             sign = sign.removesuffix(".UNOFFICIAL")
             preprocessed.append(sign)
