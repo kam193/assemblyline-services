@@ -1,0 +1,83 @@
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/main/schemas/rule.json
+
+# TODO: this is inefficient, it would be better rather to generate a new rule
+# + there are multiple edges cases not covered yet
+
+id: csharp-replace-static-masked-call
+message: csharp-replace-static-masked-call
+language: CSharp
+rule:
+  pattern: $CALL
+  kind: member_access_expression
+  all:
+    - has:
+        kind: identifier
+        field: expression
+        pattern: $CLASS_NAME
+    - has:
+        kind: identifier
+        field: name
+        pattern: $METHOD_NAME
+    - inside:
+        kind: invocation_expression
+        field: function
+  inside:
+    stopBy: end
+    kind: class_declaration
+    precedes:
+      stopBy: end
+      kind: class_declaration
+      has:
+        field: name
+        pattern: $CLASS_NAME
+      all:
+        - has:
+            kind: declaration_list
+            has:
+              stopBy: end
+              kind: method_declaration
+              all:
+                - has:
+                    field: name
+                    pattern: $METHOD_NAME
+                - has:
+                    kind: parameter_list
+                    all:
+                      - has:
+                          nthChild: 1
+                          has:
+                            field: name
+                            pattern: $PARAMETER
+                      - not:
+                          has:
+                            nthChild: 2
+                - has:
+                    field: body
+                    not:
+                      has:
+                        pattern: $ANY
+                        not:
+                          kind: return_statement
+                    has:
+                      kind: return_statement
+                      has:
+                        pattern: $REAL_CALL
+                        kind: invocation_expression
+                        has:
+                          pattern: $INSIDE_FUNC
+                          kind: member_access_expression
+                        all:
+                          - has:
+                              kind: argument_list
+                              has:
+                                nthChild: 1
+                                kind: argument
+                                has:
+                                  kind: identifier
+                                pattern: $PARAMETER
+                              not:
+                                has:
+                                  nthChild: 2
+
+fix: $INSIDE_FUNC

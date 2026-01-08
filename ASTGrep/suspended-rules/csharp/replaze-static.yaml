@@ -1,0 +1,63 @@
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/main/schemas/rule.json
+
+id: csharp-replace-static-value-from-method
+message: csharp-replace-static-value-from-method
+language: CSharp
+rule:
+  pattern: $CALL
+  kind: invocation_expression
+  has:
+    kind: member_access_expression
+    field: function
+    all:
+      - has:
+          kind: identifier
+          field: expression
+          pattern: $CLASS_NAME
+      - has:
+          kind: identifier
+          field: name
+          pattern: $METHOD_NAME
+  inside:
+    stopBy: end
+    kind: method_declaration
+    follows:
+          stopBy: end
+          kind: method_declaration
+          all:
+            - has:
+                pattern: $METHOD_NAME
+                kind: identifier
+                field: name
+            - has:
+                kind: modifier
+                has:
+                  pattern: public
+            - has:
+                kind: modifier
+                has:
+                  pattern: static
+            - has:
+                field: body
+                has:
+                  kind: return_statement
+                  has:
+                    pattern: $STATIC_VALUE
+                    any:
+                      - kind: integer_literal
+                      - kind: string_literal
+                not:
+                  has:
+                    pattern: $ANY
+                    not:
+                      kind: return_statement
+            - inside:
+                kind: declaration_list
+                inside:
+                  kind: class_declaration
+                  has:
+                    field: name
+                    pattern: $CLASS_NAME
+
+fix: $STATIC_VALUE
