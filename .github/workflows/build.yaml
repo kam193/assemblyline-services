@@ -57,7 +57,7 @@ jobs:
         shell: bash {0}
         continue-on-error: true
       - name: Build container
-        if: steps.check-service-changed.outputs.exit-code != 0
+        # if: steps.check-service-changed.outputs.exit-code != 0
         run: |
           make build
           docker run --rm kam193/$(make print):latest cat service_manifest.yml
