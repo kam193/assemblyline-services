@@ -19,7 +19,7 @@ ENV SERVICE_PATH service.al_run.AssemblylineService
 USER root
 # gcc make libssl-dev zlib1g zlib1g-dev libbz2-dev libsqlite3-dev are needed for pyenv - TODO: extract to multi-stage build
 RUN --mount=type=secret,id=apt,target=/etc/apt/apt.conf.d/00cfg \
-    apt-get update && apt-get install -y curl gcc make libssl-dev zlib1g zlib1g-dev libbz2-dev libsqlite3-dev && apt-get upgrade -y
+    apt-get update && apt-get install -y curl gcc make libssl-dev zlib1g zlib1g-dev libbz2-dev libsqlite3-dev liblzma-dev libffi-dev && apt-get upgrade -y
 
 WORKDIR /opt/al_service
 
@@ -52,6 +52,7 @@ COPY . .
 
 USER root
 ARG BASE_TAG=4.6.0.stable
+ARG MANIFEST_REGISTRY=ghcr.io/
 RUN sed -i "s|\(image: \${REGISTRY}\).*\(kam193/.*\)|\1$MANIFEST_REGISTRY\2|g" service_manifest.yml && \
     sed -i "s/\$SERVICE_TAG/$BASE_TAG$(cat VERSION)/g" service_manifest.yml
 

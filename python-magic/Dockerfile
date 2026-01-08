@@ -35,6 +35,7 @@ USER assemblyline
 COPY . .
 
 USER root
+ARG MANIFEST_REGISTRY=ghcr.io/
 ARG BASE_TAG=4.6.0.stable
 RUN sed -i "s|\(image: \${REGISTRY}\).*\(kam193/.*\)|\1$MANIFEST_REGISTRY\2|g" service_manifest.yml && \
     sed -i "s/\$SERVICE_TAG/$BASE_TAG$(cat VERSION)/g" service_manifest.yml
