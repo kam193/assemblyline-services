@@ -60,6 +60,7 @@ jobs:
         if: steps.check-service-changed.outputs.exit-code != 0
         run: |
           make build
+          docker run --rm kam193/$(make print):latest cat service_manifest.yml
         # Tests based on real examples, not suitable to keep in the public repo
       - name: Checkout repository with test samples
         if: steps.check-service-changed.outputs.exit-code != 0 && matrix.service == 'ASTGrep'

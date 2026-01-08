@@ -20,7 +20,7 @@ manifest:
 
 CACHE=
 build: manifest
-	echo docker build -t kam193/${SERVICE_NAME}:latest \
+	docker build -t kam193/${SERVICE_NAME}:latest \
 		--build-arg REGISTRY=${REGISTRY} \
 		--build-arg BASE_IMAGE=${BASE_IMAGE} \
 		--build-arg MANIFEST_REGISTRY=${MANIFEST_REGISTRY} \
