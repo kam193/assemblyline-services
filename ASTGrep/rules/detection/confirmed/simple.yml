@@ -59,7 +59,7 @@ rule:
 metadata:
   extended-obfuscation: yes
   obfuscation-confirmed: yes
-  score: 50
+  score: 45
   max-score: 150
   deobfuscate: |
     {
