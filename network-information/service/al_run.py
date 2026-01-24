@@ -60,6 +60,7 @@ class AssemblylineService(ServiceBase):
         if isinstance(self._warn_newer_than, int):
             self._warn_newer_than = timedelta(days=self._warn_newer_than)
         self._worker_count = self.config.get("worker_count", 7)
+        self._max_lookups = self.config.get("max_lookups", 300)
 
     def start(self):
         self.log.info(f"start() from {self.service_attributes.name} service called")
@@ -203,7 +204,7 @@ class AssemblylineService(ServiceBase):
         self.redis_client.set(cache_key, json.dumps(domain_info or {}), ex=self._cache_ttl)
         return domain_info or None
 
-    def _handle_domain(self, domain: str, warn_new_domain: bool) -> ResultTableSection:
+    def _handle_domain(self, domain: str, warn_new_domain: bool) -> ResultTableSection | None:
         try:
             domain_info = self._call_cached_whois(domain)
         except Exception as exc:
@@ -279,6 +280,13 @@ class AssemblylineService(ServiceBase):
                 self.log.warning("Error parsing URI/Domain %s: %s", path, exc, exc_info=True)
 
         main_section = ResultTextSection("Domain Information")
+        if len(top_domains) > self._max_lookups:
+            main_section.add_line(
+                f"Number of unique domains ({len(top_domains)}) exceeds the maximum "
+                f"allowed lookups ({self._max_lookups}). Not all domains were processed."
+            )
+            top_domains = sorted(top_domains)[: self._max_lookups]
+
         domain_sections = self.worker_pool.starmap(
             self._handle_domain,
             ((domain, domain in domains_to_check_creation) for domain in sorted(top_domains)),

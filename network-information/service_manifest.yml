@@ -22,6 +22,8 @@ config:
   whois_result_cache_ttl: 604800
   # number of threads used to process the data
   worker_count: 7
+  # max number of online/cached lookups per file
+  max_lookups: 300
 
 submission_params:
   - name: ip_mmdb_lookup
