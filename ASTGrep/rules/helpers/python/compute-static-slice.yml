@@ -26,6 +26,7 @@ rule:
     - any:
         - pattern: $_[$SLICE_START:$SLICE_END:$SLICE_STEP]
         - pattern: $_[$SLICE_START:$SLICE_END]
+        - pattern: $_[$SLICE_START::$SLICE_STEP]
         - pattern: $_[:$SLICE_END]
         - pattern: $_[::$SLICE_STEP]
         - pattern: $_[:]

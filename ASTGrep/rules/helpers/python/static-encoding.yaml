@@ -41,3 +41,46 @@ metadata:
         {"func": "quote", "source": "STRING"}
       ]
     }
+
+---
+
+# yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/main/schemas/rule.json
+
+id: python-encode-static-string-no-args
+message: Evaluating static expressions
+language: Python
+rule:
+  kind: call
+  all:
+    - has:
+        field: function
+        kind: attribute
+        all:
+          - has:
+              field: object
+              kind: string
+              pattern: $STRING
+          - has:
+              field: attribute
+              kind: identifier
+              pattern: encode
+    - has:
+        field: arguments
+        kind: argument_list
+        not:
+          has:
+            nthChild: 1
+
+
+metadata:
+  extended-obfuscation: yes
+  confirmed-obfuscation: no
+  deobfuscate: |
+    {
+      "type": "fix-generate",
+      "steps": [
+        {"func": "dequote", "source": "STRING"},
+        {"func": "encode", "source": "STRING", "encoding": "utf-8"},
+        {"func": "quote", "source": "STRING"}
+      ]
+    }

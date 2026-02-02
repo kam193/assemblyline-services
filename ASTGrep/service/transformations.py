@@ -527,3 +527,49 @@ def rstrip(config: dict, context: dict) -> str:
     if chars is not None and context.get(chars):
         return context[source].rstrip(context[chars])
     return context[source].rstrip()
+
+
+def zabit_decode(config: dict, context: dict) -> str:
+    """Decode Zabit obfuscation technique.
+
+    The obfuscation uses Unicode combining characters encoded as bytes,
+    then processes pairs of bytes with bitwise operations to produce the decoded string.
+
+    Pattern: chr(((h<<num1&num2|c&num3)+num4)%num5+num6) for h,c in zip(data[slice1], data[slice2])
+    """
+
+    source1 = config.get("source1", "STRING1")
+    source2 = config.get("source2", "STRING2")
+    num1 = config.get("num1", "NUM1")
+    num2 = config.get("num2", "NUM2")
+    num3 = config.get("num3", "NUM3")
+    num4 = config.get("num4", "NUM4")
+    num5 = config.get("num5", "NUM5")
+    num6 = config.get("num6", "NUM6")
+    slice1 = config.get("slice1", "SLICE1")
+    slice2 = config.get("slice2", "SLICE2")
+
+    # Get the data variable name from context
+    source_string1 = context[source1]
+    source_string2 = context[source2]
+
+    if not isinstance(source_string1, bytes):
+        raise TransformationRejected("Source STRING1 is not bytes")
+    if not isinstance(source_string2, bytes):
+        raise TransformationRejected("Source STRING2 is not bytes")
+
+    # Parse numeric values
+    n1 = int(context[num1])
+    n2 = int(context[num2])
+    n3 = int(context[num3])
+    n4 = int(context[num4])
+    n5 = int(context[num5])
+    n6 = int(context[num6])
+
+    # Apply the decoding algorithm
+    result = []
+    for h, c in zip(source_string1, source_string2):
+        decoded_char = chr(((h << n1 & n2 | c & n3) + n4) % n5 + n6)
+        result.append(decoded_char)
+
+    return "".join(result)

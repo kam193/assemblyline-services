@@ -1,0 +1,58 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/main/schemas/rule.json
+
+id: python-obfuscation-zabit
+message: Zabit obfuscation technique detected - uses Unicode combining characters with bitwise decoding
+language: Python
+severity: error
+rule:
+  pattern: $JOINER.join(chr((($VAR1<<$NUM1&$NUM2|$VAR2&$NUM3)+$NUM4)%$NUM5+$NUM6)for $VAR1,$VAR2 in zip($STRING1, $STRING2))
+
+constraints:
+  VAR1:
+    kind: identifier
+  VAR2:
+    kind: identifier
+  STRING1:
+    kind: string
+  STRING2:
+    kind: string
+  NUM1:
+    kind: integer
+  NUM2:
+    kind: integer
+  NUM3:
+    kind: integer
+  NUM4:
+    kind: integer
+  NUM5:
+    kind: integer
+  NUM6:
+    kind: integer
+
+metadata:
+  category: obfuscation
+  extended-obfuscation: yes
+  confirmed-obfuscation: yes
+  deobfuscate:
+    type: fix-generate
+    steps:
+      - func: "dequote"
+        decode: false
+        source: STRING1
+      - func: "dequote"
+        decode: false
+        source: STRING2
+      - func: zabit_decode
+        var1: VAR1
+        var2: VAR2
+        num1: NUM1
+        num2: NUM2
+        num3: NUM3
+        num4: NUM4
+        num5: NUM5
+        num6: NUM6
+        source1: STRING1
+        source2: STRING2
+        output: DECODED
+      - func: "quote"
+        source: DECODED
