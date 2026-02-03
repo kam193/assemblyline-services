@@ -130,14 +130,18 @@ class SemgrepScanController:
             cmd.append(f"--{option}")
             cmd.append(value)
 
-        with self._lock:
-            result = subprocess.run(
-                cmd + self._active_rules + [file_path],
-                capture_output=True,
-                text=True,
-                timeout=self.cli_timeout,
-            )
-            rules_prefix = self._active_rules_prefix
+        try:
+            with self._lock:
+                result = subprocess.run(
+                    cmd + self._active_rules + [file_path],
+                    capture_output=True,
+                    text=True,
+                    timeout=self.cli_timeout,
+                )
+                rules_prefix = self._active_rules_prefix
+        except subprocess.TimeoutExpired as e:
+            self.log.error("Semgrep command timed out: %s", e)
+            raise SemgrepTimeoutError("Semgrep command timed out") from e
 
         self.log.debug("Semgrep result: %s", result.stdout)
 

@@ -22,6 +22,7 @@ from .controller import (
     SemgrepError,
     SemgrepLSPController,
     SemgrepScanController,
+    SemgrepTimeoutError,
     UnsupportedLanguageError,
 )
 from .helpers import configure_yaml
@@ -79,6 +80,7 @@ class AssemblylineService(ServiceBase):
         self.metadata_cache = {}
         self._fallback_semgrep = None
         self.fallback_to_scan = self.config.get("FALLBACK_TO_SCAN", True)
+        self.silent_timeouts = self.config.get("SILENT_TIMEOUTS", True)
 
         self.use_lsp = self.config.get("USE_LANGUAGE_SERVER_PROTOCOL", True)
         if self.use_lsp:
@@ -308,7 +310,9 @@ class AssemblylineService(ServiceBase):
         except (UnsupportedLanguageError, UnsupportedFileError):
             self.log.warning(f"Unsupported language: {self._request.file_type}")
             return
-        except TimeoutError:
+        except SemgrepTimeoutError:
+            if not self.silent_timeouts:
+                raise
             err_section = ResultTextSection("Failed to process file")
             err_section.add_line(
                 "Timeout reached while processing file. The file may be too large, too complex"
