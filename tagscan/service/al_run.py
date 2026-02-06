@@ -5,6 +5,7 @@ from threading import RLock
 
 import hyperscan
 import yaml
+from assemblyline.common import forge
 from assemblyline.common.chunk import chunk
 from assemblyline.common.exceptions import RecoverableError
 from assemblyline_v4_service.common.base import ServiceBase
@@ -41,6 +42,7 @@ class AssemblylineService(ServiceBase):
         self.rules_meta: dict[str, list] = {}
         self.tags_to_scan: set[str] = set()
         self._matches: dict[str, set[tuple[str, int]]] = {}
+        self.classification = forge.get_classification()
 
     def _load_config(self):
         pass
@@ -187,6 +189,7 @@ class AssemblylineService(ServiceBase):
                     f"[{sig_meta.get('source', '')}] {sig_meta.get('name', '')}",
                     body=body_data,
                     zeroize_on_tag_safe=True,
+                    classification=sig_meta.get("classification", self.classification.UNRESTRICTED),
                 )
 
                 if not sig_meta or sig_meta.get("status", "") != "NOISY":

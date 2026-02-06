@@ -8,6 +8,7 @@ from threading import RLock
 from typing import Any, Generator, Iterable
 
 import yaml
+from assemblyline.common import forge
 from assemblyline.common.exceptions import RecoverableError
 from assemblyline_v4_service.common.base import UPDATES_DIR, ServiceBase
 from assemblyline_v4_service.common.request import ServiceRequest
@@ -81,6 +82,7 @@ class AssemblylineService(ServiceBase):
         self._fallback_semgrep = None
         self.fallback_to_scan = self.config.get("FALLBACK_TO_SCAN", True)
         self.silent_timeouts = self.config.get("SILENT_TIMEOUTS", True)
+        self.classification = forge.get_classification()
 
         self.use_lsp = self.config.get("USE_LANGUAGE_SERVER_PROTOCOL", True)
         if self.use_lsp:
@@ -105,10 +107,19 @@ class AssemblylineService(ServiceBase):
 
         def _rebuild_rule(rule_lines: list[str]) -> dict:
             rule = yaml.safe_load("".join(rule_lines))
+            original_id = rule["id"]
             full_id = f"{source_name}.{rule['id']}"
             if self.use_lsp:
                 rule["id"] = f"{source_name}.{rule['id']}"
                 metadata[full_id] = rule.get("metadata", {})
+            try:
+                # TODO: looks like signatures_meta can have issues with duplicated rule ids?
+                metadata[full_id]["classification"] = self.signatures_meta[original_id][
+                    "classification"
+                ]
+                metadata[full_id]["al_status"] = self.signatures_meta[original_id]["status"]
+            except Exception:
+                self.log.exception(f"Error loading signatures meta for rule {full_id}")
             return rule
 
         def _dump_rules(
@@ -220,7 +231,9 @@ class AssemblylineService(ServiceBase):
             section = ResultTextSection(
                 title,
                 zeroize_on_tag_safe=True,
+                classification=metadata.get("classification", self.classification.UNRESTRICTED),
             )
+            # TODO: respect noisy signatures
             section.add_line(message)
             section.set_heuristic(heuristic, signature=rule_id, attack_id=attack_id)
 
@@ -257,6 +270,7 @@ class AssemblylineService(ServiceBase):
                     parent=section,
                     zeroize_on_tag_safe=True,
                     tags={"code.sha256": [code_hash], "file.rule.semgrep": [rule_id]},
+                    classification=metadata.get("classification", self.classification.UNRESTRICTED),
                 )
                 section.add_tag("code.sha256", code_hash)
                 # Looks like heuristic in subsections causes zeroization to fail
