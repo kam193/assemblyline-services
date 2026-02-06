@@ -19,6 +19,13 @@ rule:
 
 fix: $VALUE
 
+constraints:
+  VALUE:
+    not:
+      kind: call
+      has:
+        kind: attribute
+
 metadata:
   extended-obfuscation: yes
   confirmed-obfuscation: yes

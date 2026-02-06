@@ -1,2 +1,7 @@
 mol = bool
 co2 = str
+name = dictionary.get("name") if dictionary.get("name") else APIHelper.SKIP
+name =\
+    dictionary.get("name")\
+    if dictionary.get("name")\
+        else APIHelper.SKIP
