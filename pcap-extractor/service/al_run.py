@@ -8,6 +8,7 @@ from assemblyline_v4_service.common.base import ServiceBase
 from assemblyline_v4_service.common.request import ServiceRequest
 from assemblyline_v4_service.common.result import (
     Result,
+    ResultJSONSection,
     ResultMemoryDumpSection,
     ResultTextSection,
 )
@@ -16,6 +17,7 @@ from assemblyline_v4_service.common.task import MaxExtractedExceeded
 from .extractor import Extractor, bytes_to_human
 
 CHUNK_SIZE = 1000
+DEBUG = os.getenv("DEBUG", False)
 
 
 class AssemblylineService(ServiceBase):
@@ -191,6 +193,11 @@ class AssemblylineService(ServiceBase):
                         conversation_section.add_line(
                             "No data flow sample available, try increase limits"
                         )
+
+                if DEBUG:
+                    details = ResultJSONSection("Conversation debugging details")
+                    details.set_json(conv.data or [])
+                    conversation_section.add_subsection(details)
             else:
                 conversation_section.add_line(
                     "Skipping data extractions for the safelisted conversation"

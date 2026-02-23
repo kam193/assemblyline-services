@@ -8,6 +8,8 @@ from dataclasses import dataclass, field
 from functools import lru_cache
 from typing import Iterable
 
+DEBUG = os.getenv("DEBUG", False)
+
 TSHARK_PATH = "/usr/bin/tshark"
 # Assuming tshark uses proper SI units
 UNITS_TABLE = {
@@ -85,6 +87,8 @@ class Conversation:
     paths: list[str] = field(default_factory=list)
     http2_substreams: int = 0
 
+    data: list[dict | None] = field(default_factory=list)
+
     @property
     def is_http(self) -> bool:
         return self.dst_port in [80, 443] or self.src_port in [80, 443]
@@ -125,6 +129,7 @@ class Conversation:
             int(data.get("tcp_dstport", [0])[0]),
             stream_id=int(tcp_stream),
             protocol=protocol,
+            data=[data] if DEBUG else [],
         )
 
         if protocol == "http2":
@@ -145,12 +150,17 @@ class Conversation:
     def update(self, data: dict):
         if "layers" in data:
             data = data["layers"]
-        protocol = data.get("frame_protocols", [""])[0].split(":")[-1]
-        if protocol in IMPORTANT_PROTOCOLS:
-            if self.protocol not in IMPORTANT_PROTOCOLS or IMPORTANT_PROTOCOLS.index(
-                protocol
-            ) < IMPORTANT_PROTOCOLS.index(self.protocol):
-                self.protocol = protocol
+        if DEBUG:
+            self.data.append(data)
+        protocol = ""
+        # protocol = data.get("frame_protocols", [""])[0].split(":")[-1]
+        for protocol in reversed(data.get("frame_protocols", [""])[0].split(":")[1:]):
+            if protocol in IMPORTANT_PROTOCOLS:
+                if self.protocol not in IMPORTANT_PROTOCOLS or IMPORTANT_PROTOCOLS.index(
+                    protocol
+                ) < IMPORTANT_PROTOCOLS.index(self.protocol):
+                    self.protocol = protocol
+                break
 
         if protocol == "http2":
             headers = data.get("http2_header_name", [])
