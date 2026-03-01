@@ -1,0 +1,28 @@
+x-register_service: &register_service
+  extends:
+    file: ./common/service.yaml
+    service: register_service
+
+services:
+  # Bootstrap the assemblyline system by creating an admin user
+  first_time_setup:
+    image: ${REGISTRY}cccs/assemblyline-core:${AL_VERSION}
+    env_file: [".env"]
+    volumes:
+      - ${COMPOSE_ROOT}/config/config.yml:/etc/assemblyline/config.yml:ro
+      - ${COMPOSE_ROOT}/config/bootstrap.py:/tmp/bootstrap.py:ro
+      - ${COMPOSE_ROOT}/config/classification.yml:/etc/assemblyline/classification.yml:ro
+    command: python3 /tmp/bootstrap.py
+    networks: [core]
+
+networks:
+  core:
+    name: ${COMPOSE_PROJECT_NAME}_core
+    external: true
+  registration:
+    name: ${COMPOSE_PROJECT_NAME}_registration
+    external: true
+
+volumes:
+  filestore:
+  datastore:

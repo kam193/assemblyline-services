@@ -1,0 +1,54 @@
+filebeat.inputs:
+  - type: container
+    format: docker
+    paths:
+      - '/var/lib/docker/containers/*/*.log'
+    stream: "all"
+    json:
+      keys_under_root: true
+      message_key: message
+      ignore_decoding_error: true
+    processors:
+      - rename:
+          fields:
+            - from: "error"
+              to: "error.message"
+          ignore_missing: true
+      - script:
+          lang: javascript
+          id: log_level
+          source: >
+            function process(event) {
+                var value = event.Get("log.level");
+                if (value === null){
+                  value = "INFO"
+                }
+                else if (value.toLowerCase() == "warn"){
+                  value = "WARNING"
+                }
+                else if (value.toLowerCase() == "err"){
+                  value = "ERROR"
+                }
+                event.Put("log.level", value.toUpperCase());
+            }
+
+logging:
+  level: warning
+  json: true
+
+processors:
+  - add_cloud_metadata: ~
+  - add_docker_metadata: ~
+
+output.elasticsearch:
+  hosts: ${ELASTIC_HOSTS}
+  username: ${ELASTIC_USERNAME}
+  password: ${ELASTIC_PASSWORD}
+
+setup.template.settings:
+  index.number_of_shards: 1
+  index.number_of_replicas: 0
+
+setup.ilm:
+  enabled: true
+  policy_file: /usr/share/filebeat/filebeat_policy.json

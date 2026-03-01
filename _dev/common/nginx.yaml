@@ -1,0 +1,21 @@
+services:
+  nginx:
+    image: ${REGISTRY}cccs/nginx-ssl-frontend
+    ports:
+      - '8443:443'
+    environment:
+      - DOLLAR=$$
+      - UI_HOST=ui
+      - SOCKET_HOST=socketio
+      - FRONTEND_HOST=frontend
+      - FQDN=${DOMAIN}
+      - MAX_BODY_SIZE=100M
+      - WORKERS=${WORKERS}
+    volumes:
+      - ${COMPOSE_ROOT}/../config/nginx.crt:/etc/ssl/nginx.crt:ro
+      - ${COMPOSE_ROOT}/../config/nginx.key:/etc/ssl/nginx.key:ro
+      - ${COMPOSE_ROOT}/../config/nginx.conf:/etc/nginx/nginx.conf:ro
+    networks:
+      - core
+      - external
+    restart: unless-stopped
