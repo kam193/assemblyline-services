@@ -1,8 +1,8 @@
 import hashlib
 import os
 import uuid
-from urllib.parse import urljoin, urlparse
 from ipaddress import ip_address
+from urllib.parse import urljoin, urlparse
 
 import pyrfc6266
 import requests
@@ -34,6 +34,7 @@ class AssemblylineService(ServiceBase):
         self.max_request_timeout = self.config.get("max_request_timeout", 150)
         self.max_file_size = self.config.get("max_file_size", 100 * 1024 * 1024)
         self.proxies = self.config.get("proxies", {})
+        self.download_private_ip = self.config.get("download_private_ip", False)
 
     def start(self):
         self.log.info(f"start() from {self.service_attributes.name} service called")
@@ -118,7 +119,7 @@ class AssemblylineService(ServiceBase):
             self.log.info("Ignoring safelisted host: %s", parts.hostname)
             return
 
-        if not request.get_param("download_private_ip"):
+        if not self.download_private_ip:
             try:
                 ip = ip_address(parts.hostname)
                 if ip.is_private:

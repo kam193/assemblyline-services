@@ -13,7 +13,7 @@ services:
         interval: 30s
         timeout: 30s
         retries: 3
-    networks: [core]
+    networks: [core, test_updates]
     volumes:
       - datastore:/usr/share/elasticsearch/data
     restart: unless-stopped

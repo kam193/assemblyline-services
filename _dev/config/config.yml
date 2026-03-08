@@ -53,3 +53,4 @@ submission:
       method: POST
       replace_pattern: "{SHA256}"
       url: https://mb-api.abuse.ch/api/v1/
+  max_file_size: 524288000 # 500MB

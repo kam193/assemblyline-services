@@ -132,6 +132,14 @@ class AssemblylineServiceUpdater(ServiceUpdater):
             if hashes == old_hashes:
                 self.log.debug("No changes in Badlist")
                 self.push_status("DONE", "Skipped.")
+
+                if len(hashes) == 0:
+                    # copy empty file to prevent sanity check from going crazy
+                    shutil.copytree(
+                        tmpdir,
+                        f"{self.latest_updates_dir}/{self._current_source}",
+                        dirs_exist_ok=True,
+                    )
                 return
 
             f.close()
@@ -158,7 +166,9 @@ class AssemblylineServiceUpdater(ServiceUpdater):
         super().do_source_update(service)
         self._clean_up_old_sources(service, self.latest_updates_dir)
 
-    def import_update(self, files_sha256, source, default_classification=None, *args, **kwargs) -> None:
+    def import_update(
+        self, files_sha256, source, default_classification=None, *args, **kwargs
+    ) -> None:
         # TODO: preprocess updates
         output_dir = os.path.join(self.latest_updates_dir, source)
         os.makedirs(os.path.join(self.latest_updates_dir, source), exist_ok=True)

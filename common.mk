@@ -1,12 +1,13 @@
 REGISTRY?=
 PUSH_REGISTRY?=
-BASE_IMAGE?=${REGISTRY}/cccs/assemblyline-v4-service-base:4.6.stable
+BASE_IMAGE?=${REGISTRY}cccs/assemblyline-v4-service-base:4.7.stable
 AL_SERVICE_NAME=Template
 SERVICE_NAME=assemblyline-service-$(shell echo ${AL_SERVICE_NAME} | tr '[:upper:]' '[:lower:]')
-BASE_TAG?=4.6.0.stable
-SERVICE_TAG=4.6.stable
+BASE_TAG?=4.7.0.stable
+SERVICE_TAG=4.7.stable
 APT_CFG_MOUNT?=../empty
 PYPI_CFG?=../empty
+SERVICE_API_KEY?=password_789
 
 MANIFEST_REGISTRY?=
 
@@ -47,14 +48,14 @@ COMMAND=
 ARGS=
 ARGS_INT=
 CONTAINER_NAME=${SERVICE_NAME}
-CONTAINER_NETWORK=external
-PRIVILEGED=false
+CONTAINER_NETWORK=al_test_services
 run: build
-	docker run --rm --env SERVICE_API_HOST=http://al_service_server:5003 --network=${CONTAINER_NETWORK} \
+	docker run --rm --env SERVICE_API_HOST=http://service_server:5003 --network=${CONTAINER_NETWORK} \
 	-e LOG_LEVEL=DEBUG \
-	-v "${PWD}/../config.yml:/etc/assemblyline/config.yml" \
+	-v "${PWD}/../_dev/config/config.yml:/etc/assemblyline/config.yml" \
+	-v "${PWD}/../_dev/config/classification.yml:/etc/assemblyline/classification.yml" \
 	-e AL_SERVICE_NAME=${AL_SERVICE_NAME} \
-	-e PRIVILEGED=${PRIVILEGED} \
+	-e SERVICE_API_KEY=${SERVICE_API_KEY} \
 	${ARGS} \
 	${ARGS_INT} \
 	--name ${CONTAINER_NAME} kam193/${SERVICE_NAME}:latest ${COMMAND}
@@ -66,16 +67,19 @@ run-with-host: run
 run-updater: build
 run-updater: COMMAND=python -m service.updater
 run-updater: CONTAINER_NAME=${SERVICE_NAME}_update
-run-updater: CONTAINER_NETWORK=external
-run-updater: ARGS_INT=-e AL_INSTANCE_KEY=changeme -e UPDATER_DIR=/tmp/updater
+run-updater: CONTAINER_NETWORK=al_test_updates
+run-updater: ARGS_INT=-e AL_INSTANCE_KEY=changeme -e UPDATER_DIR=/tmp/updater -e ELASTIC_PASSWORD=password_456 -e FILESTORE_PASSWORD=password_123
 run-updater: run
 
 run-with-updates: ARGS_INT=-e updates_host=${SERVICE_NAME}_update -e updates_port=5003 -e updates_key=changeme
-run-with-updates: CONTAINER_NETWORK=external
+run-with-updates: CONTAINER_NETWORK=al_test_updates
 run-with-updates: run
 
-run-with-external: CONTAINER_NETWORK=external
+# run-with-external: CONTAINER_NETWORK=external
 run-with-external: run
+
+register: ARGS_INT=-e REGISTER_ONLY=true
+register: run
 
 pull-base:
 	docker pull ${BASE_IMAGE}
@@ -84,7 +88,7 @@ refresh: CACHE="--no-cache"
 refresh: pull-base
 refresh: build
 
-run-dep: CONTAINER_NETWORK=external
+# run-dep: CONTAINER_NETWORK=external
 run-dep:
 	docker run --rm --network=${CONTAINER_NETWORK} --name ${CONTAINER_NAME} ${ARGS} ${IMAGE} ${COMMAND}
 
@@ -109,10 +113,12 @@ format:
 	WORK_DIR=$$(pwd) tox -e format -c ../tox.ini
 
 al-service:
-	docker run --rm --env SERVICE_API_HOST=http://al_service_server:5003 --network=${CONTAINER_NETWORK} \
+	docker run --rm --env SERVICE_API_HOST=http://service_server:5003 --network=${CONTAINER_NETWORK} \
 		-e LOG_LEVEL=DEBUG \
-		-v "${PWD}/../config.yml:/etc/assemblyline/config.yml" \
+		-v "${PWD}/../_dev/config/config.yml:/etc/assemblyline/config.yml" \
+		-v "${PWD}/../_dev/config/classification.yml:/etc/assemblyline/classification.yml" \
 		-e AL_SERVICE_NAME=${AL_SERVICE_NAME} \
+		-e SERVICE_API_KEY=${SERVICE_API_KEY} \
 		${ARGS} \
 		${ARGS_INT} \
 		--name ${CONTAINER_NAME} ${SERVICE_IMAGE} ${COMMAND}
@@ -122,33 +128,33 @@ service-extract: SERVICE_IMAGE=${REGISTRY}/cccs/assemblyline-service-extract:${S
 service-extract: al-service
 
 service-frankenstrings: CONTAINER_NAME=al-service-frankenstrings
-service-frankenstrings: SERVICE_IMAGE=${REGISTRY}/cccs/assemblyline-service-frankenstrings:${SERVICE_TAG}
+service-frankenstrings: SERVICE_IMAGE=${REGISTRY}cccs/assemblyline-service-frankenstrings:${SERVICE_TAG}
 service-frankenstrings: al-service
 
 service-yara-updater: CONTAINER_NAME=al-service-yara-updater
 service-yara-updater: COMMAND=python -m yara_.update_server
 service-yara-updater: AL_SERVICE_NAME=YARA
-service-yara-updater: SERVICE_IMAGE=${REGISTRY}/cccs/assemblyline-service-yara:${SERVICE_TAG}
-service-yara-updater: CONTAINER_NETWORK=external
+service-yara-updater: SERVICE_IMAGE=${REGISTRY}cccs/assemblyline-service-yara:${SERVICE_TAG}
+# service-yara-updater: CONTAINER_NETWORK=external
 service-yara-updater: ARGS_INT=-e AL_INSTANCE_KEY=changeme -e UPDATER_DIR=/tmp/updater -e SERVICE_PATH=yara_.yara_.Yara -e LOG_LEVEL=DEBUG
 service-yara-updater: al-service
 
 service-yara: CONTAINER_NAME=al-service-yara
-service-yara: SERVICE_IMAGE=${REGISTRY}/cccs/assemblyline-service-yara:${SERVICE_TAG}
+service-yara: SERVICE_IMAGE=${REGISTRY}cccs/assemblyline-service-yara:${SERVICE_TAG}
 service-yara: ARGS_INT=-e updates_host=al-service-yara-updater -e updates_port=5003 -e updates_key=changeme
-service-yara: CONTAINER_NETWORK=external
+# service-yara: CONTAINER_NETWORK=external
 service-yara: al-service
 
 service-badlist-updater: CONTAINER_NAME=al-service-badlist-updater
 service-badlist-updater: COMMAND=python -m badlist.update_server
 service-badlist-updater: AL_SERVICE_NAME=Badlist
-service-badlist-updater: SERVICE_IMAGE=${REGISTRY}/cccs/assemblyline-service-badlist:${SERVICE_TAG}
-service-badlist-updater: CONTAINER_NETWORK=external
+service-badlist-updater: SERVICE_IMAGE=${REGISTRY}cccs/assemblyline-service-badlist:${SERVICE_TAG}
+# service-badlist-updater: CONTAINER_NETWORK=external
 service-badlist-updater: ARGS_INT=-e AL_INSTANCE_KEY=changeme -e UPDATER_DIR=/tmp/updater -e SERVICE_PATH=badlist_.badlist_.Badlist -e LOG_LEVEL=DEBUG
 service-badlist-updater: al-service
 
 service-badlist: CONTAINER_NAME=al-service-badlist
-service-badlist: SERVICE_IMAGE=${REGISTRY}/cccs/assemblyline-service-badlist:${SERVICE_TAG}
+service-badlist: SERVICE_IMAGE=${REGISTRY}cccs/assemblyline-service-badlist:${SERVICE_TAG}
 service-badlist: ARGS_INT=-e updates_host=al-service-badlist-updater -e updates_port=5003 -e updates_key=changeme
-service-badlist: CONTAINER_NETWORK=external
+# service-badlist: CONTAINER_NETWORK=external
 service-badlist: al-service

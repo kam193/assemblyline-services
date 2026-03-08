@@ -42,7 +42,7 @@ services:
       MINIO_ROOT_USER: al_storage_key
       MINIO_ROOT_PASSWORD: "${FILESTORE_PASSWORD}"
     command: server /data
-    networks: [core]
+    networks: [core, test_updates]
     volumes:
     - filestore:/data
     restart: unless-stopped
@@ -183,7 +183,7 @@ services:
       - redis:/data
     command: redis-server --io-threads 2
     restart: unless-stopped
-    networks: [core]
+    networks: [core, test_updates]
 
   nginx_minimal:
     container_name: nginx
@@ -228,17 +228,17 @@ services:
     profiles: ["full"]
 
   # Archiver
-  archiver_minimal:
-    container_name: archiver
-    <<: *core_minimal
-    command: python -m assemblyline_core.archiver.run_archiver
-    profiles: ["archive"]
+  # archiver_minimal:
+  #   container_name: archiver
+  #   <<: *core_minimal
+  #   command: python -m assemblyline_core.archiver.run_archiver
+  #   profiles: ["archive"]
 
-  archiver_full:
-    container_name: archiver
-    <<: *core_full
-    command: python -m assemblyline_core.archiver.run_archiver
-    profiles: ["archive"]
+  # archiver_full:
+  #   container_name: archiver
+  #   <<: *core_full
+  #   command: python -m assemblyline_core.archiver.run_archiver
+  #   profiles: ["archive"]
 
   # Expiry
   expiry_minimal:
@@ -379,25 +379,25 @@ services:
     profiles: ["full"]
 
   # Ingester Processes
-  ingester_minimal:
-    container_name: ingester
-    extends:
-      file: ./common/core.yaml
-      service: core
-    image: ${REGISTRY}cccs/assemblyline-rust:${AL_VERSION}
-    command: assemblyline-server ingester
-    <<: *elasticsearch_redis_minimal-depends
-    profiles: ["minimal"]
+  # ingester_minimal:
+  #   container_name: ingester
+  #   extends:
+  #     file: ./common/core.yaml
+  #     service: core
+  #   image: ${REGISTRY}cccs/assemblyline-rust:${AL_VERSION}
+  #   command: assemblyline-server ingester
+  #   <<: *elasticsearch_redis_minimal-depends
+  #   profiles: ["minimal"]
 
-  ingester_full:
-    container_name: ingester
-    extends:
-      file: ./common/core.yaml
-      service: core
-    image: ${REGISTRY}cccs/assemblyline-rust:${AL_VERSION}
-    command: assemblyline-server ingester
-    <<: *elasticsearch_redis_full-depends
-    profiles: ["full"]
+  # ingester_full:
+  #   container_name: ingester
+  #   extends:
+  #     file: ./common/core.yaml
+  #     service: core
+  #   image: ${REGISTRY}cccs/assemblyline-rust:${AL_VERSION}
+  #   command: assemblyline-server ingester
+  #   <<: *elasticsearch_redis_full-depends
+  #   profiles: ["full"]
 
   # Service server
   service_server_minimal:
@@ -468,6 +468,9 @@ networks:
   test_services:
     internal: false
     name: al_test_services
+  test_updates:
+    internal: false
+    name: al_test_updates
 
 volumes:
   datastore:

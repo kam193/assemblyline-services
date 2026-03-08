@@ -177,7 +177,7 @@ class AssemblylineService(ServiceBase):
 
     def _whois_lookup(self, domain: str) -> dict | None:
         nic_client = NICClient()
-        result = nic_client.whois_lookup(None, domain.encode("idna"), 0, quiet=True)
+        result = nic_client.whois_lookup(None, domain, 0, quiet=True)
         return WhoisEntry.load(domain, result)
 
     def _call_cached_whois(self, domain: str) -> dict | None:
@@ -187,7 +187,7 @@ class AssemblylineService(ServiceBase):
 
         domain_info = None
         # PywhoisError is raised when the domain is not found
-        with suppress(whois.parser.PywhoisError):
+        with suppress(whois.exceptions.WhoisError):
             domain_info = self._whois_lookup(domain)
 
         if domain_info:

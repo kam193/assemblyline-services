@@ -8,8 +8,9 @@ import time
 import uuid
 from functools import lru_cache
 
+from assemblyline_v4_service.common import helper
 from assemblyline.odm.models.service import UpdateSource
-from assemblyline_v4_service.common.api import PrivilegedServiceAPI
+from assemblyline_v4_service.common.api import ServiceAPI
 from assemblyline_v4_service.updater.updater import Service, ServiceUpdater
 
 TIMEOUT = 600
@@ -200,7 +201,7 @@ class ClamavServiceUpdater(ServiceUpdater):
             )
 
     def _generate_ignore_file_from_safelisted(self, service: Service) -> None:
-        safelisted_av_signs = self.safelist_client.get_safelisted_tags(tag_types="av.virus_name")
+        safelisted_av_signs = self.safelist_client.get_safelist(tag_list=["av.virus_name"])
 
         preprocessed = list()
         for sign in safelisted_av_signs["match"].get("av.virus_name", []):
@@ -264,7 +265,7 @@ class ClamavServiceUpdater(ServiceUpdater):
     @property
     def safelist_client(self):
         if self._safelist_client is None:
-            self._safelist_client = PrivilegedServiceAPI(self.log).safelist_client
+            self._safelist_client = ServiceAPI(helper.get_service_attributes(), self.log)
 
         return self._safelist_client
 

@@ -1,2 +1,3 @@
 exec("run()")
 eval("1+2+3")
+exec("""exec _code_ in _globs_, _locs_""")

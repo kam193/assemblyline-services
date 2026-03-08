@@ -5,7 +5,7 @@
 # Turn on/off classification enforcement. When this flag is off, this
 #  completely disables the classification engine, any documents added while
 #  the classification engine is off gets the default unrestricted value
-enforce: false
+enforce: true
 
 # Turn on/off dynamic group creation. This feature allow you to dynamically create classification groups based on
 #  features from the user.

@@ -17,6 +17,9 @@ rule:
           has:
             kind: string_content
             pattern: $DATA
+    - not:
+        # typical code in the six library, which is not obfuscated
+        pattern: exec("""exec _code_ in _globs_, _locs_""")
 
 fix: $DATA
 

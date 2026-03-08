@@ -15,3 +15,6 @@ start:
 
 start-detached:
 	docker compose up -d
+
+restart-dispatcher:
+	docker compose restart dispatcher_minimal

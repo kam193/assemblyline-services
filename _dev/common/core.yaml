@@ -73,6 +73,7 @@ services:
       - core
       - registration
       - test_services
+      - test_updates
     env_file: ["../.env"]
     command: assemblyline-server service-api --allow-http-mode
     environment:

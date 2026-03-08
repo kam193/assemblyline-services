@@ -1,8 +1,8 @@
-from contextlib import suppress
 import os
 import shutil
 import subprocess
 import tempfile
+from contextlib import suppress
 from time import sleep, time
 
 from assemblyline_v4_service.common.base import ServiceBase
@@ -12,12 +12,13 @@ from pyclamd import ClamdUnixSocket, ConnectionError
 
 WAIT_FOR_DAEMON = 60  # loading DB can take a while on small container
 CLAMD_SOCKET = "/tmp/clamd.socket"
+RULES_DIRECTORY = os.getenv("RULES_DIR", "/tmp/clamav_db")
 
 STATIC_CONFIGS = [
-    "LogFile /var/log/assemblyline/clamd.log\n",
+    "LogFile /tmp/clamd.log\n",
     "LogFileMaxSize 5M\n",
     "LogSyslog yes\n",
-    "DatabaseDirectory /opt/clamav_db/\n",
+    f"DatabaseDirectory {RULES_DIRECTORY}\n",
     "LocalSocket /tmp/clamd.socket\n",
 ]
 
@@ -29,6 +30,9 @@ class ClamAVService(ServiceBase):
         self.clamd: ClamdUnixSocket = None
         self.clamd_conf: str = None
         self._wait_for_daemon = WAIT_FOR_DAEMON
+        if not os.path.exists(RULES_DIRECTORY):
+            os.makedirs(RULES_DIRECTORY)
+        os.chmod(RULES_DIRECTORY, 0o777)
 
     def _generate_clamd_config(self) -> None:
         conf_file = tempfile.NamedTemporaryFile(mode="w+", prefix="clamd_conf", delete=False)
@@ -74,14 +78,12 @@ class ClamAVService(ServiceBase):
     def _load_rules(self) -> None:
         if self.rules_directory:
             self.log.debug("Copying ClamAV rules from %s", self.rules_directory)
-            for root, _, files in os.walk("/opt/clamav_db"):
+            for root, _, files in os.walk(RULES_DIRECTORY):
                 for filename in files:
                     os.remove(os.path.join(root, filename))
             for root, subdirs, _ in os.walk(self.rules_directory):
                 for subdir in subdirs:
-                    shutil.copytree(
-                        os.path.join(root, subdir), "/opt/clamav_db", dirs_exist_ok=True
-                    )
+                    shutil.copytree(os.path.join(root, subdir), RULES_DIRECTORY, dirs_exist_ok=True)
             if self.clamd:
                 self.log.info("Reloading ClamAV daemon")
                 self.clamd.reload()
