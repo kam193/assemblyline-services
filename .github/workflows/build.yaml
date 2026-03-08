@@ -21,7 +21,7 @@ jobs:
       - name: Discover directories with Dockerfiles
         id: services
         run: |
-          echo "services=$(find . -type f -name Dockerfile | xargs -n 1 dirname | uniq | cut -d '/' -f 2 | grep -v 'TEMPLATE' | grep -v 'al-service-with-py11' | jq -R -s -c 'split("\n")[:-1]')" >> "$GITHUB_OUTPUT"
+          echo "services=$(find . -type f -name Dockerfile | xargs -n 1 dirname | uniq | cut -d '/' -f 2 | grep -v 'TEMPLATE' | grep -v '_dev' | jq -R -s -c 'split("\n")[:-1]')" >> "$GITHUB_OUTPUT"
       - name: Print services with Dockerfiles
         run: |
           echo "Services with Dockerfiles: ${{ steps.services.outputs.services }}"
