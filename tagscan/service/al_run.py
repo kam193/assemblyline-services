@@ -104,23 +104,13 @@ class AssemblylineService(ServiceBase):
         self._matches.setdefault(tag_name, set()).add((tag, id))
 
     def _exist_safelisted_tags(self, tag_map: dict) -> dict:
-        # Based on the badlist implementation from assemblyline-common
-        safelist_ds = self.api_interface.safelist_client.datastore.safelist
-
-        lookup_keys = []
+        # TODO: bulk check?
+        results = defaultdict(list)
         for tag_type, tag_values in tag_map.items():
             for tag_value in tag_values:
-                lookup_keys.append(
-                    hashlib.sha256(f"{tag_type}: {tag_value}".encode("utf8")).hexdigest()
-                )
-
-        results = defaultdict(list)
-        for key_chunk in chunk(lookup_keys, CHUNK_SIZE):
-            result_chunk = safelist_ds.search(
-                "*", fl="*", rows=CHUNK_SIZE, as_obj=False, key_space=key_chunk
-            )["items"]
-            for item in result_chunk:
-                results[item["tag"]["type"]].append(item["tag"]["value"])
+                qhash = hashlib.sha256(f"{tag_type}: {tag_value}".encode("utf8")).hexdigest()
+                if self.api_interface.lookup_safelist(qhash):
+                    results[tag_type].append(tag_value)
 
         return results
 
