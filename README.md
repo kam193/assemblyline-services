@@ -74,7 +74,7 @@ Supported heuristics:
 - external HTTP/non-HTTP connections,
 - data exfiltration threshold (based on total data sent out).
 
-### [Pylingual](./pylingual/) (experimental)
+### [Pylingual](./pylingual/) (on hold)
 
 Decompiling PYC files using [PyLingual](https://github.com/syssec-utd/pylingual/tree/main) [GPLv3 license].
 
