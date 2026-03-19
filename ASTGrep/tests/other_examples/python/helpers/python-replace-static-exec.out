@@ -1,3 +1,4 @@
 run()
 6
 exec("""exec _code_ in _globs_, _locs_""")
+exec("""exec code in globs, locs""")

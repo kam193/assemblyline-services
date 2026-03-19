@@ -20,6 +20,9 @@ rule:
     - not:
         # typical code in the six library, which is not obfuscated
         pattern: exec("""exec _code_ in _globs_, _locs_""")
+    - not:
+        # typical code in the compat library, which is not obfuscated
+        pattern: exec("""exec code in globs, locs""")
 
 fix: $DATA
 
