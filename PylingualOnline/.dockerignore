@@ -1,0 +1,4 @@
+.env
+.randomnotes/
+.git/
+*.pyc

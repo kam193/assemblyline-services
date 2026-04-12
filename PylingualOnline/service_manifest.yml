@@ -1,0 +1,39 @@
+name: PylingualOnline
+version: $SERVICE_TAG
+description: Decompile PYC files using the online PyLingual.io service.
+enabled: true
+accepts: resource/pyc
+rejects: empty
+stage: EXTRACT
+category: Static Analysis
+uses_tags: false
+file_required: true
+timeout: 600
+is_external: true
+
+config:
+  api_url: "https://api.pylingual.io"
+  view_url: "https://www.pylingual.io/view_chimera?identifier={identifier}"
+  poll_interval: 5
+  max_request_timeout: 570
+  max_classification: "TLP:C"
+  max_file_size: 10485760 # 10 MB
+
+submission_params:
+  - default: 180
+    name: timeout
+    type: int
+    value: 180
+
+# -1000: safe
+# 0 - 299: informative
+# 300 - 699: suspicious
+# 700 - 999: highly suspicious
+# >= 1000: malicious
+
+docker_config:
+  image: ${REGISTRY}ghcr.io/kam193/assemblyline-service-pylingualonline:$SERVICE_TAG
+  cpu_cores: 0.25
+  ram_mb: 768
+  ram_mb_min: 256
+  allow_internet_access: true

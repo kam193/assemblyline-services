@@ -78,6 +78,12 @@ Supported heuristics:
 
 Decompiling PYC files using [PyLingual](https://github.com/syssec-utd/pylingual/tree/main) [GPLv3 license].
 
+### [PylingualOnline](./PylingualOnline/)
+
+Decompiling PYC files using [PyLingual.io](https://www.pylingual.io/) online service. Note: PyLingual.io
+collects data for training purposes. By default, the service will send only TLP:CLEAR classified
+data.
+
 ### [Python Magic](./python-magic/)
 
 Designed to help with analysis of Python artifacts. Currently supported:
