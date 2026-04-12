@@ -25,6 +25,10 @@ class PylingualResponse:
     equivalence_summary: str
 
 
+class PylingualServiceError(Exception):
+    "Given file cannot be decompiled by PyLingual.io"
+
+
 class AssemblylineService(ServiceBase):
     def __init__(self, config=None):
         super().__init__(config)
@@ -70,6 +74,8 @@ class AssemblylineService(ServiceBase):
 
         if response.status_code >= 400:
             message = payload.get("message") or payload.get("detail") or response.text
+            if "is not supported" in message:
+                raise PylingualServiceError(message)
             raise RuntimeError(f"PyLingual request failed: {message}")
 
         return payload
@@ -192,6 +198,11 @@ class AssemblylineService(ServiceBase):
             main_section.add_line(
                 "PyLingual.io did not finish decompiling the file before the configured timeout."
             )
+            result.add_section(main_section)
+            return
+        except PylingualServiceError as exc:
+            main_section = ResultTextSection("File cannot be decompiled")
+            main_section.add_line(str(exc))
             result.add_section(main_section)
             return
         except (requests.RequestException, RuntimeError) as exc:
