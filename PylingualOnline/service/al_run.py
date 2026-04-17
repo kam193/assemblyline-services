@@ -29,6 +29,14 @@ class PylingualServiceError(Exception):
     "Given file cannot be decompiled by PyLingual.io"
 
 
+ERRORS_DONT_RETRY = [
+    "is not supported",
+    "is not a .pyc file",
+    "IndexError: list index out of range",  # some kind of internal PyLingual error
+    "networkx.exception.NetworkXError",  # some kind of internal PyLingual error
+]
+
+
 class AssemblylineService(ServiceBase):
     def __init__(self, config=None):
         super().__init__(config)
@@ -57,6 +65,12 @@ class AssemblylineService(ServiceBase):
             == self.max_classification
         )
 
+    def _process_error_response(self, payload: dict):
+        message = payload.get("message") or payload.get("detail") or str(payload)
+        if any(error in str(message) for error in ERRORS_DONT_RETRY):
+            raise PylingualServiceError(message)
+        raise RuntimeError(f"PyLingual request failed: {message}")
+
     def _request_json(self, method: str, path: str, timeout: float, **kwargs) -> dict:
         response = requests.request(
             method,
@@ -64,7 +78,13 @@ class AssemblylineService(ServiceBase):
             timeout=timeout,
             **kwargs,
         )
-
+        self.log.debug(
+            "PyLingual response for %s %s: %d: %s",
+            method,
+            path,
+            response.status_code,
+            response.text,
+        )
         try:
             payload = response.json()
         except ValueError as exc:
@@ -73,10 +93,7 @@ class AssemblylineService(ServiceBase):
             ) from exc
 
         if response.status_code >= 400:
-            message = payload.get("message") or payload.get("detail") or response.text
-            if "is not supported" in message:
-                raise PylingualServiceError(message)
-            raise RuntimeError(f"PyLingual request failed: {message}")
+            self._process_error_response(payload)
 
         return payload
 
@@ -90,7 +107,7 @@ class AssemblylineService(ServiceBase):
             )
 
         if not upload.get("success"):
-            raise RuntimeError(upload.get("message", "PyLingual rejected the upload"))
+            self._process_error_response(upload)
 
         return upload["identifier"]
 
@@ -113,7 +130,7 @@ class AssemblylineService(ServiceBase):
             )
 
             if not progress.get("success"):
-                raise RuntimeError(progress.get("message", "PyLingual progress request failed"))
+                self._process_error_response(progress)
 
             stage = progress.get("stage")
             self.log.info("PyLingual stage: %s", stage)
