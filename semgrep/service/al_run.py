@@ -20,6 +20,7 @@ from assemblyline_v4_service.common.result import (
 )
 
 from .controller import (
+    LANGUAGE_TO_EXT,
     SemgrepError,
     SemgrepLSPController,
     SemgrepScanController,
@@ -31,6 +32,9 @@ from .helpers import configure_yaml
 configure_yaml()
 
 RULES_DIR = os.path.join(UPDATES_DIR, "semgrep_rules")
+
+EXT_TO_FILE_TYPE = {ext[1:]: type_ for type_, ext in LANGUAGE_TO_EXT.items()}
+EXT_TO_FILE_TYPE["js"] = "code/javascript"
 
 SEVERITY_TO_HEURISTIC = {
     "INFO": 3,
@@ -82,6 +86,7 @@ class AssemblylineService(ServiceBase):
         self._fallback_semgrep = None
         self.fallback_to_scan = self.config.get("FALLBACK_TO_SCAN", True)
         self.silent_timeouts = self.config.get("SILENT_TIMEOUTS", True)
+        self.try_language_from_extension = self.config.get("TRY_LANGUAGE_FROM_EXTENSION", True)
         self.classification = forge.get_classification()
 
         self.use_lsp = self.config.get("USE_LANGUAGE_SERVER_PROTOCOL", True)
@@ -277,16 +282,16 @@ class AssemblylineService(ServiceBase):
                 # subsection.set_heuristic(heuristic, signature=rule_id, attack_id=attack_id)
             yield section
 
-    def _run_semgrep(self, semgrep: SemgrepScanController):
-        result = Result()
+    def _run_semgrep(self, semgrep: SemgrepScanController, as_file_type: str) -> ResultSection:
+        main_section = ResultTextSection(f"Processing as {as_file_type}")
 
-        if not semgrep.can_handle_file(self._request.file_path, self._request.file_type):
+        if not semgrep.can_handle_file(self._request.file_path, as_file_type):
             self.log.debug("File is not supported by given semgrep")
             raise UnsupportedFileError()
 
         sections_by_heuristic = defaultdict(list)
         # TODO: better tests if we should retry by default
-        results = semgrep.process_file(self._request.file_path, self._request.file_type)
+        results = semgrep.process_file(self._request.file_path, as_file_type)
         for result_section in self._process_results(results, semgrep.LINE_START):
             sections_by_heuristic[result_section.heuristic.heur_id].append(result_section)
 
@@ -294,33 +299,32 @@ class AssemblylineService(ServiceBase):
             with tempfile.NamedTemporaryFile("w", delete=False) as f:
                 json.dump(semgrep.last_results, f, indent=2)
             self._request.add_supplementary(
-                f.name, "semgrep_raw_results.json", "Semgrep™ OSS Results"
+                f.name, "semgrep_raw_results.json", f"{semgrep.NAME} Results"
             )
 
         for heur_id in (2, 1, 3):  # ERROR, WARNING, INFO
             if heur_id in sections_by_heuristic:
                 for section in sections_by_heuristic[heur_id]:
-                    result.add_section(section)
+                    main_section.add_subsection(section)
 
-        self._request.set_service_context(f"Semgrep™ OSS {semgrep.version}")
+        self._request.set_service_context(f"{semgrep.NAME} {semgrep.version}")
 
-        return result
+        return main_section
 
-    def execute(self, request: ServiceRequest) -> None:
-        if not self._semgrep or not self._semgrep.ready:
-            raise RecoverableError("Semgrep isn't ready yet")
-
-        self._request = request
-        result = Result()
+    def _process_file(self, as_file_type: str) -> None:
         try:
+            result_section = None
             try:
-                result = self._run_semgrep(self._semgrep)
+                result_section = self._run_semgrep(self._semgrep, as_file_type)
             except (TimeoutError, UnsupportedFileError, SemgrepError):
-                if self.fallback_to_scan:
+                if self.fallback_to_scan and self._fallback_semgrep:
                     self.log.info("Falling back to CLI scan")
-                    result = self._run_semgrep(self._fallback_semgrep)
+                    result_section = self._run_semgrep(self._fallback_semgrep, as_file_type)
                 else:
                     raise
+            finally:
+                if result_section:
+                    self._request.result.add_section(result_section)
         except (UnsupportedLanguageError, UnsupportedFileError):
             self.log.warning(f"Unsupported language: {self._request.file_type}")
             return
@@ -333,10 +337,37 @@ class AssemblylineService(ServiceBase):
                 " or it's an issue with the Semgrep OSS engine."
             )
             err_section.set_heuristic(5)
-            result.add_section(err_section)
+            self._request.result.add_section(err_section)
             return
-        finally:
-            self._request.result = result
+
+    def execute(self, request: ServiceRequest) -> None:
+        if not self._semgrep or not self._semgrep.ready:
+            raise RecoverableError("Semgrep isn't ready yet")
+
+        self._request = request
+        result = Result()
+        self._request.result = result
+
+        self._process_file(self._request.file_type)
+
+        if not self.try_language_from_extension:
+            return
+
+        file_ext = request.file_name.split(".")[-1]
+        try:
+            file_type = EXT_TO_FILE_TYPE[file_ext]
+            self.log.debug(f"File type from extension: {file_type}")
+        except KeyError:
+            return
+
+        # TODO: javascript vs jscript
+        if file_type != request.file_type:
+            if all(
+                type_ in ["code/javascript", "code/jscript"]
+                for type_ in (request.file_type, file_type)
+            ):
+                return
+            self._process_file(file_type)
 
     def _cleanup(self) -> None:
         self._semgrep.cleanup()

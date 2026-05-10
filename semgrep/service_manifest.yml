@@ -4,7 +4,7 @@ description: |
   Scan source code using Semgrep rules to look for suspicious patterns.
 enabled: true
 
-accepts: code/*
+accepts: code/*|text/*
 rejects: empty
 stage: CORE
 category: Static Analysis
@@ -32,6 +32,8 @@ config:
   FALLBACK_TO_SCAN: true
   # silently fall on scanning timeouts, without causing retries
   SILENT_TIMEOUTS: true
+  # If the file got misidentified, we can try to guess the language from the extension
+  TRY_LANGUAGE_FROM_EXTENSION: true
 
 # submission_params:
 #   - default: "auto"

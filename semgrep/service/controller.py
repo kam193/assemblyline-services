@@ -66,6 +66,7 @@ class SemgrepTimeoutError(SemgrepError, TimeoutError):
 
 class SemgrepScanController:
     LINE_START = 1
+    NAME = "Semgrep™ OSS"
 
     def __init__(self, logger: logging.Logger = None, rules_dir: str = None):
         self._active_rules = []
