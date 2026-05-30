@@ -2,3 +2,7 @@
 .randomnotes/
 .git/
 *.pyc
+__pycache__/
+.tox/
+.venv/
+.pytest_cache/

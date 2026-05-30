@@ -1,6 +1,8 @@
 apt_cache
 pypi_index
 **/.vscode/
+.randomnotes/
+.claude/settings.local.json
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

@@ -1,0 +1,2 @@
+export CLICKHOUSE=15.157.32.30
+alias gw-tunnel='ssh -i ~/.ssh/gw-guest -L 8123:localhost:8123 -L 8999:localhost:9000 gw-guest@15.157.32.30 -N'

@@ -1,0 +1,44 @@
+// For format details, see https://aka.ms/devcontainer.json. For config options, see the
+// README at: https://github.com/devcontainers/templates/tree/main/src/python
+{
+	"name": "Python 3",
+	// Or use a Dockerfile or Docker Compose file. More info: https://containers.dev/guide/dockerfile
+	"build": {
+		"dockerfile": "Dockerfile",
+		"context": "."
+	},
+	// Features to add to the dev container. More info: https://containers.dev/features.
+	// "features": {},
+	// Use 'forwardPorts' to make a list of ports inside the container available locally.
+	"forwardPorts": [
+		8443
+	],
+	// Use 'postCreateCommand' to run commands after the container is created.
+	"postCreateCommand": "bash .devcontainer/setup.sh",
+	"mounts": [
+		// persistent volumes for data that should survive container recreation
+		// root due to rootless docker setup
+		"source=devcontainer-assemblyline-services,target=/root/,type=volume"
+	],
+	// Intended to work as root due to Docker rootless setup; if using the standard Docker
+	// setup, do not use root and update all user-related settings to the non-root user.
+	"remoteUser": "root",
+	"containerUser": "root",
+	"updateRemoteUserUID": false,
+	"customizations": {
+		"vscode": {
+			// TODO: pinning, more extensions
+			"extensions": [
+				"anthropic.claude-code",
+				"charliermarsh.ruff",
+				"ms-toolsai.jupyter"
+			],
+			"settings": {
+				"jupyter.notebookFileRoot": "${workspaceFolder}",
+				"jupyter.runStartupCommands": [
+					"import os; os.environ['JUPYTER_PORT']='9999'"
+				]
+			}
+		}
+	}
+}

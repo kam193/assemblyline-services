@@ -3,3 +3,7 @@
 .git/
 *.pyc
 tests/dangerous_examples/
+__pycache__/
+.tox/
+.venv/
+.pytest_cache/
