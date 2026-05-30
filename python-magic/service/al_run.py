@@ -8,6 +8,7 @@ from assemblyline_v4_service.common.request import ServiceRequest
 from assemblyline_v4_service.common.result import Result
 
 # from .extract.pycdc import PycdcDecompyler
+from .extract.cython_strings import CythonStringExtractor
 from .extract.pyinstaller import PyInstallerExtractor
 from .package import identify_python_package
 from .package.analyzer import Analyzer
@@ -57,10 +58,12 @@ class AssemblylineService(ServiceBase):
 
         if request.file_type.startswith("executable/"):
             with self.unpack_dir_cwd():
-                extractor = PyInstallerExtractor(request, self.unpack_dir, self.log, self.config)
-                section = extractor.extract()
-                if section:
-                    result.add_section(section)
+                for extractor_cls in (PyInstallerExtractor, CythonStringExtractor):
+                    section = extractor_cls(
+                        request, self.unpack_dir, self.log, self.config
+                    ).extract()
+                    if section:
+                        result.add_section(section)
         # Decompiling is now supported in the Extract service
         # elif request.file_type == "resource/pyc":
         #     decompyler = PycdcDecompyler(request, self.unpack_dir, self.log, self.config)

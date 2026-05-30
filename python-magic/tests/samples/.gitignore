@@ -1,0 +1,2 @@
+# Allow Cython test fixture shared objects to be committed
+!*.so

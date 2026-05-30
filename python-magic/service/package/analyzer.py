@@ -204,7 +204,7 @@ class Analyzer:
             if first_dir in self.top_package_paths:
                 if normalized_package_name not in self.top_package_paths[first_dir].get(
                     "packages", set()
-                ): # type: ignore
+                ):  # type: ignore
                     overwrite_paths.append((record, self.top_package_paths[first_dir]))
 
         return non_package_paths, overwrite_paths
