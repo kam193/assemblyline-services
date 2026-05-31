@@ -106,7 +106,7 @@ jobs:
           export GHCR_TOKEN=$(echo ${{ secrets.GITHUB_TOKEN }} | base64)
           export TAG=$BASE_TAG$(cat VERSION)
           echo "https://ghcr.io/v2/kam193/$(make print)/manifests/$TAG"
-          curl -s -H "Authorization: Bearer ${GHCR_TOKEN}" "https://ghcr.io/v2/kam193/$(make print)/manifests/$TAG"
+          curl -vvvv -s -H "Authorization: Bearer ${GHCR_TOKEN}" "https://ghcr.io/v2/kam193/$(make print)/manifests/$TAG"
           echo $manifest
           echo manifest=$(curl -s -H "Authorization: Bearer ${GHCR_TOKEN}" https://ghcr.io/v2/kam193/$(make print)/manifests/$TAG | grep "manifest unknown") >> $GITHUB_OUTPUT
       - name: Push container
