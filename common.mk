@@ -104,7 +104,7 @@ test:
 	fi
 
 print:
-	@echo ${SERVICE_NAME}
+	@echo -n ${SERVICE_NAME}
 
 lint:
 	WORK_DIR=$$(pwd) tox -e lint -c ../tox.ini
