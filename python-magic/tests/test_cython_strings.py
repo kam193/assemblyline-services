@@ -9,7 +9,6 @@ binaries.
 """
 
 import os
-import sysconfig
 import zlib
 
 import pytest
@@ -22,16 +21,8 @@ from service.cython import (
 
 _SAMPLES = os.path.join(os.path.dirname(__file__), "samples")
 
-_EXT = sysconfig.get_config_var("EXT_SUFFIX") or ""
-_FIXTURE_ZLIB = os.path.join(_SAMPLES, f"cython_fixture_zlib{_EXT}")
-_FIXTURE_BZ2 = os.path.join(_SAMPLES, f"cython_fixture_bz2{_EXT}")
-
-
-def _require_fixture(path: str):
-    if not os.path.exists(path):
-        pytest.skip(
-            f"Fixture not found: {path}. Run tests/samples/build_cython_fixture.py")
-
+_FIXTURE_ZLIB = os.path.join(_SAMPLES, "cython_fixture_zlib.cpython-314-x86_64-linux-gnu.so")
+_FIXTURE_BZ2 = os.path.join(_SAMPLES, "cython_fixture_bz2.cpython-314-x86_64-linux-gnu.so")
 
 # ---------------------------------------------------------------------------
 # is_cython_compressed
@@ -40,7 +31,6 @@ def _require_fixture(path: str):
 
 @pytest.mark.parametrize("fixture_path", [_FIXTURE_ZLIB, _FIXTURE_BZ2])
 def test_detects_marker(fixture_path: str):
-    _require_fixture(fixture_path)
     assert is_cython_compressed(fixture_path)
 
 
@@ -51,7 +41,6 @@ def test_no_false_positive_on_plain_elf(tmp_path):
 
 
 def test_skips_oversize_file():
-    _require_fixture(_FIXTURE_ZLIB)
     assert not is_cython_compressed(_FIXTURE_ZLIB, max_size=10)
 
 
@@ -61,7 +50,6 @@ def test_skips_oversize_file():
 
 
 def test_decompress_zlib_recovers_strings():
-    _require_fixture(_FIXTURE_ZLIB)
     blobs = decompress_string_table(_FIXTURE_ZLIB)
     assert blobs, "No blobs extracted from zlib fixture"
     assert all(b.algorithm == "zlib" for b in blobs)
@@ -73,7 +61,6 @@ def test_decompress_zlib_recovers_strings():
 
 
 def test_decompress_bz2_recovers_strings():
-    _require_fixture(_FIXTURE_BZ2)
     blobs = decompress_string_table(_FIXTURE_BZ2)
     assert blobs, "No blobs extracted from bz2 fixture"
     assert all(b.algorithm == "bz2" for b in blobs)
@@ -84,8 +71,6 @@ def test_decompress_bz2_recovers_strings():
 
 def test_zlib_and_bz2_same_plaintext():
     """Both fixtures compress the same .pyx — the recovered string tables should match."""
-    _require_fixture(_FIXTURE_ZLIB)
-    _require_fixture(_FIXTURE_BZ2)
     zlib_blobs = decompress_string_table(_FIXTURE_ZLIB)
     bz2_blobs = decompress_string_table(_FIXTURE_BZ2)
     assert zlib_blobs and bz2_blobs
@@ -191,7 +176,6 @@ def test_lzss_roundtrip():
 
 
 def test_blob_fields_populated():
-    _require_fixture(_FIXTURE_ZLIB)
     blobs = decompress_string_table(_FIXTURE_ZLIB)
     assert blobs
     b = blobs[0]
@@ -200,3 +184,22 @@ def test_blob_fields_populated():
     assert b.file_offset > 0
     assert b.compressed_size > 0
     assert len(b.plaintext) > 0
+
+
+# ---------------------------------------------------------------------------
+# blob.strings splitting
+# ---------------------------------------------------------------------------
+
+
+def test_strings_split_from_zlib_fixture():
+    """decompress_string_table should populate blob.strings for the zlib fixture."""
+    blobs = decompress_string_table(_FIXTURE_ZLIB)
+    assert blobs
+    blob = blobs[0]
+    assert blob.strings is not None, "str_length_index[] not found in zlib fixture"
+    # sum of lengths must equal the decompressed blob size
+    assert sum(len(s) for s in blob.strings) == len(blob.plaintext)
+    # known strings must appear individually, not merged across lines
+    texts = [s.decode("utf-8", errors="replace") for s in blob.strings]
+    assert any("EXAMPLE_API_KEY" in t for t in texts)
+    assert any("https://api.example-internal.local" in t for t in texts)

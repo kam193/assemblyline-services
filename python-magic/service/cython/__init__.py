@@ -13,20 +13,25 @@ Reference implementation: Cython/Compiler/Code.py (generate_pystring_constants)
 import bz2
 import mmap
 import os
+import struct
 import zlib
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 # Marker present in every CYTHON_COMPRESS_STRINGS binary (part of the error template
 # "String compression was configured with the C macro 'CYTHON_COMPRESS_STRINGS=%d'").
 _MARKER = b"CYTHON_COMPRESS_STRINGS"
 
-# Minimum decompressed size to consider a blob plausible.
 _MIN_BLOB = 64
-# Minimum fraction of printable ASCII bytes used ONLY for the LZSS brute-force scan
-# (where there are no magic bytes to gate on). Real Cython string tables can have
-# as low as ~50% printable bytes when the module stores binary bytes-constants.
-# Random bytes average ~37% printable, so 50% safely distinguishes text blobs.
+# Minimum printable-byte fraction for the LZSS brute-force scan only.
+# Real string tables with binary bytes-constants can be as low as ~50%;
+# random bytes average ~37%, so 50% safely separates the two populations.
 _LZSS_MIN_PRINTABLE_RATIO = 0.50
+
+_ZLIB_SECOND_BYTES = {0x01, 0x9C, 0xDA, 0x5E}
+_ZSTD_MAGIC = b"\x28\xb5\x2f\xfd"
+
+# How far past the end of the compressed blob to search for str_length_index[].
+_INDEX_SEARCH_WINDOW = 12 * 1024
 
 
 @dataclass
@@ -35,136 +40,26 @@ class DecompressedBlob:
     file_offset: int
     compressed_size: int
     plaintext: bytes
-
-
-def is_cython_compressed(path: str, *, max_size: int = 64 * 1024 * 1024) -> bool:
-    """Return True if the file contains the CYTHON_COMPRESS_STRINGS marker."""
-    if os.path.getsize(path) > max_size:
-        return False
-    with open(path, "rb") as f:
-        mm = mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ)
-        try:
-            return mm.find(_MARKER) != -1
-        finally:
-            mm.close()
+    # Individual strings split via str_length_index[]; None when the index
+    # array could not be located (splitting is best-effort).
+    strings: list[bytes] | None = field(default=None)
 
 
 # ---------------------------------------------------------------------------
-# zlib
+# LZSS decoder — public, tested directly
 # ---------------------------------------------------------------------------
-
-_ZLIB_SECOND_BYTES = {0x01, 0x9C, 0xDA, 0x5E}
-
-
-def _zlib_decompress(data: bytes, offset: int) -> tuple[bytes, int] | None:
-    try:
-        obj = zlib.decompressobj()
-        out = obj.decompress(data[offset:])
-        consumed = len(data) - offset - len(obj.unused_data)
-        return out, consumed
-    except zlib.error:
-        return None
-
-
-# ---------------------------------------------------------------------------
-# Generic helper
-# ---------------------------------------------------------------------------
-
-
-def _attempt(
-    data: bytes,
-    offset: int,
-    decompress_fn,
-    algo: str,
-    results: list,
-    seen: set,
-) -> None:
-    if offset in seen:
-        return
-    result = decompress_fn(data, offset)
-    if result is None:
-        return
-    out, consumed = result
-    if consumed is None:
-        consumed = 0
-    if len(out) < _MIN_BLOB:
-        return
-    seen.add(offset)
-    results.append(DecompressedBlob(algo, offset, consumed, out))
-
-
-def _try_zlib(data: bytes, results: list, seen: set) -> None:
-    i = 0
-    while True:
-        i = data.find(b"\x78", i)
-        if i == -1:
-            break
-        if i + 1 < len(data) and data[i + 1] in _ZLIB_SECOND_BYTES:
-            _attempt(data, i, _zlib_decompress, "zlib", results, seen)
-        i += 1
-
-
-def _bz2_decompress(data: bytes, offset: int) -> tuple[bytes, int] | None:
-    try:
-        obj = bz2.BZ2Decompressor()
-        out = obj.decompress(data[offset:])
-        return out, len(data) - offset - len(obj.unused_data)
-    except OSError:
-        return None
-
-
-# ---------------------------------------------------------------------------
-# bz2
-# ---------------------------------------------------------------------------
-
-
-def _try_bz2(data: bytes, results: list, seen: set) -> None:
-    i = 0
-    while True:
-        i = data.find(b"BZh", i)
-        if i == -1:
-            break
-        if i + 3 < len(data) and 0x31 <= data[i + 3] <= 0x39:  # '1'..'9'
-            _attempt(data, i, _bz2_decompress, "bz2", results, seen)
-        i += 1
-
-
-def _zstd_decompress(data: bytes, offset: int) -> tuple[bytes, int] | None:
-    try:
-        from compression.zstd import decompress  # type: ignore[import]
-
-        out = decompress(data[offset:])
-        return out, None  # consumed size unknown; that's fine
-    except (ImportError, Exception):
-        return None
-
-
-# ---------------------------------------------------------------------------
-# zstd (Python 3.14+ stdlib, optional)
-# ---------------------------------------------------------------------------
-
-
-def _try_zstd(data: bytes, results: list, seen: set) -> None:
-    _ZSTD_MAGIC = b"\x28\xb5\x2f\xfd"
-    i = 0
-    while True:
-        i = data.find(_ZSTD_MAGIC, i)
-        if i == -1:
-            break
-        _attempt(data, i, _zstd_decompress, "zstd", results, seen)
-        i += 1
 
 
 class _LZSSEnd(Exception):
     pass
 
 
-def lzss_decompress(src: bytes, dst_len: int) -> bytes:
+def lzss_decompress(src, dst_len: int) -> bytes:
     """
     Decompress a Cython LZSS-compressed blob when the expected output size is known.
 
-    This is a direct port of `__pyx_lzss_decompress` from Cython/Utility/StringTools.c.
-    The decompressor requires `dst_len` because the LZSS format is not self-terminating.
+    Accepts bytes, bytearray, or memoryview.
+    Direct port of __pyx_lzss_decompress from Cython/Utility/StringTools.c.
     """
     out = bytearray()
     pos = 0
@@ -214,84 +109,297 @@ def lzss_decompress(src: bytes, dst_len: int) -> bytes:
     return bytes(out)
 
 
-def _lzss_attempt(data: bytes, offset: int) -> tuple[bytes, int] | None:
-    """
-    Try LZSS-decompressing from `offset` without knowing dst_len.
+# ---------------------------------------------------------------------------
+# str_length_index[] search — shared logic, public entry point for tests
+# ---------------------------------------------------------------------------
 
-    We use a large upper bound and let the decoder stop on src overread.
-    The LZSS format is not self-terminating, so the result may include a few
-    extra garbage bytes from the flag-byte padding; these are harmless since
-    we only emit the blob if it passes the printability check.
+
+def _collect_runs(buf, start: int, end: int) -> list[tuple[int, list[int]]]:
     """
-    src = data[offset:]
-    # Use an upper bound large enough to not truncate a real string table.
-    dst_len_guess = max(len(src) * 20, 1024 * 1024)
-    try:
-        out = lzss_decompress(src, dst_len_guess)
-    except (ValueError, IndexError):
-        return None
-    if len(out) < _MIN_BLOB:
-        return None
-    consumed = len(src)  # we consumed all of src before hitting the bound
-    return out, consumed
+    Find maximal aligned uint32 sequences in buf[start:end] where every value
+    lies in [1, 32767].  Works on any buffer accepted by struct.unpack_from
+    (bytes, bytearray, mmap, memoryview).
+    """
+    _MAX = 32767
+    _MIN_RUN = 2
+    runs: list[tuple[int, list[int]]] = []
+    # Advance i to the next 4-byte-aligned position from file start.
+    i = start + (4 - start % 4) % 4
+    while i + 4 <= end:
+        v = struct.unpack_from("<I", buf, i)[0]
+        if 1 <= v <= _MAX:
+            values = [v]
+            j = i + 4
+            while j + 4 <= end:
+                v2 = struct.unpack_from("<I", buf, j)[0]
+                if 1 <= v2 <= _MAX:
+                    values.append(v2)
+                    j += 4
+                else:
+                    break
+            if len(values) >= _MIN_RUN:
+                runs.append((i, values))
+            i = j
+        else:
+            i += 4
+    return runs
+
+
+def _match_lengths(runs: list[tuple[int, list[int]]], target: int) -> list[int] | None:
+    # 1. Full run: a maximal run whose sum equals target exactly (most common).
+    for _, values in runs:
+        if sum(values) == target:
+            return list(values)
+
+    # 2. Embedded array: the array sits inside a longer run of plausible values.
+    #    Sliding window — works because all values are positive.
+    for _, values in runs:
+        if sum(values) <= target:
+            continue
+        left = 0
+        window = 0
+        for right in range(len(values)):
+            window += values[right]
+            while window > target:
+                window -= values[left]
+                left += 1
+            if window == target and right - left + 1 >= 2:
+                return values[left : right + 1]
+
+    # 3. Two adjacent arrays (module has both str and bytes constants).
+    #    Allow up to 8 bytes of alignment padding between the two runs.
+    run_by_offset = {offset: values for offset, values in runs}
+    for offset, values in runs:
+        end_off = offset + len(values) * 4
+        for gap in (0, 4, 8):
+            neighbour = run_by_offset.get(end_off + gap)
+            if neighbour is not None and sum(values) + sum(neighbour) == target:
+                return values + neighbour
+
+    return None
+
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
 
 
 def _is_plausible_lzss(data: bytes) -> bool:
-    """Return True if data looks like a Cython string table (for LZSS brute-force only)."""
     if len(data) < _MIN_BLOB:
         return False
     printable = sum(1 for b in data if 0x09 <= b <= 0x0D or 0x20 <= b <= 0x7E)
     return printable / len(data) >= _LZSS_MIN_PRINTABLE_RATIO
 
 
+def _split_blob(plaintext: bytes, lengths: list[int]) -> list[bytes]:
+    parts: list[bytes] = []
+    offset = 0
+    for length in lengths:
+        parts.append(plaintext[offset : offset + length])
+        offset += length
+    return parts
+
+
 # ---------------------------------------------------------------------------
-# LZSS (Cython's own format, algo 90, the default)
-# No magic — brute-force scan near the CYTHON_COMPRESS_STRINGS marker.
-# Reference: Cython/Utility/StringTools.c  __pyx_lzss_decompress
-#            Cython/LZSS.py                lzss_compress
+# _FileScanner — single mmap shared across all operations on one binary
 # ---------------------------------------------------------------------------
 
 
-def _try_lzss(data: bytes, results: list, seen: set) -> None:
-    marker_pos = data.find(_MARKER)
-    if marker_pos == -1:
-        return
+class _FileScanner:
+    """
+    Wraps an mmap for one binary so the file is never copied into a Python
+    bytes object in full.  struct.unpack_from, mmap.find, and bz2/zlib
+    decompressors all accept mmap/memoryview directly.
+    """
 
-    # The compressed blob lives in .rodata, near the marker. Scan a generous
-    # window around it (from start of file to 512 KB past the marker).
-    start = 0
-    end = min(len(data), marker_pos + 512 * 1024)
+    def __init__(self, path: str) -> None:
+        self._f = open(path, "rb")
+        try:
+            self._mm = mmap.mmap(self._f.fileno(), 0, access=mmap.ACCESS_READ)
+        except Exception:
+            self._f.close()
+            raise
+        self._mv = memoryview(self._mm)
+        self._size = len(self._mm)
 
-    for offset in range(start, end):
+    def close(self) -> None:
+        self._mv.release()
+        self._mm.close()
+        self._f.close()
+
+    def _slice(self, start: int, end: int | None = None) -> memoryview:
+        """Zero-copy view into the file mapping; valid until close()."""
+        return self._mv[start:] if end is None else self._mv[start:end]
+
+    # ---- detection ----
+
+    def is_compressed(self) -> bool:
+        return self._mm.find(_MARKER) != -1
+
+    # ---- decompression ----
+
+    def _zlib_decompress(self, offset: int) -> tuple[bytes, int] | None:
+        try:
+            obj = zlib.decompressobj()
+            out = bytes(obj.decompress(self._slice(offset)))
+            consumed = self._size - offset - len(obj.unused_data)
+            return out, consumed
+        except zlib.error:
+            return None
+
+    def _bz2_decompress(self, offset: int) -> tuple[bytes, int] | None:
+        try:
+            obj = bz2.BZ2Decompressor()
+            out = bytes(obj.decompress(self._slice(offset)))
+            consumed = self._size - offset - len(obj.unused_data)
+            return out, consumed
+        except OSError:
+            return None
+
+    def _zstd_decompress(self, offset: int) -> tuple[bytes, int | None] | None:
+        try:
+            from compression.zstd import decompress  # type: ignore[import]
+
+            out = decompress(bytes(self._slice(offset)))
+            return out, None
+        except (ImportError, Exception):
+            return None
+
+    def _attempt(
+        self,
+        offset: int,
+        decompress_fn,  # () -> tuple[bytes, int | None] | None
+        algo: str,
+        results: list[DecompressedBlob],
+        seen: set[int],
+    ) -> None:
         if offset in seen:
-            continue
-        result = _lzss_attempt(data, offset)
-        if result is not None:
-            out, consumed = result
-            if _is_plausible_lzss(out) and offset not in seen:
-                seen.add(offset)
-                results.append(DecompressedBlob("lzss", offset, consumed, out))
+            return
+        result = decompress_fn(offset)
+        if result is None:
+            return
+        out, consumed = result
+        if len(out) < _MIN_BLOB:
+            return
+        seen.add(offset)
+        results.append(DecompressedBlob(algo, offset, consumed or 0, out))
+
+    def _try_zlib(self, results: list[DecompressedBlob], seen: set[int]) -> None:
+        i = 0
+        while True:
+            i = self._mm.find(b"\x78", i)
+            if i == -1:
+                break
+            if i + 1 < self._size and self._mm[i + 1] in _ZLIB_SECOND_BYTES:
+                self._attempt(i, self._zlib_decompress, "zlib", results, seen)
+            i += 1
+
+    def _try_bz2(self, results: list[DecompressedBlob], seen: set[int]) -> None:
+        i = 0
+        while True:
+            i = self._mm.find(b"BZh", i)
+            if i == -1:
+                break
+            if i + 3 < self._size and 0x31 <= self._mm[i + 3] <= 0x39:
+                self._attempt(i, self._bz2_decompress, "bz2", results, seen)
+            i += 1
+
+    def _try_zstd(self, results: list[DecompressedBlob], seen: set[int]) -> None:
+        i = 0
+        while True:
+            i = self._mm.find(_ZSTD_MAGIC, i)
+            if i == -1:
+                break
+            self._attempt(i, self._zstd_decompress, "zstd", results, seen)
+            i += 1
+
+    def _lzss_attempt(self, offset: int) -> tuple[bytes, int] | None:
+        src = self._slice(offset)
+        dst_len_guess = max((self._size - offset) * 20, 1024 * 1024)
+        try:
+            out = lzss_decompress(src, dst_len_guess)
+        except (ValueError, IndexError):
+            return None
+        if len(out) < _MIN_BLOB:
+            return None
+        return out, self._size - offset
+
+    def _try_lzss(self, results: list[DecompressedBlob], seen: set[int]) -> None:
+        marker_pos = self._mm.find(_MARKER)
+        if marker_pos == -1:
+            return
+        end = min(self._size, marker_pos + 512 * 1024)
+        for offset in range(end):
+            if offset in seen:
+                continue
+            result = self._lzss_attempt(offset)
+            if result is not None:
+                out, consumed = result
+                if _is_plausible_lzss(out) and offset not in seen:
+                    seen.add(offset)
+                    results.append(DecompressedBlob("lzss", offset, consumed, out))
+
+    # ---- str_length_index[] search ----
+
+    def _find_lengths_for_blob(self, blob: DecompressedBlob) -> list[int] | None:
+        target = len(blob.plaintext)
+        if target <= 0:
+            return None
+        blob_end = blob.file_offset + blob.compressed_size
+        scan_end = min(self._size, blob_end + _INDEX_SEARCH_WINDOW)
+        # Two windows: everything before the blob, then up to 12 KB after it.
+        # The blob itself is excluded — the index array cannot be inside it.
+        runs = _collect_runs(self._mm, 0, blob.file_offset) + _collect_runs(
+            self._mm, blob_end, scan_end
+        )
+        return _match_lengths(runs, target)
+
+    # ---- main entry point ----
+
+    def find_blobs(self) -> list[DecompressedBlob]:
+        results: list[DecompressedBlob] = []
+        seen: set[int] = set()
+        self._try_zlib(results, seen)
+        self._try_bz2(results, seen)
+        self._try_zstd(results, seen)
+        if not results:
+            self._try_lzss(results, seen)
+        for blob in results:
+            try:
+                lengths = self._find_lengths_for_blob(blob)
+                if lengths:
+                    blob.strings = _split_blob(blob.plaintext, lengths)
+            except Exception:
+                pass  # splitting is best-effort; blob.strings remains None
+        return results
+
+    def __enter__(self) -> "_FileScanner":
+        return self
+
+    def __exit__(self, *_) -> None:
+        self.close()
+
+
+# ---------------------------------------------------------------------------
+# Public API
+# ---------------------------------------------------------------------------
+
+
+def is_cython_compressed(path: str, *, max_size: int = 64 * 1024 * 1024) -> bool:
+    """Return True if the file contains the CYTHON_COMPRESS_STRINGS marker."""
+    if os.path.getsize(path) > max_size:
+        return False
+    with _FileScanner(path) as s:
+        return s.is_compressed()
 
 
 def decompress_string_table(path: str) -> list[DecompressedBlob]:
     """
     Scan the binary for compressed Cython string blobs and decompress them.
 
-    Tries zlib, bz2, zstd, and LZSS (in that order of magic-byte discoverability).
-    Returns all successfully-decompressed blobs that look like plaintext.
-    Usually one blob per file.
+    Tries zlib, bz2, zstd, and LZSS in that order.  Usually returns one blob.
+    blob.strings is populated with individual strings when str_length_index[]
+    can be located in the binary; it remains None otherwise (best-effort).
     """
-    with open(path, "rb") as f:
-        data = f.read()
-
-    results: list[DecompressedBlob] = []
-    seen_offsets: set[int] = set()
-
-    _try_zlib(data, results, seen_offsets)
-    _try_bz2(data, results, seen_offsets)
-    _try_zstd(data, results, seen_offsets)
-
-    if not results:
-        _try_lzss(data, results, seen_offsets)
-
-    return results
+    with _FileScanner(path) as s:
+        return s.find_blobs()

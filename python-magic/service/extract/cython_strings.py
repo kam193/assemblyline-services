@@ -16,20 +16,22 @@ class CythonStringExtractor(ExtractorBase):
         path = os.path.join(self.unpack_dir, filename)
         os.makedirs(self.unpack_dir, exist_ok=True)
         with open(path, "wb") as f:
-            f.write(blob.plaintext)
+            if blob.strings is not None:
+                for s in blob.strings:
+                    f.write(s)
+                    f.write(b"\n")
+            else:
+                f.write(blob.plaintext)
         return path
 
     def extract(self) -> ResultTextSection | None:
-        max_size: int = self.config.get(
-            "CYTHON_MAX_FILE_SIZE", 64 * 1024 * 1024)
-        heuristic_score: int = int(
-            self.config.get("CYTHON_HEURISTIC_SCORE", 100))
+        max_size: int = self.config.get("CYTHON_MAX_FILE_SIZE", 64 * 1024 * 1024)
+        heuristic_score: int = int(self.config.get("CYTHON_HEURISTIC_SCORE", 100))
 
         if not is_cython_compressed(self.request.file_path, max_size=max_size):
             return None
 
-        self.log.debug(
-            "Cython compressed string table marker found in %s", self.request.file_path)
+        self.log.debug("Cython compressed string table marker found in %s", self.request.file_path)
 
         blobs = decompress_string_table(self.request.file_path)
 
@@ -66,9 +68,10 @@ class CythonStringExtractor(ExtractorBase):
                 parent=section,
             )
             sub.add_line(f"Algorithm : {blob.algorithm}")
-            sub.add_line(
-                f"Blob offset in file : {blob.file_offset} (0x{blob.file_offset:x})")
+            sub.add_line(f"Blob offset in file : {blob.file_offset} (0x{blob.file_offset:x})")
             sub.add_line(f"Compressed size     : {blob.compressed_size} bytes")
             sub.add_line(f"Decompressed size   : {len(blob.plaintext)} bytes")
+            if blob.strings is not None:
+                sub.add_line(f"String count        : {len(blob.strings)}")
 
         return section
