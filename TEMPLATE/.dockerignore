@@ -1,8 +1,9 @@
 .env
 .randomnotes/
 .git/
-*.pyc
 __pycache__/
-.tox/
-.venv/
+*.pyc
 .pytest_cache/
+.tox/
+.coverage
+tests/data/artifacts/

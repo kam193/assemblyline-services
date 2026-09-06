@@ -10,6 +10,7 @@ PYPI_CFG?=../empty
 SERVICE_API_KEY?=password_789
 
 MANIFEST_REGISTRY?=
+PIP_COOLDOWN ?= P3D
 
 manifest:
 	sed -i "s/al-name-template/${AL_SERVICE_NAME}/g" service_manifest.yml
@@ -122,6 +123,35 @@ al-service:
 		${ARGS} \
 		${ARGS_INT} \
 		--name ${CONTAINER_NAME} ${SERVICE_IMAGE} ${COMMAND}
+
+lock:
+	PIP_UPLOADED_PRIOR_TO="$(PIP_COOLDOWN)" pip-compile -q --generate-hashes --output-file requirements.txt $(ARGS) requirements.in
+
+lock-test:
+	PIP_UPLOADED_PRIOR_TO="$(PIP_COOLDOWN)" pip-compile -q --generate-hashes --output-file requirements-test.txt $(ARGS) requirements-test.in
+
+gentests:
+	WORK_DIR=$$(pwd) tox -e gentests -c ../tox.ini $(ARGS)
+
+TEST_TAG = kam193/$(SERVICE_NAME):test
+TEST_REGISTRY ?=
+build-test: manifest
+	docker build --target test -t $(TEST_TAG) --build-arg REGISTRY=$(TEST_REGISTRY) \
+		--secret id=apt,src=$(APT_CFG_MOUNT) \
+		--secret id=pypi,src=$(PYPI_CFG) \
+		.
+
+# user adjusted to work over file permissions in devcontainer
+DOCKER_RUN = docker run --rm --user root -e HOME=/var/lib/assemblyline \
+	-v $(CURDIR):/opt/al_service -w /opt/al_service
+DOCKER_TEST_ENV = -e UPDATE_GOLDEN
+
+docker-test: build-test
+	$(DOCKER_RUN) $(DOCKER_TEST_ENV) $(TEST_TAG) $(ARGS)
+
+docker-gentests: build-test
+	$(DOCKER_RUN) --entrypoint python $(TEST_TAG) tests/gentests.py $(ARGS)
+
 
 service-extract: CONTAINER_NAME=al-service-extract
 service-extract: SERVICE_IMAGE=${REGISTRY}/cccs/assemblyline-service-extract:${SERVICE_TAG}

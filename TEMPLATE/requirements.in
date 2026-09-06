@@ -1,0 +1,4 @@
+assemblyline-v4-service
+
+# 2.5.x wheels are Python >=3.12 only; the service image is 3.11
+numpy<2.5

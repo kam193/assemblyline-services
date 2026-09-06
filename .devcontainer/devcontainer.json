@@ -8,13 +8,20 @@
 		"context": "."
 	},
 	// Features to add to the dev container. More info: https://containers.dev/features.
-	// "features": {},
+	"features": {
+		"ghcr.io/devcontainers/features/docker-in-docker:2": {
+			"moby": false,
+			"dockerDashComposeVersion": "v2",
+			"azureDnsAutoDetection": false
+		}
+	},
 	// Use 'forwardPorts' to make a list of ports inside the container available locally.
 	"forwardPorts": [
 		8443
 	],
 	// Use 'postCreateCommand' to run commands after the container is created.
 	"postCreateCommand": "bash .devcontainer/setup.sh",
+	"postStartCommand": "bash -c '[ -f .devcontainer/pull-shared-config.sh ] && bash .devcontainer/pull-shared-config.sh || true'",
 	"mounts": [
 		// persistent volumes for data that should survive container recreation
 		// root due to rootless docker setup

@@ -17,6 +17,7 @@ sed -i "/^${START_MARKER}$/,/^${END_MARKER}$/d" "$TARGET"
 {
     echo "$START_MARKER"
     cat "$SOURCE"
+    echo "\n"
     echo "$END_MARKER"
 } >> "$TARGET"
 

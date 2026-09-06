@@ -1,0 +1,12 @@
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-p no:cacheprovider --cov --cov-report=term-missing --strict-markers"
+markers = [
+    "sample: golden-file regression via assemblyline TestHelper (needs a CaRT sample)",
+    "full_artifacts: runs against real artifact bundles under SAMPLE_ARTIFACTS_DIR; skipped if unset",
+]
+
+[tool.coverage.run]
+source = ["service"]
+omit = ["tests/*"]
