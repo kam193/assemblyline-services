@@ -38,7 +38,9 @@
 			"extensions": [
 				"anthropic.claude-code",
 				"charliermarsh.ruff",
-				"ms-toolsai.jupyter"
+				"ms-toolsai.jupyter",
+				"streetsidesoftware.code-spell-checker@4.5.6",
+				"streetsidesoftware.code-spell-checker-british-english@1.4.36"
 			],
 			"settings": {
 				"jupyter.notebookFileRoot": "${workspaceFolder}",

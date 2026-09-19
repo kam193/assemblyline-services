@@ -36,6 +36,7 @@ _FIELDS_TO_EXTRACT = [
     "http2.streamid",
     "http2.header.name",
     "http2.header.value",
+    "tls.handshake.extensions_server_name",
 ]
 TSHARK_ANALYSIS_COMMAND = [
     "-T",
@@ -85,9 +86,18 @@ class Conversation:
 
     hosts: list[str] = field(default_factory=list)
     paths: list[str] = field(default_factory=list)
+    snis: list[str] = field(default_factory=list)
     http2_substreams: int = 0
 
     data: list[dict | None] = field(default_factory=list)
+
+    @property
+    def domains(self) -> list[str]:
+        domains = list(self.hosts)
+        for sni in self.snis:
+            if sni not in domains:
+                domains.append(sni)
+        return domains
 
     @property
     def is_http(self) -> bool:
@@ -145,6 +155,10 @@ class Conversation:
             conv.hosts = [data.get("http_host", [""])[0]]
             conv.paths = [data.get("http_request_uri", [""])[0]]
 
+        for sni in data.get("tls_handshake_extensions_server_name", []):
+            if sni not in conv.snis:
+                conv.snis.append(sni)
+
         return conv
 
     def update(self, data: dict):
@@ -178,6 +192,10 @@ class Conversation:
             if "http_host" in data:
                 self.hosts.append(data.get("http_host", [""])[0])
                 self.paths.append(data.get("http_request_uri", [""])[0])
+
+        for sni in data.get("tls_handshake_extensions_server_name", []):
+            if sni not in self.snis:
+                self.snis.append(sni)
 
 
 class Extractor:
@@ -231,6 +249,7 @@ class Extractor:
             text=True,
             timeout=self.timeout,
             shell=False,
+            env={**os.environ, "LC_ALL": "C"},
             **kwargs,
         )
         if result.returncode != 0:
@@ -393,8 +412,9 @@ class Extractor:
         ips, domains, uris = set(), set(), set()
         for conv in self.conversations:
             ips.add(str(conv.dst_ip))
+            if conv.domains:
+                domains.update(conv.domains)
             if conv.hosts:
-                domains.update(conv.hosts)
                 uris.update(conv.uris)
         return ips, domains, uris
 

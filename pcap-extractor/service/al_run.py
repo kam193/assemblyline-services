@@ -162,9 +162,9 @@ class AssemblylineService(ServiceBase):
                 if conv.dst_ip in self.no_score_ips:
                     is_non_scoring = True
 
-            if conv.hosts:
+            if conv.domains:
                 if not is_safelisted and all(
-                    host in safelisted_tags["network.dynamic.domain"] for host in conv.hosts
+                    domain in safelisted_tags["network.dynamic.domain"] for domain in conv.domains
                 ):
                     is_safelisted = True
                 if not is_safelisted and all(
@@ -174,7 +174,10 @@ class AssemblylineService(ServiceBase):
                 for host, path in zip(conv.hosts, conv.uris):
                     conversation_section.add_tag("network.dynamic.domain", host)
                     conversation_section.add_tag("network.dynamic.uri", path)
-                    if host in self.no_score_domains:
+                for domain in conv.domains:
+                    if domain not in conv.hosts:
+                        conversation_section.add_tag("network.dynamic.domain", domain)
+                    if domain in self.no_score_domains:
                         is_non_scoring = True
 
             if not is_safelisted:
