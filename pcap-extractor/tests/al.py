@@ -4,10 +4,12 @@ import hashlib
 import os
 import shutil
 import tempfile
+from unittest.mock import Mock
 
 from assemblyline.common import forge
 from assemblyline.odm.messages.task import Task as ServiceTask
 from assemblyline_v4_service.common import helper
+from assemblyline_v4_service.common.api import ServiceAPI
 from assemblyline_v4_service.common.request import ServiceRequest
 from assemblyline_v4_service.common.task import Task
 
@@ -62,3 +64,14 @@ def build_request(path, *, config=None, params=None, temp_data=None, filename=No
         }
     )
     return ServiceRequest(Task(task))
+
+
+def make_safelist_api(*entries: tuple[str, str]) -> Mock:
+    """Fake ServiceAPI whose lookup_safelist matches only the given (tag_type, value) pairs."""
+    hashes = {
+        hashlib.sha256(f"{tag_type}: {value}".encode("utf8")).hexdigest()
+        for tag_type, value in entries
+    }
+    api = Mock(spec=ServiceAPI)
+    api.lookup_safelist.side_effect = lambda qhash: qhash in hashes
+    return api

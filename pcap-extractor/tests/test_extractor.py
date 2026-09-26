@@ -109,6 +109,13 @@ class TestConversationUpdate:
         assert conv.snis == ["first.example.com"]
 
 
+class TestConversationUris:
+    def test_uris_empty_for_tls_only_conversation_with_sni(self):
+        conv = Conversation.from_dict(_layer(sni="sni.example.com"))
+
+        assert list(conv.uris) == []
+
+
 class TestExtractorGetIocs:
     def test_get_iocs_includes_sni_only_domain(self):
         extractor = Extractor("/nonexistent.pcap")

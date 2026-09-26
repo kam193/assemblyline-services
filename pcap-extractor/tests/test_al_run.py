@@ -3,11 +3,12 @@ import pathlib
 
 import pytest
 
-from tests.al import build_request
+from tests.al import build_request, make_safelist_api
 
 TEST_DATA_DIR = pathlib.Path(__file__).parent.parent / ".randomnotes" / "test_data"
 
 SNI_ONLY_SAMPLE = "33956478c4cb99a22abe94dc06ed0a553c6c51693ba8c262759f195130e20ca6.pcap"
+TLS_SNI_ONLY_SAMPLE = "7101e9904aa8fc1bf6af1ffc6642e4c53c49f22b0e9a814ab14fab20c89e3f06.pcap"
 
 
 def skip_if_missing(name: str):
@@ -32,6 +33,14 @@ def _collect_tags(section, tag_type: str) -> set:
     return tags
 
 
+def _conversation_sections(section) -> list:
+    """Flatten to the per-conversation sections (title contains the '->' arrow)."""
+    sections = [section] if "->" in section.title_text else []
+    for subsection in section.subsections:
+        sections += _conversation_sections(subsection)
+    return sections
+
+
 class TestAssemblylineServiceSniExtraction:
     @skip_if_missing(SNI_ONLY_SAMPLE)
     def test_sni_tagged_as_domain_without_extractable_http(self, service, sample_path=None):
@@ -47,3 +56,46 @@ class TestAssemblylineServiceSniExtraction:
 
         assert domain_tags == {"mobile.events.data.microsoft.com"}
         assert uri_tags == set()
+
+
+class TestAssemblylineServiceTlsSafelisting:
+    @skip_if_missing(TLS_SNI_ONLY_SAMPLE)
+    def test_safelisted_unrelated_ip_does_not_skip_tls_conversations(
+        self, service, sample_path=None
+    ):
+        svc = service()
+        svc._api_interface = make_safelist_api(("network.dynamic.ip", "172.16.5.2"))
+        request = build_request(
+            str(sample_path), params={"extract_streams": False, "extract_files": False}
+        )
+        svc.execute(request)
+
+        conv_sections = [
+            s for section in request.result.sections for s in _conversation_sections(section)
+        ]
+        assert len(conv_sections) == 7
+        for conv_section in conv_sections:
+            assert "Skipping data extractions" not in (conv_section.body or "")
+            assert conv_section.heuristic is not None
+
+    @skip_if_missing(TLS_SNI_ONLY_SAMPLE)
+    def test_safelisted_domain_still_skips_matching_tls_conversations(
+        self, service, sample_path=None
+    ):
+        svc = service()
+        svc._api_interface = make_safelist_api(("network.dynamic.domain", "chtml.ca"))
+        request = build_request(
+            str(sample_path), params={"extract_streams": False, "extract_files": False}
+        )
+        svc.execute(request)
+
+        conv_sections = [
+            s for section in request.result.sections for s in _conversation_sections(section)
+        ]
+        skipped = [s for s in conv_sections if "Skipping data extractions" in (s.body or "")]
+        not_skipped = [s for s in conv_sections if s not in skipped]
+
+        assert len(skipped) == 6
+        assert all(s.heuristic is None for s in skipped)
+        assert len(not_skipped) == 1
+        assert not_skipped[0].heuristic is not None

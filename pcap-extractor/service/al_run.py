@@ -3,7 +3,6 @@ import ipaddress
 import os
 from collections import defaultdict
 
-from assemblyline.common.chunk import chunk
 from assemblyline_v4_service.common.base import ServiceBase
 from assemblyline_v4_service.common.request import ServiceRequest
 from assemblyline_v4_service.common.result import (
@@ -163,17 +162,20 @@ class AssemblylineService(ServiceBase):
                     is_non_scoring = True
 
             if conv.domains:
+                uris = list(conv.uris)
                 if not is_safelisted and all(
                     domain in safelisted_tags["network.dynamic.domain"] for domain in conv.domains
                 ):
                     is_safelisted = True
-                if not is_safelisted and all(
-                    uri in safelisted_tags["network.dynamic.uri"] for uri in conv.uris
+                if (
+                    not is_safelisted
+                    and uris
+                    and all(uri in safelisted_tags["network.dynamic.uri"] for uri in uris)
                 ):
                     is_safelisted = True
-                for host, path in zip(conv.hosts, conv.uris):
+                for host, uri in zip(conv.hosts, uris):
                     conversation_section.add_tag("network.dynamic.domain", host)
-                    conversation_section.add_tag("network.dynamic.uri", path)
+                    conversation_section.add_tag("network.dynamic.uri", uri)
                 for domain in conv.domains:
                     if domain not in conv.hosts:
                         conversation_section.add_tag("network.dynamic.domain", domain)
