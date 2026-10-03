@@ -17,7 +17,7 @@ class AssemblylineServiceUpdater(ServiceUpdater):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self.updater_type = "pcap_extractor"
+        self.updater_type = "pcap-extractor"
         status_query = " OR ".join([f"status:{s}" for s in self.statuses])
         self.signatures_query = f"type:{self.updater_type} AND ({status_query})"
 
