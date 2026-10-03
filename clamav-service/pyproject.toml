@@ -1,0 +1,11 @@
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-p no:cacheprovider --cov --cov-report=term-missing --strict-markers"
+markers = [
+    "clamd: requires the real clamd/freshclam binaries (runs under docker-test)",
+]
+
+[tool.coverage.run]
+source = ["service"]
+omit = ["tests/*"]

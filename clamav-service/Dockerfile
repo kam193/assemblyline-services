@@ -1,7 +1,7 @@
 ARG REGISTRY=
-ARG BASE_IMAGE=${REGISTRY:-}/cccs/assemblyline-v4-service-base:stable
+ARG BASE_IMAGE=${REGISTRY:-}cccs/assemblyline-v4-service-base:stable
 ARG MANIFEST_REGISTRY=ghcr.io/
-FROM ${BASE_IMAGE}
+FROM ${BASE_IMAGE} AS base
 
 ENV SERVICE_PATH service.main.ClamAVService
 
@@ -13,12 +13,20 @@ RUN --mount=type=secret,id=apt,target=/etc/apt/apt.conf.d/00cfg \
     chown assemblyline:clamav /opt/clamav_db/
 
 USER assemblyline
+WORKDIR /opt/al_service
 COPY requirements.txt requirements.txt
 
 RUN --mount=type=secret,id=pypi,target=/etc/pip.conf,mode=0444 \
     pip install --no-cache-dir --user --requirement requirements.txt && rm -rf ~/.cache/pip
 
-WORKDIR /opt/al_service
+FROM base AS test
+COPY requirements-test.txt requirements-test.txt
+RUN --mount=type=secret,id=pypi,target=/etc/pip.conf,mode=0444 \
+    pip install --no-cache-dir --user --requirement requirements-test.txt && rm -rf ~/.cache/pip
+ENV SERVICE_MANIFEST_PATH=/opt/al_service/service_manifest.yml
+ENTRYPOINT ["python", "-m", "pytest"]
+
+FROM base AS service
 COPY . .
 
 USER root

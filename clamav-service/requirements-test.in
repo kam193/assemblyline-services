@@ -1,0 +1,9 @@
+-r requirements.txt
+
+assemblyline-service-utilities
+# service/updater.py imports assemblyline_v4_service.updater, which needs this extra
+# (gitpython, psutil, ...) - not pulled in by the bare dependency in requirements.txt.
+assemblyline-v4-service[updater]
+pytest
+pytest-cov
+pytest-mock
