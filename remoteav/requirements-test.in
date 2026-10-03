@@ -1,0 +1,7 @@
+-r requirements.txt
+
+assemblyline-service-utilities
+pytest
+pytest-cov
+pytest-mock
+responses

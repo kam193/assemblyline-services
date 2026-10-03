@@ -1,4 +1,3 @@
-import queue
 import random
 import threading
 import time
@@ -7,6 +6,10 @@ import requests
 from assemblyline_v4_service.common.base import ServiceBase
 from assemblyline_v4_service.common.request import ServiceRequest
 from assemblyline_v4_service.common.result import Result, ResultTextSection
+from requests_toolbelt.multipart.encoder import MultipartEncoder
+
+READ_TIMEOUT = 50
+CONNECT_TIMEOUT = 10
 
 
 class AssemblylineService(ServiceBase):
@@ -42,14 +45,21 @@ class AssemblylineService(ServiceBase):
             if server_name not in self.servers:
                 raise ValueError(f"Server '{server_name}' not found in configuration.")
 
-            url = self.servers[server_name]
+            urls = self.servers[server_name]
             retries = 0
             while retries < 3:
-                if isinstance(url, list):
-                    url = random.choice(url)
+                url = random.choice(urls) if isinstance(urls, list) else urls
                 self.log.debug("Selected service URL [%s]: %s", server_name, url)
                 with open(request.file_path, "rb") as f:
-                    av_response = requests.post(f"{url}/scan-file", files={"file": f})
+                    encoder = MultipartEncoder(
+                        fields={"file": (request.file_name, f, "application/octet-stream")}
+                    )
+                    av_response = requests.post(
+                        f"{url}/scan-file",
+                        data=encoder,
+                        headers={"Content-Type": encoder.content_type},
+                        timeout=(CONNECT_TIMEOUT, READ_TIMEOUT),
+                    )
 
                 # kind of a hacky retry for uploading issues
                 if av_response.status_code == 504:
@@ -60,8 +70,6 @@ class AssemblylineService(ServiceBase):
                 break
             else:
                 raise RuntimeError("Failed to upload to remote AV server after 3 retries.")
-
-            av_result = av_response.json()
 
             if av_response.status_code == 413:
                 self.log.warning(
@@ -76,10 +84,15 @@ class AssemblylineService(ServiceBase):
                 self.log.error("Unexpected response from remote AV server: %s", av_response.text)
                 error_section = ResultTextSection("Remote AV server error")
                 error_section.add_line("The remote AV server returned an error.")
-                if "detail" in av_result:
-                    error_section.add_line(av_result["detail"])
+                try:
+                    detail = av_response.json().get("detail")
+                except ValueError:
+                    detail = None
+                if detail:
+                    error_section.add_line(detail)
                 return error_section
 
+            av_result = av_response.json()
             if "status" not in av_result:
                 self.log.error("Invalid response from remote AV server: %s", av_response.text)
             if av_result["status"] == "ok":
@@ -95,25 +108,32 @@ class AssemblylineService(ServiceBase):
         except Exception as e:
             return e
 
+    def _run_server(self, server_name: str, request: ServiceRequest, results: list) -> None:
+        results.append(self._call_server(server_name, request))
+
     def execute(self, request: ServiceRequest) -> None:
         result = Result()
         request.result = result
 
         if request.file_size > self.max_file_size:
+            skip_section = ResultTextSection("File skipped")
+            skip_section.add_line(
+                "The file exceeds the maximum size configured for remote AV scanning "
+                f"({self.max_file_size} bytes) and was not sent for scanning."
+            )
+            request.result.add_section(skip_section)
             return
 
         selected_servers = request.get_param("use_remote_servers")
         if not selected_servers or selected_servers == "all":
-            selected_servers = self.servers.keys()
-        elif isinstance(selected_servers, str) and "," in selected_servers:
+            selected_servers = list(self.servers.keys())
+        elif isinstance(selected_servers, str):
             selected_servers = selected_servers.split(",")
 
         results = []
         threads = []
         for server_name in selected_servers:
-            thread = threading.Thread(
-                target=lambda: results.append(self._call_server(server_name, request))
-            )
+            thread = threading.Thread(target=self._run_server, args=(server_name, request, results))
             threads.append(thread)
             thread.start()
 
