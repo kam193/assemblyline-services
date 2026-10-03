@@ -2,6 +2,7 @@ import hashlib
 import ipaddress
 import os
 from collections import defaultdict
+from threading import RLock
 
 from assemblyline_v4_service.common.base import ServiceBase
 from assemblyline_v4_service.common.request import ServiceRequest
@@ -14,14 +15,23 @@ from assemblyline_v4_service.common.result import (
 from assemblyline_v4_service.common.task import MaxExtractedExceeded
 
 from .extractor import Extractor, bytes_to_human
+from .rules import DOMAIN, NO_SCORE, SAFELIST, URI, RuleSet
 
 CHUNK_SIZE = 1000
 DEBUG = os.getenv("DEBUG", False)
+RULES_LOCK = RLock()
 
 
 class AssemblylineService(ServiceBase):
     def __init__(self, config=None):
         super().__init__(config)
+        self._rules = RuleSet()
+
+    def _load_rules(self) -> None:
+        new_rules = RuleSet.from_files(self.rules_list, self.log)
+        with RULES_LOCK:
+            self._rules = new_rules
+        self.log.info("Loaded %d network rules.", len(new_rules))
 
     def _load_config(self):
         self.local_networks = []
@@ -134,12 +144,19 @@ class AssemblylineService(ServiceBase):
                 "network.dynamic.uri": uris,
             }
         )
+        with RULES_LOCK:
+            rules = self._rules
+        rule_safelisted_domains = rules.match_all(SAFELIST, DOMAIN, domains)
+        rule_safelisted_uris = rules.match_all(SAFELIST, URI, uris)
+        rule_no_score_domains = rules.match_all(NO_SCORE, DOMAIN, domains)
+        rule_no_score_uris = rules.match_all(NO_SCORE, URI, uris)
         safelisted_tcp_streams = []
 
         tcp_section.add_line(f"Found {len(extractor.conversations)} TCP conversations")
         for conv in extractor.conversations:
             is_safelisted = False
             is_non_scoring = False
+            safelist_reason = None
 
             protocol = conv.protocol.upper()
             conversation_section = ResultTextSection(
@@ -162,18 +179,34 @@ class AssemblylineService(ServiceBase):
                     is_non_scoring = True
 
             if conv.domains:
-                uris = list(conv.uris)
+                conv_uris = list(conv.uris)
                 if not is_safelisted and all(
                     domain in safelisted_tags["network.dynamic.domain"] for domain in conv.domains
                 ):
                     is_safelisted = True
-                if (
-                    not is_safelisted
-                    and uris
-                    and all(uri in safelisted_tags["network.dynamic.uri"] for uri in uris)
+                if not is_safelisted and all(
+                    domain in rule_safelisted_domains for domain in conv.domains
                 ):
                     is_safelisted = True
-                for host, uri in zip(conv.hosts, uris):
+                    safelist_reason = rule_safelisted_domains[conv.domains[0]]
+                if (
+                    not is_safelisted
+                    and conv_uris
+                    and all(uri in safelisted_tags["network.dynamic.uri"] for uri in conv_uris)
+                ):
+                    is_safelisted = True
+                if (
+                    not is_safelisted
+                    and conv_uris
+                    and all(uri in rule_safelisted_uris for uri in conv_uris)
+                ):
+                    is_safelisted = True
+                    safelist_reason = rule_safelisted_uris[conv_uris[0]]
+                if all(domain in rule_no_score_domains for domain in conv.domains):
+                    is_non_scoring = True
+                if conv_uris and all(uri in rule_no_score_uris for uri in conv_uris):
+                    is_non_scoring = True
+                for host, uri in zip(conv.hosts, conv_uris):
                     conversation_section.add_tag("network.dynamic.domain", host)
                     conversation_section.add_tag("network.dynamic.uri", uri)
                 for domain in conv.domains:
@@ -212,8 +245,9 @@ class AssemblylineService(ServiceBase):
                     details.set_json(conv.data or [])
                     conversation_section.add_subsection(details)
             else:
+                reason = f" (matched rule: {safelist_reason})" if safelist_reason else ""
                 conversation_section.add_line(
-                    "Skipping data extractions for the safelisted conversation"
+                    f"Skipping data extractions for the safelisted conversation{reason}"
                 )
                 safelisted_tcp_streams.append(conv.stream_id)
 

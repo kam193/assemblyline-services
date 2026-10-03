@@ -73,3 +73,29 @@ docker_config:
   cpu_cores: 1.0
   ram_mb: 1500
   allow_internet_access: false
+
+update_config:
+  update_interval_seconds: 86400 # 24 hours
+  generates_signatures: true
+  wait_for_update: false # no default source shipped; service must start without rules
+  signature_delimiter: custom
+  custom_delimiter: "\n---\n"
+  sources: []
+  # Example source, a YAML file (or multi-doc YAML with "---" between rules) of:
+  #   name: <unique rule name>
+  #   action: safelist | no_score
+  #   domains: [<regex>, ...]   # matched with fullmatch against network.dynamic.domain (incl. TLS SNI)
+  #   uris: [<regex>, ...]      # matched with fullmatch against network.dynamic.uri
+  # - uri: https://example.com/pcap-extractor-rules.yml
+  #   name: sample_rules
+
+dependencies:
+  updates:
+    container:
+      ram_mb: 512
+      ram_mb_min: 256
+      allow_internet_access: true
+      command: ["python", "-m", "service.updater"]
+      image: ${REGISTRY}ghcr.io/kam193/assemblyline-service-pcap-extractor:$SERVICE_TAG
+      ports: ["5003"]
+    run_as_core: true
