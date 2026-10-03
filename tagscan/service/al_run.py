@@ -6,32 +6,14 @@ from threading import RLock
 import hyperscan
 import yaml
 from assemblyline.common import forge
-from assemblyline.common.chunk import chunk
 from assemblyline.common.exceptions import RecoverableError
 from assemblyline_v4_service.common.base import ServiceBase
 from assemblyline_v4_service.common.request import ServiceRequest
 from assemblyline_v4_service.common.result import Result, ResultKeyValueSection
 
-CHUNK_SIZE = 1000
+from .helpers import HEURISTICS_MAP
+
 RULES_LOCK = RLock()
-HEURISTICS_MAP = dict(
-    info=1,
-    technique=2,
-    exploit=3,
-    tool=4,
-    malware=5,
-    safe=6,
-    tl1=7,
-    tl2=8,
-    tl3=9,
-    tl4=10,
-    tl5=11,
-    tl6=12,
-    tl7=13,
-    tl8=14,
-    tl9=15,
-    tl10=16,
-)
 
 
 class AssemblylineService(ServiceBase):
@@ -40,8 +22,7 @@ class AssemblylineService(ServiceBase):
         self.rules_loaded = False
         self.hs_dbs: dict[str, hyperscan.Database] = {}
         self.rules_meta: dict[str, list] = {}
-        self.tags_to_scan: set[str] = set()
-        self._matches: dict[str, set[tuple[str, int]]] = {}
+        self._matches: dict[tuple[str, int], set[str]] = {}
         self.classification = forge.get_classification()
 
     def _load_config(self):
@@ -92,7 +73,6 @@ class AssemblylineService(ServiceBase):
         with RULES_LOCK:
             self.hs_dbs = new_dbs
             self.rules_meta = new_meta
-            self.tags_to_scan = set(new_meta.keys())
             self.rules_loaded = True
 
         self.log.info(f"Loaded rules from {len(self.rules_list)} files.")
@@ -101,7 +81,7 @@ class AssemblylineService(ServiceBase):
         self, id: int, from_offset: int, to_offset: int, flags: int, context: tuple[str, str]
     ) -> None:
         tag_name, tag = context
-        self._matches.setdefault(tag_name, set()).add((tag, id))
+        self._matches.setdefault((tag_name, id), set()).add(tag)
 
     def _exist_safelisted_tags(self, tag_map: dict) -> dict:
         # TODO: bulk check?
@@ -113,6 +93,41 @@ class AssemblylineService(ServiceBase):
                     results[tag_type].append(tag_value)
 
         return results
+
+    def _build_section(self, rule: dict, tag_name: str, tags: list[str]) -> ResultKeyValueSection:
+        sig_meta = self.signatures_meta.get(rule.get("id"), {})
+        body_data = {
+            k: rule.get("meta", {}).get(k, "")
+            for k in sorted(rule.get("meta", {}).keys())
+            if "." not in k
+        }
+        tag_section = ResultKeyValueSection(
+            f"[{sig_meta.get('source', '')}] {sig_meta.get('name', '')}",
+            body=body_data,
+            zeroize_on_tag_safe=True,
+            classification=sig_meta.get("classification", self.classification.UNRESTRICTED),
+        )
+
+        if sig_meta.get("status", "") != "NOISY":
+            tag_section.set_heuristic(
+                HEURISTICS_MAP[rule.get("heuristic", "TL3").lower()],
+                signature=rule.get("id"),
+            )
+
+        for tag in tags:
+            tag_section.add_tag(tag_name, tag)
+        tag_section.add_tag("file.rule.tagscan", sig_meta["signature_id"])
+
+        for k, v in rule.get("meta", {}).items():
+            if "." in k:
+                tag_section.add_tag(k, v)
+
+        # https://cybercentrecanada.github.io/assemblyline4_docs/odm/models/tagging/#attribution
+        for key in ["actor", "campaign", "category", "exploit", "implant", "family", "network"]:
+            if key in rule.get("meta", {}):
+                tag_section.add_tag(f"attribution.{key}", rule["meta"][key])
+
+        return tag_section
 
     def execute(self, request: ServiceRequest) -> None:
         with RULES_LOCK:
@@ -149,63 +164,20 @@ class AssemblylineService(ServiceBase):
 
         result = Result()
 
-        for tag_name, matches in self._matches.items():
-            for tag, id_ in matches:
-                rule = self.rules_meta.get(tag_name, [])[id_]
-                if rule.get("exclude_files") and rule["exclude_files"].search(request.file_name):
-                    self.log.debug(f"Skipping rule {rule['name']} for file {request.file_name}")
-                    continue
+        for (tag_name, rule_id), matched in sorted(self._matches.items()):
+            rule = self.rules_meta.get(tag_name, [])[rule_id]
+            if rule.get("exclude_files") and rule["exclude_files"].search(request.file_name):
+                self.log.debug(f"Skipping rule {rule['name']} for file {request.file_name}")
+                continue
 
-                skip = False
-                for not_rule in rule.get("not", []):
-                    if not_rule.search(tag):
-                        self.log.debug(
-                            "Skipping rule %s for tag '%s' due to 'not' rule match",
-                            rule["name"],
-                            tag,
-                        )
-                        skip = True
-                        break
-                if skip:
-                    continue
-
-                sig_meta = self.signatures_meta.get(rule.get("id"), {})
-                body_data = {
-                    k: rule.get("meta", {}).get(k, "")
-                    for k in sorted(rule.get("meta", {}).keys())
-                    if "." not in k
-                }
-                tag_section = ResultKeyValueSection(
-                    f"[{sig_meta.get('source', '')}] {sig_meta.get('name', '')}",
-                    body=body_data,
-                    zeroize_on_tag_safe=True,
-                    classification=sig_meta.get("classification", self.classification.UNRESTRICTED),
+            tags = sorted(
+                tag for tag in matched if not any(not_rule.search(tag) for not_rule in rule["not"])
+            )
+            if not tags:
+                self.log.debug(
+                    "Skipping rule %s: all matches excluded by 'not' rules", rule["name"]
                 )
+                continue
 
-                if not sig_meta or sig_meta.get("status", "") != "NOISY":
-                    tag_section.set_heuristic(
-                        HEURISTICS_MAP.get(rule.get("heuristic", "TL3").lower()),
-                        signature=rule.get("id"),
-                    )
-                tag_section.add_tag(tag_name, tag)
-                tag_section.add_tag("file.rule.tagscan", sig_meta["signature_id"])
-
-                for k, v in rule.get("meta", {}).items():
-                    if "." in k:
-                        tag_section.add_tag(k, v)
-
-                # https://cybercentrecanada.github.io/assemblyline4_docs/odm/models/tagging/#attribution
-                for key in [
-                    "actor",
-                    "campaign",
-                    "category",
-                    "exploit",
-                    "implant",
-                    "family",
-                    "network",
-                ]:
-                    if key in rule.get("meta", {}):
-                        tag_section.add_tag(f"attribution.{key}", rule["meta"][key])
-
-                result.add_section(tag_section)
+            result.add_section(self._build_section(rule, tag_name, tags))
         request.result = result

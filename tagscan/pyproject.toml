@@ -1,0 +1,8 @@
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-p no:cacheprovider --strict-markers"
+
+[tool.coverage.run]
+source = ["service"]
+omit = ["tests/*"]

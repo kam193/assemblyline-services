@@ -130,6 +130,19 @@ lock:
 lock-test:
 	PIP_UPLOADED_PRIOR_TO="$(PIP_COOLDOWN)" pip-compile -q --generate-hashes --output-file requirements-test.txt $(ARGS) requirements-test.in
 
+# Resolve locks inside the base image
+DOCKER_LOCK = docker run --rm --user root -v $(CURDIR):/lock -w /lock \
+	-e PIP_UPLOADED_PRIOR_TO="$(PIP_COOLDOWN)" \
+	--entrypoint sh $(BASE_IMAGE) -c
+
+docker-lock:
+	$(DOCKER_LOCK) 'pip install -q pip-tools && pip-compile -q --generate-hashes \
+		--output-file requirements.txt $(ARGS) requirements.in'
+
+docker-lock-test:
+	$(DOCKER_LOCK) 'pip install -q pip-tools && pip-compile -q --generate-hashes \
+		--output-file requirements-test.txt $(ARGS) requirements-test.in'
+
 gentests:
 	WORK_DIR=$$(pwd) tox -e gentests -c ../tox.ini $(ARGS)
 

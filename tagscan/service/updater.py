@@ -9,7 +9,7 @@ import yaml
 from assemblyline.odm.models.signature import Signature
 from assemblyline_v4_service.updater.updater import ServiceUpdater
 
-from .helpers import configure_yaml
+from .helpers import HEURISTICS_MAP, configure_yaml
 
 configure_yaml()
 
@@ -57,6 +57,15 @@ class AssemblylineServiceUpdater(ServiceUpdater):
                         )
                         return False
                     names.add(last_rule_name)
+
+                    if "heuristic" in doc and str(doc["heuristic"]).lower() not in HEURISTICS_MAP:
+                        self.log.error(
+                            "Unknown heuristic '%s' in rule '%s'. File: %s",
+                            doc["heuristic"],
+                            last_rule_name,
+                            file_path,
+                        )
+                        return False
 
                     # Check main pattern
                     tmp_db = hyperscan.Database()
