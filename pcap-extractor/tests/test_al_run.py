@@ -3,7 +3,7 @@ import ipaddress
 import pathlib
 
 import pytest
-from service.extractor import Conversation, Extractor
+from service.extractor import Conversation, Extractor, UnsupportedCaptureFile
 from service.rules import NO_SCORE, SAFELIST, RuleSet, validate_rule
 
 from tests.al import build_request, make_safelist_api
@@ -72,6 +72,32 @@ def _patch_extractor(monkeypatch, conversations):
             return "stub"
 
     monkeypatch.setattr("service.al_run.Extractor", _StubExtractorFactory)
+
+
+class TestAssemblylineServiceUnsupportedCaptureFile:
+    def test_unrecognized_format_returns_empty_result(self, service, monkeypatch, tmp_path):
+        extractor = Extractor("/nonexistent.pcap")
+
+        def _raise_unsupported():
+            raise UnsupportedCaptureFile("not a capture file")
+
+        extractor.extract = _raise_unsupported
+
+        class _StubExtractorFactory:
+            def __new__(cls, *args, **kwargs):
+                return extractor
+
+            @staticmethod
+            def tshark_version():
+                return "stub"
+
+        monkeypatch.setattr("service.al_run.Extractor", _StubExtractorFactory)
+
+        svc = service()
+        request = build_request(str(pathlib.Path(__file__)))
+        svc.execute(request)
+
+        assert request.result.sections == []
 
 
 class TestAssemblylineServiceSniExtraction:

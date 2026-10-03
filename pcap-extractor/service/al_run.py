@@ -14,7 +14,7 @@ from assemblyline_v4_service.common.result import (
 )
 from assemblyline_v4_service.common.task import MaxExtractedExceeded
 
-from .extractor import Extractor, bytes_to_human
+from .extractor import Extractor, UnsupportedCaptureFile, bytes_to_human
 from .rules import DOMAIN, NO_SCORE, SAFELIST, URI, RuleSet
 
 CHUNK_SIZE = 1000
@@ -129,7 +129,14 @@ class AssemblylineService(ServiceBase):
             ignore_ips=self.ignore_ips,
             max_packets=max_packets,
         )
-        extractor.extract()
+        try:
+            extractor.extract()
+        except UnsupportedCaptureFile:
+            self.log.warning(
+                "%s is not a capture file tshark understands, returning empty result",
+                request.file_path,
+            )
+            return
 
         # Treat stream as safelisted if:
         # 1) all IPs are safelisted, or

@@ -24,6 +24,13 @@ UNITS_TABLE = {
 
 IMPORTANT_PROTOCOLS = ("http2", "http", "tls", "tcp", "udp")
 
+UNSUPPORTED_CAPTURE_FORMAT_MSG = "isn't a capture file in a format TShark understands"
+
+
+class UnsupportedCaptureFile(RuntimeError):
+    pass
+
+
 _FIELDS_TO_EXTRACT = [
     "tcp.stream",
     "frame.protocols",
@@ -256,6 +263,8 @@ class Extractor:
             self.logger.error("Error executing tshark command: %s", result.stderr)
             if result.returncode == 137:
                 raise RuntimeError("Memory limit exceeded")
+            if UNSUPPORTED_CAPTURE_FORMAT_MSG in result.stderr:
+                raise UnsupportedCaptureFile(result.stderr)
             raise RuntimeError(
                 "Error %d executing tshark command: %s", result.returncode, full_command
             )

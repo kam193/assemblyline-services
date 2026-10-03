@@ -1,4 +1,5 @@
-from service.extractor import Conversation, Extractor
+import pytest
+from service.extractor import Conversation, Extractor, UnsupportedCaptureFile
 
 
 def _layer(
@@ -114,6 +115,33 @@ class TestConversationUris:
         conv = Conversation.from_dict(_layer(sni="sni.example.com"))
 
         assert list(conv.uris) == []
+
+
+class TestExtractorExecute:
+    def test_unrecognized_format_raises_unsupported_capture_file(self, mocker):
+        extractor = Extractor("/not-a-pcap")
+        mocker.patch(
+            "service.extractor.subprocess.run",
+            return_value=mocker.Mock(
+                returncode=2,
+                stderr='tshark: The file "/not-a-pcap" isn\'t a capture file in a format '
+                "TShark understands.\n",
+                stdout="",
+            ),
+        )
+
+        with pytest.raises(UnsupportedCaptureFile):
+            extractor.execute(["-T", "ek"])
+
+    def test_other_tshark_error_raises_runtime_error(self, mocker):
+        extractor = Extractor("/not-a-pcap")
+        mocker.patch(
+            "service.extractor.subprocess.run",
+            return_value=mocker.Mock(returncode=1, stderr="some other failure", stdout=""),
+        )
+
+        with pytest.raises(RuntimeError):
+            extractor.execute(["-T", "ek"])
 
 
 class TestExtractorGetIocs:
