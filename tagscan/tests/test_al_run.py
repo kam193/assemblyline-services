@@ -33,7 +33,7 @@ class TestAssemblylineService:
 
     def test_heuristic_scores_once_regardless_of_match_count(self, service_with_rules, sample_file):
         # Result.finalize() sums each section's heuristic score; one section per rule is what
-        # keeps a multi-value match from inflating the total (two matches used to mean 2x score).
+        # keeps a multi-value match from inflating the total
         r = rule("evil-domain", r"evil\.com", "network.dynamic.domain", heuristic="malware")
         svc = service_with_rules(r)
         request = build_request(

@@ -47,28 +47,39 @@ class AssemblylineService(ServiceBase):
 
             urls = self.servers[server_name]
             retries = 0
+            last_exception = None
             while retries < 3:
                 url = random.choice(urls) if isinstance(urls, list) else urls
                 self.log.debug("Selected service URL [%s]: %s", server_name, url)
-                with open(request.file_path, "rb") as f:
-                    encoder = MultipartEncoder(
-                        fields={"file": (request.file_name, f, "application/octet-stream")}
-                    )
-                    av_response = requests.post(
-                        f"{url}/scan-file",
-                        data=encoder,
-                        headers={"Content-Type": encoder.content_type},
-                        timeout=(CONNECT_TIMEOUT, READ_TIMEOUT),
-                    )
+                try:
+                    with open(request.file_path, "rb") as f:
+                        encoder = MultipartEncoder(
+                            fields={"file": (request.file_name, f, "application/octet-stream")}
+                        )
+                        av_response = requests.post(
+                            f"{url}/scan-file",
+                            data=encoder,
+                            headers={"Content-Type": encoder.content_type},
+                            timeout=(CONNECT_TIMEOUT, READ_TIMEOUT),
+                        )
+                except requests.exceptions.RequestException as e:
+                    self.log.warning("Network error contacting remote AV server, retrying: %s", e)
+                    last_exception = e
+                    time.sleep(random.uniform(0.1, 1))
+                    retries += 1
+                    continue
 
                 # kind of a hacky retry for uploading issues
-                if av_response.status_code == 504:
+                if av_response.status_code >= 500:
                     self.log.warning("Remote AV server is busy or network has issues, retrying...")
+                    last_exception = None
                     time.sleep(random.uniform(0.1, 1))
                     retries += 1
                     continue
                 break
             else:
+                if last_exception:
+                    raise last_exception
                 raise RuntimeError("Failed to upload to remote AV server after 3 retries.")
 
             if av_response.status_code == 413:
