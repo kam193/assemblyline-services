@@ -100,21 +100,20 @@ class TestAssemblylineService:
             svc.execute(request)
 
     @responses.activate
-    def test_non_json_error_response_adds_error_section_without_raising(self, service, sample_file):
-        responses.add(
-            responses.POST,
-            "http://localhost:5556/scan-file",
-            status=502,
-            body="<html>bad gateway</html>",
-            content_type="text/html",
-        )
+    def test_non_json_error_response_retries_then_raises(self, service, sample_file):
+        for _ in range(3):
+            responses.add(
+                responses.POST,
+                "http://localhost:5556/scan-file",
+                status=502,
+                body="<html>bad gateway</html>",
+                content_type="text/html",
+            )
         svc = service(ONE_SERVER)
         request = build_request(sample_file(), params=ONE_SERVER_PARAMS)
 
-        svc.execute(request)
-
-        assert len(request.result.sections) == 1
-        assert request.result.sections[0].title_text == "Remote AV server error"
+        with pytest.raises(RuntimeError):
+            svc.execute(request)
 
     @responses.activate
     def test_file_too_large_on_remote_adds_error_section(self, service, sample_file):
