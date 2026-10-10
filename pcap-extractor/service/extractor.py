@@ -4,7 +4,7 @@ import logging
 import os
 import subprocess
 import tempfile
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from functools import lru_cache
 from typing import Iterable
 
@@ -23,6 +23,9 @@ UNITS_TABLE = {
 }
 
 IMPORTANT_PROTOCOLS = ("http2", "http", "tls", "tcp", "udp")
+
+IP_STATS_TITLE = "IPv4 Conversations"
+TCP_STATS_TITLE = "TCP Conversations"
 
 UNSUPPORTED_CAPTURE_FORMAT_MSG = "isn't a capture file in a format TShark understands"
 
@@ -72,6 +75,8 @@ class ConversationStat:
 
     bytes_sent: int = 0
     bytes_received: int = 0
+    src_port: int = None
+    dst_port: int = None
 
     @property
     def sent_human(self) -> str:
@@ -224,6 +229,7 @@ class Extractor:
         self.max_packets = max_packets
         self._conversations = {}
         self._stats: list[ConversationStat] = []
+        self._tcp_stats: list[ConversationStat] = []
 
     def _ignored_filter(self) -> list[str]:
         if not self.ignore_ips:
@@ -324,8 +330,8 @@ class Extractor:
         received = self._calculate_bytes("".join(received_size_parts), received_unit)
         return sent, received
 
-    def _parse_conversation_stats(self, line_iter: Iterable[str]):
-        for _ in range(3):
+    def _parse_stats_block(self, line_iter: Iterable[str], target: list, with_ports: bool):
+        for _ in range(2):
             next(line_iter)
         columns_lengths = [len(col) for col in next(line_iter).split("|")]
 
@@ -335,15 +341,30 @@ class Extractor:
             first_col = line[: columns_lengths[0]]
             sent, received = self._get_conv_size(line[columns_lengths[0] :])
 
-            src, dst = first_col.split("<->")
-            self._stats.append(
+            src, dst = (part.strip() for part in first_col.split("<->"))
+            src_port = dst_port = None
+            if with_ports:
+                src, src_port = src.rsplit(":", 1)
+                dst, dst_port = dst.rsplit(":", 1)
+                src_port, dst_port = int(src_port), int(dst_port)
+            target.append(
                 ConversationStat(
-                    ipaddress.ip_address(src.strip()),
-                    ipaddress.ip_address(dst.strip()),
+                    ipaddress.ip_address(src),
+                    ipaddress.ip_address(dst),
                     sent,
                     received,
+                    src_port,
+                    dst_port,
                 )
             )
+
+    def _parse_conversation_stats(self, line_iter: Iterable[str]):
+        for line in line_iter:
+            title = line.strip()
+            if title == IP_STATS_TITLE:
+                self._parse_stats_block(line_iter, self._stats, with_ports=False)
+            elif title == TCP_STATS_TITLE:
+                self._parse_stats_block(line_iter, self._tcp_stats, with_ports=True)
 
     def extract(self):
         # TODO: stream lines from tshark?
@@ -351,9 +372,11 @@ class Extractor:
             TSHARK_ANALYSIS_COMMAND
             + [
                 "-Y",
-                f"tcp and {self._ignored_filter()}",
+                " and ".join(filter(None, ["tcp", self._ignored_filter()])),
                 "-z",
                 f"conv,ip,{self._ignored_filter()}",
+                "-z",
+                f"conv,tcp,{self._ignored_filter()}",
             ],
             no_packets_output=False,
         )
@@ -402,14 +425,45 @@ class Extractor:
     def stats(self) -> Iterable[ConversationStat]:
         return self._stats
 
+    def stats_excluding(self, stream_ids: Iterable[int]) -> list[ConversationStat]:
+        stats = [replace(stat) for stat in self._stats]
+        for stream_id in stream_ids:
+            conv = self._conversations.get(("tcp", stream_id))
+            if not conv:
+                continue
+            endpoints = {(conv.src_ip, conv.src_port), (conv.dst_ip, conv.dst_port)}
+            tcp_stat = next(
+                (
+                    t
+                    for t in self._tcp_stats
+                    if {(t.src_ip, t.src_port), (t.dst_ip, t.dst_port)} == endpoints
+                ),
+                None,
+            )
+            if not tcp_stat:
+                continue
+            for stat in stats:
+                if (stat.src_ip, stat.dst_ip) == (tcp_stat.src_ip, tcp_stat.dst_ip):
+                    sent, received = tcp_stat.bytes_sent, tcp_stat.bytes_received
+                elif (stat.src_ip, stat.dst_ip) == (tcp_stat.dst_ip, tcp_stat.src_ip):
+                    sent, received = tcp_stat.bytes_received, tcp_stat.bytes_sent
+                else:
+                    continue
+                stat.bytes_sent = max(0, stat.bytes_sent - sent)
+                stat.bytes_received = max(0, stat.bytes_received - received)
+                break
+        return stats
+
     def get_files(self, skip_streams: list = None) -> Iterable[str]:
         out_dir = tempfile.mkdtemp(prefix="extracted_")
 
-        stream_filter = ""
+        filters = [self._ignored_filter()]
         if skip_streams:
-            stream_filter = f" and tcp.stream not in {{{','.join([str(s) for s in skip_streams])}}}"
+            filters.append(f"tcp.stream not in {{{','.join([str(s) for s in skip_streams])}}}")
 
-        params = ["-2", "-R", f"{self._ignored_filter()}{stream_filter}"]
+        params = ["-2"]
+        if display_filter := " and ".join(filter(None, filters)):
+            params += ["-R", display_filter]
         for proto in ["dicom", "ftp-data", "http", "imf", "smb", "tftp"]:
             params.append("--export-objects")
             params.append(f"{proto},{out_dir}")

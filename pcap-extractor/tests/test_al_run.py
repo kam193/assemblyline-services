@@ -3,7 +3,7 @@ import ipaddress
 import pathlib
 
 import pytest
-from service.extractor import Conversation, Extractor, UnsupportedCaptureFile
+from service.extractor import Conversation, ConversationStat, Extractor, UnsupportedCaptureFile
 from service.rules import NO_SCORE, SAFELIST, RuleSet, validate_rule
 
 from tests.al import build_request, make_safelist_api
@@ -34,6 +34,15 @@ def _collect_tags(section, tag_type: str) -> set:
     for subsection in section.subsections:
         tags |= _collect_tags(subsection, tag_type)
     return tags
+
+
+def _collect_heuristic_ids(sections) -> set:
+    ids = set()
+    for section in sections:
+        if section.heuristic:
+            ids.add(section.heuristic.heur_id)
+        ids |= _collect_heuristic_ids(section.subsections)
+    return ids
 
 
 def _conversation_sections(section) -> list:
@@ -72,6 +81,7 @@ def _patch_extractor(monkeypatch, conversations):
             return "stub"
 
     monkeypatch.setattr("service.al_run.Extractor", _StubExtractorFactory)
+    return extractor
 
 
 class TestAssemblylineServiceUnsupportedCaptureFile:
@@ -272,3 +282,64 @@ class TestAssemblylineServiceNetworkRules:
         ]
         assert len(conv_sections) == 1
         assert conv_sections[0].heuristic is not None
+
+
+class TestAssemblylineServiceExfiltration:
+    DST = "93.184.216.34"
+    DOMAIN_RULE = {"domains": [r"example\.com"]}
+
+    def _run(
+        self,
+        service,
+        monkeypatch,
+        domains=("example.com",),
+        action=None,
+        count_no_score=False,
+        no_score_ips=(),
+        safelist_domain=None,
+    ):
+        conv = _make_conversation(1, domains=domains, dst=self.DST)
+        extractor = _patch_extractor(monkeypatch, [conv])
+        extractor._stats.append(ConversationStat(conv.src_ip, conv.dst_ip, 3000, 10))
+        extractor._tcp_stats.append(
+            ConversationStat(conv.src_ip, conv.dst_ip, 3000, 10, conv.src_port, conv.dst_port)
+        )
+
+        svc = service()
+        svc.exfiltration_threshold = 1000
+        svc.exfiltration_count_no_score = count_no_score
+        svc.no_score_ips = [ipaddress.ip_address(ip) for ip in no_score_ips]
+        if action:
+            svc._rules = RuleSet(
+                [validate_rule({"name": "r", "action": action, **self.DOMAIN_RULE})]
+            )
+        if safelist_domain:
+            svc._api_interface = make_safelist_api(("network.dynamic.domain", safelist_domain))
+        request = build_request(
+            str(pathlib.Path(__file__)), params={"extract_streams": False, "extract_files": False}
+        )
+        svc.execute(request)
+        return _collect_heuristic_ids(request.result.sections)
+
+    def test_unexcluded_traffic_fires_conversation_and_exfiltration_heuristics(
+        self, service, monkeypatch
+    ):
+        assert self._run(service, monkeypatch) == {1, 3}
+
+    def test_no_score_traffic_fires_only_exfiltration_when_counting_enabled(
+        self, service, monkeypatch
+    ):
+        assert self._run(service, monkeypatch, action=NO_SCORE, count_no_score=True) == {3}
+
+    @pytest.mark.parametrize(
+        "kwargs",
+        [
+            {"action": SAFELIST},
+            {"action": SAFELIST, "count_no_score": True},
+            {"safelist_domain": "example.com"},
+            {"action": NO_SCORE},
+            {"domains": (), "no_score_ips": ["93.184.216.34"]},
+        ],
+    )
+    def test_excluded_traffic_fires_no_heuristic(self, service, monkeypatch, kwargs):
+        assert self._run(service, monkeypatch, **kwargs) == set()

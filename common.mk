@@ -130,6 +130,10 @@ lock:
 lock-test:
 	PIP_UPLOADED_PRIOR_TO="$(PIP_COOLDOWN)" pip-compile -q --generate-hashes --output-file requirements-test.txt $(ARGS) requirements-test.in
 
+lock-upgrade:
+	PIP_UPLOADED_PRIOR_TO="$(PIP_COOLDOWN)" pip-compile -q --generate-hashes --output-file requirements.txt --upgrade requirements.in
+	PIP_UPLOADED_PRIOR_TO="$(PIP_COOLDOWN)" pip-compile -q --generate-hashes --output-file requirements-test.txt --upgrade requirements-test.in
+
 # Resolve locks inside the base image
 DOCKER_LOCK = docker run --rm --user root -v $(CURDIR):/lock -w /lock \
 	-e PIP_UPLOADED_PRIOR_TO="$(PIP_COOLDOWN)" \

@@ -1,3 +1,5 @@
+import ipaddress
+
 import pytest
 from service.extractor import Conversation, Extractor, UnsupportedCaptureFile
 
@@ -155,3 +157,99 @@ class TestExtractorGetIocs:
         assert ips == {"1.2.3.4"}
         assert domains == {"sni-only.example.com"}
         assert uris == set()
+
+
+def _stats_text(tcp_first: bool) -> list[str]:
+    width = 50
+    header = [
+        " " * width + "|       <-      | |       ->      | |     Total     |",
+        " " * width + "| Frames  Bytes | | Frames  Bytes | | Frames  Bytes |",
+    ]
+
+    def block(title, pair):
+        row = f"{pair:<{width}}" + "   5 5000 bytes     6 3000 bytes     11 8000 bytes"
+        return [title, "Filter:<No Filter>", *header, row, "=" * 20]
+
+    ip_block = block("IPv4 Conversations", "10.0.0.1 <-> 1.2.3.4")
+    tcp_block = block("TCP Conversations", "10.0.0.1:40000 <-> 1.2.3.4:443")
+    tcp_block[-2] = tcp_block[-2].replace("5000", "2000").replace("3000", "1000")
+    blocks = [tcp_block, ip_block] if tcp_first else [ip_block, tcp_block]
+    lines = []
+    for b in blocks:
+        lines += ["=" * 20] + b
+    return lines
+
+
+class TestExtractorStats:
+    @pytest.mark.parametrize("tcp_first", [True, False])
+    def test_parses_ip_and_tcp_blocks_in_any_order(self, tcp_first):
+        extractor = Extractor("/nonexistent.pcap")
+        lines = iter(_stats_text(tcp_first)[1:])
+
+        extractor._parse_conversation_stats(lines)
+
+        assert [(s.bytes_received, s.bytes_sent) for s in extractor.stats] == [(5000, 3000)]
+        assert [(s.src_port, s.dst_port) for s in extractor._tcp_stats] == [(40000, 443)]
+
+    @pytest.mark.parametrize(
+        "excluded, expected_sent",
+        [([], 3000), ([0], 2000), ([99], 3000)],
+    )
+    def test_stats_excluding_subtracts_stream_bytes(self, excluded, expected_sent):
+        extractor = Extractor("/nonexistent.pcap")
+        extractor._parse_conversation_stats(iter(_stats_text(True)[1:]))
+        conv = Conversation.from_dict(_layer(tcp_stream=0, dst="1.2.3.4"))
+        extractor._conversations[("tcp", conv.stream_id)] = conv
+
+        result = extractor.stats_excluding(excluded)
+
+        assert result[0].bytes_sent == expected_sent
+        assert extractor.stats[0].bytes_sent == 3000
+
+    def test_stats_excluding_handles_reversed_stream_orientation(self):
+        extractor = Extractor("/nonexistent.pcap")
+        extractor._parse_conversation_stats(iter(_stats_text(True)[1:]))
+        conv = Conversation.from_dict(
+            _layer(tcp_stream=0, src="1.2.3.4", sport="443", dst="10.0.0.1", dport="40000")
+        )
+        extractor._conversations[("tcp", conv.stream_id)] = conv
+
+        result = extractor.stats_excluding([0])
+
+        assert (result[0].bytes_sent, result[0].bytes_received) == (2000, 3000)
+
+    def test_stats_excluding_clamps_at_zero(self):
+        extractor = Extractor("/nonexistent.pcap")
+        extractor._parse_conversation_stats(iter(_stats_text(True)[1:]))
+        extractor.stats[0].bytes_sent = 500
+        conv = Conversation.from_dict(_layer(tcp_stream=0, dst="1.2.3.4"))
+        extractor._conversations[("tcp", conv.stream_id)] = conv
+
+        assert extractor.stats_excluding([0])[0].bytes_sent == 0
+
+
+class TestExtractorIgnoredFilter:
+    @pytest.mark.parametrize(
+        "ignore_ips, expected",
+        [
+            ([], "tcp"),
+            ([ipaddress.ip_address("192.168.0.1")], "tcp and ip.addr not in {192.168.0.1}"),
+        ],
+    )
+    def test_display_filter_has_no_dangling_operator(self, mocker, ignore_ips, expected):
+        extractor = Extractor("/nonexistent.pcap", ignore_ips=ignore_ips)
+        mock_execute = mocker.patch.object(extractor, "execute", return_value="")
+        mocker.patch.object(extractor, "_parse_conversation_stats")
+
+        extractor.extract()
+
+        command = mock_execute.call_args.args[0]
+        assert command[command.index("-Y") + 1] == expected
+
+    def test_get_files_without_filters_omits_display_filter(self, mocker):
+        extractor = Extractor("/nonexistent.pcap")
+        mock_execute = mocker.patch.object(extractor, "execute", return_value="")
+
+        list(extractor.get_files())
+
+        assert "-R" not in mock_execute.call_args.args[0]

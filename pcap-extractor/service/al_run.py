@@ -62,6 +62,9 @@ class AssemblylineService(ServiceBase):
 
         self.command_timeout = int(self.config.get("command_timeout", 30))
         self.exfiltration_threshold = int(self.config.get("exfiltration_threshold_mb", 10)) * 10**6
+        self.exfiltration_count_no_score = bool(
+            self.config.get("exfiltration_count_no_score", False)
+        )
 
     def start(self):
         self.log.info(f"start() from {self.service_attributes.name} service called")
@@ -158,6 +161,7 @@ class AssemblylineService(ServiceBase):
         rule_no_score_domains = rules.match_all(NO_SCORE, DOMAIN, domains)
         rule_no_score_uris = rules.match_all(NO_SCORE, URI, uris)
         safelisted_tcp_streams = []
+        non_scoring_tcp_streams = []
 
         tcp_section.add_line(f"Found {len(extractor.conversations)} TCP conversations")
         for conv in extractor.conversations:
@@ -258,6 +262,9 @@ class AssemblylineService(ServiceBase):
                 )
                 safelisted_tcp_streams.append(conv.stream_id)
 
+            if is_non_scoring and not is_safelisted:
+                non_scoring_tcp_streams.append(conv.stream_id)
+
             tcp_section.add_subsection(conversation_section)
 
         if extract_files:
@@ -267,11 +274,20 @@ class AssemblylineService(ServiceBase):
             except MaxExtractedExceeded:
                 self.log.warning("Exceeded max extracted files")
 
-        stats_section = ResultTextSection("IP statistics (excl. safelisted)")
+        excluded_streams = list(safelisted_tcp_streams)
+        stats_title = "IP statistics (excl. safelisted)"
+        if not self.exfiltration_count_no_score:
+            excluded_streams += non_scoring_tcp_streams
+            stats_title = "IP statistics (excl. safelisted and no-score)"
+        stats_section = ResultTextSection(stats_title)
 
         total_sent = 0
-        for conv in extractor.stats:
+        for conv in extractor.stats_excluding(excluded_streams):
             if str(conv.dst_ip) in safelisted_tags["network.dynamic.ip"]:
+                continue
+            if not self.exfiltration_count_no_score and conv.dst_ip in self.no_score_ips:
+                continue
+            if not conv.bytes_sent and not conv.bytes_received:
                 continue
             stats_section.add_line(
                 f"Remote {conv.dst_ip}: sent: {conv.sent_human}, received: {conv.received_human}"
