@@ -1,0 +1,123 @@
+{
+  "results": [
+    {
+      "check_id": "test-source.exec-call",
+      "path": "/tmp/semgrep_test_workspace/7780522fbee5e082e0ca620d317f7d3ce9131aa40916c0f632152335e745fae7.py",
+      "start": {
+        "line": 3,
+        "col": 1,
+        "offset": 15
+      },
+      "end": {
+        "line": 3,
+        "col": 39,
+        "offset": 53
+      },
+      "extra": {
+        "message": "Executing dynamic code",
+        "metadata": {
+          "al_status": "DEPLOYED",
+          "attack_id": "T1059.006",
+          "attribution": {
+            "family": "evilfam"
+          },
+          "classification": "TLP:C",
+          "extend_preview": 1,
+          "title": "Dynamic exec"
+        },
+        "severity": "WARNING",
+        "fingerprint": "requires login",
+        "lines": "requires login",
+        "validation_state": "NO_VALIDATOR",
+        "engine_kind": "OSS"
+      }
+    },
+    {
+      "check_id": "test-source.eval-call",
+      "path": "/tmp/semgrep_test_workspace/7780522fbee5e082e0ca620d317f7d3ce9131aa40916c0f632152335e745fae7.py",
+      "start": {
+        "line": 5,
+        "col": 9,
+        "offset": 63
+      },
+      "end": {
+        "line": 5,
+        "col": 22,
+        "offset": 76
+      },
+      "extra": {
+        "message": "Evaluating dynamic code",
+        "metadata": {},
+        "severity": "ERROR",
+        "fingerprint": "requires login",
+        "lines": "requires login",
+        "validation_state": "NO_VALIDATOR",
+        "engine_kind": "OSS"
+      }
+    },
+    {
+      "check_id": "test-source.exec-call",
+      "path": "/tmp/semgrep_test_workspace/7780522fbee5e082e0ca620d317f7d3ce9131aa40916c0f632152335e745fae7.py",
+      "start": {
+        "line": 7,
+        "col": 1,
+        "offset": 78
+      },
+      "end": {
+        "line": 11,
+        "col": 2,
+        "offset": 136
+      },
+      "extra": {
+        "message": "Executing dynamic code",
+        "metadata": {
+          "al_status": "DEPLOYED",
+          "attack_id": "T1059.006",
+          "attribution": {
+            "family": "evilfam"
+          },
+          "classification": "TLP:C",
+          "extend_preview": 1,
+          "title": "Dynamic exec"
+        },
+        "severity": "WARNING",
+        "fingerprint": "requires login",
+        "lines": "requires login",
+        "validation_state": "NO_VALIDATOR",
+        "engine_kind": "OSS"
+      }
+    },
+    {
+      "check_id": "test-source.print-call",
+      "path": "/tmp/semgrep_test_workspace/7780522fbee5e082e0ca620d317f7d3ce9131aa40916c0f632152335e745fae7.py",
+      "start": {
+        "line": 13,
+        "col": 1,
+        "offset": 138
+      },
+      "end": {
+        "line": 13,
+        "col": 14,
+        "offset": 151
+      },
+      "extra": {
+        "message": "Printing",
+        "metadata": {},
+        "severity": "INFO",
+        "fingerprint": "requires login",
+        "lines": "requires login",
+        "validation_state": "NO_VALIDATOR",
+        "engine_kind": "OSS"
+      }
+    }
+  ],
+  "errors": [],
+  "paths": {
+    "scanned": [
+      "/tmp/semgrep_test_workspace/7780522fbee5e082e0ca620d317f7d3ce9131aa40916c0f632152335e745fae7.py"
+    ]
+  },
+  "engine_requested": "OSS",
+  "skipped_rules": [],
+  "profiling_results": []
+}

@@ -1,22 +1,14 @@
 """TestHelper golden-file regression.
 
-Add a sample: mkdir tests/results/<sha256>/ (optionally with params.json), put
-tests/samples/<sha256>.cart in place, then `make gentests`.
+Add a sample: mkdir tests/results/<sha256>/ (optionally with params.json), put the
+plain file or its <sha256>.cart in tests/samples/, then `make gentests`.
 """
 
-import pathlib
-
 import pytest
-from assemblyline.common.importing import load_module_by_path
-from assemblyline_service_utilities.testing.helper import TestHelper
 
-_ROOT = pathlib.Path(__file__).resolve().parent.parent
-RESULTS = str(_ROOT / "tests" / "results")
-SAMPLES = str(_ROOT / "tests" / "samples")
+from tests.al import build_test_helper
 
-th = TestHelper(
-    load_module_by_path("service.al_run.AssemblylineService", str(_ROOT)), RESULTS, SAMPLES
-)
+th = build_test_helper()
 
 
 def _cases():

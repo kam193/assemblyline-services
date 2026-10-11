@@ -1,0 +1,7 @@
+-r requirements.txt
+
+assemblyline-service-utilities
+assemblyline-v4-service[updater]
+pytest
+pytest-cov
+pytest-mock

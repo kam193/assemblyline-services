@@ -1,0 +1,30 @@
+id: exec-call
+languages:
+- python
+message: Executing dynamic code
+metadata:
+  attack_id: T1059.006
+  attribution:
+    family: evilfam
+  extend_preview: 1
+  title: Dynamic exec
+pattern: exec(...)
+severity: WARNING
+
+#SIGNATURE-DELIMITER#
+
+id: eval-call
+languages:
+- python
+message: Evaluating dynamic code
+pattern: eval(...)
+severity: ERROR
+
+#SIGNATURE-DELIMITER#
+
+id: print-call
+languages:
+- python
+message: Printing
+pattern: print(...)
+severity: INFO

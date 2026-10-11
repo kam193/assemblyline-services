@@ -2,11 +2,15 @@
 
 import hashlib
 import os
+import pathlib
 import shutil
 import tempfile
 
+import cart
 from assemblyline.common import forge
+from assemblyline.common.importing import load_module_by_path
 from assemblyline.odm.messages.task import Task as ServiceTask
+from assemblyline_service_utilities.testing.helper import TestHelper
 from assemblyline_v4_service.common import helper
 from assemblyline_v4_service.common.request import ServiceRequest
 from assemblyline_v4_service.common.task import Task
@@ -31,7 +35,7 @@ def stage_file(path: str) -> str:
     return sha256
 
 
-def build_request(path, *, config=None, params=None, temp_data=None, filename=None):
+def build_request(path, *, config=None, params=None, temp_data=None, filename=None, tags=None):
     stage_file(path)
     fileinfo = {
         k: v
@@ -58,7 +62,40 @@ def build_request(path, *, config=None, params=None, temp_data=None, filename=No
             "temporary_submission_data": [
                 {"name": k, "value": v} for k, v in (temp_data or {}).items()
             ],
-            "tags": [],
+            "tags": [
+                {"type": tag_type, "value": value, "short_type": tag_type.rsplit(".", 1)[-1]}
+                for tag_type, values in (tags or {}).items()
+                for value in values
+            ],
         }
     )
     return ServiceRequest(Task(task))
+
+
+def _stage_samples(source):
+    """tests/samples may hold ready <sha256>.cart files and/or plain files, which get carted."""
+    target = pathlib.Path(tempfile.mkdtemp(prefix="samples_"))
+    if not source.is_dir():
+        return target
+    for path in source.iterdir():
+        if path.suffix == ".cart":
+            shutil.copyfile(path, target / path.name)
+        elif path.is_file():
+            sha256 = hashlib.sha256(path.read_bytes()).hexdigest()
+            with open(path, "rb") as plain, open(target / f"{sha256}.cart", "wb") as carted:
+                cart.pack_stream(plain, carted)
+    return target
+
+
+def build_test_helper(service_path="service.al_run.AssemblylineService"):
+    root = pathlib.Path(__file__).resolve().parent.parent
+    test_helper = TestHelper(
+        load_module_by_path(service_path, str(root)),
+        str(root / "tests" / "results"),
+        str(_stage_samples(root / "tests" / "samples")),
+    )
+    # TestHelper re.match()es the manifest filetype, which is invalid regex for "*"
+    for heuristic in test_helper.heuristics.values():
+        if heuristic.filetype == "*":
+            heuristic.filetype = ".*"
+    return test_helper

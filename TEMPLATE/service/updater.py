@@ -20,9 +20,7 @@ class AssemblylineServiceUpdater(ServiceUpdater):
     # def is_valid(self, file_path) -> bool:
     #     return True
 
-    def import_update(
-        self, files_sha256, source, default_classification
-    ) -> None:
+    def import_update(self, files_sha256, source, default_classification) -> None:
         output_dir = os.path.join(self.latest_updates_dir, source)
         os.makedirs(os.path.join(self.latest_updates_dir, source), exist_ok=True)
         for file, _ in files_sha256:

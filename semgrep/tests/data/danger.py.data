@@ -1,0 +1,13 @@
+import base64
+
+exec(base64.b64decode("cHJpbnQoIiI="))
+
+value = eval("1 + 1")
+
+exec(
+    base64.b64decode(
+        "cHJpbnQoIiI="
+    )
+)
+
+print("done")

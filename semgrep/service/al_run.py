@@ -114,9 +114,9 @@ class AssemblylineService(ServiceBase):
             rule = yaml.safe_load("".join(rule_lines))
             original_id = rule["id"]
             full_id = f"{source_name}.{rule['id']}"
+            metadata[full_id] = rule.get("metadata", {})
             if self.use_lsp:
-                rule["id"] = f"{source_name}.{rule['id']}"
-                metadata[full_id] = rule.get("metadata", {})
+                rule["id"] = full_id
             try:
                 # TODO: looks like signatures_meta can have issues with duplicated rule ids?
                 metadata[full_id]["classification"] = self.signatures_meta[original_id][

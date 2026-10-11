@@ -148,7 +148,7 @@ docker-lock-test:
 		--output-file requirements-test.txt $(ARGS) requirements-test.in'
 
 gentests:
-	WORK_DIR=$$(pwd) tox -e gentests -c ../tox.ini $(ARGS)
+	WORK_DIR=$$(pwd) tox -e gentests -c ../tox.ini -- $(ARGS)
 
 TEST_TAG = kam193/$(SERVICE_NAME):test
 TEST_REGISTRY ?=

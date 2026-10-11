@@ -1,0 +1,7 @@
+{
+  "filename": "clean.py",
+  "config": {
+    "USE_LANGUAGE_SERVER_PROTOCOL": false,
+    "FALLBACK_TO_SCAN": false
+  }
+}

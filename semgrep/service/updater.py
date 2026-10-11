@@ -22,7 +22,27 @@ class AssemblylineServiceUpdater(ServiceUpdater):
 
         self.persistent_dir = pathlib.Path(os.getenv("UPDATER_DIR", "/tmp/updater"))
 
+    def _has_valid_metadata(self, file_path: str) -> bool:
+        try:
+            with open(file_path, "r") as f:
+                rules = (yaml.safe_load(f) or {}).get("rules", [])
+        except yaml.YAMLError:
+            self.log.error("Cannot parse semgrep rule file: %s", file_path)
+            return False
+
+        for rule in rules:
+            value = (rule.get("metadata") or {}).get("extend_preview")
+            if value in (None, ""):
+                continue
+            if isinstance(value, bool) or not isinstance(value, int):
+                self.log.error("Rule %s has non-integer extend_preview: %r", rule.get("id"), value)
+                return False
+        return True
+
     def is_valid(self, file_path: str):
+        if not self._has_valid_metadata(file_path):
+            return False
+
         # semgrep --validate calls their registry to get linting rules
         # as per https://github.com/semgrep/semgrep/blob/73b6cf90c5ac71e001711f98adb72ca4ba8b2f8f/src/metachecking/Check_rule.ml#L44
         # they are necessary to validate the rule file

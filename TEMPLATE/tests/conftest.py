@@ -12,11 +12,13 @@ _MANIFEST_SRC = _HERE.parent / "service_manifest.yml"
 
 def _prepare_manifest() -> None:
     env = os.environ.get("SERVICE_MANIFEST_PATH")
-    if env and os.path.exists(env) and "$VERSION" not in pathlib.Path(env).read_text():
-        return
+    if env and os.path.exists(env):
+        current = pathlib.Path(env).read_text()
+        if "$VERSION" not in current and "$SERVICE_TAG" not in current:
+            return
     text = _MANIFEST_SRC.read_text()
     text = re.sub(r"stable\$VERSION", "0.dev0", text)
-    text = text.replace("$VERSION", "0.dev0")
+    text = text.replace("$VERSION", "0.dev0").replace("$SERVICE_TAG", "0.dev0")
     target = pathlib.Path(tempfile.gettempdir()) / "template_service_manifest.yml"
     target.write_text(text)
     os.environ["SERVICE_MANIFEST_PATH"] = str(target)
@@ -38,12 +40,17 @@ def _no_network(monkeypatch):
 def service():
     from service.al_run import AssemblylineService
 
+    created = []
+
     def _make(config=None):
         svc = AssemblylineService(config or {})
         svc.start()
+        created.append(svc)
         return svc
 
-    return _make
+    yield _make
+    for svc in created:
+        svc.stop()
 
 
 @pytest.fixture
