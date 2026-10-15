@@ -85,6 +85,7 @@ jobs:
           persist-credentials: false
           ssh-key: ${{ secrets.UNSAFE_SAMPLES_SSH }}
           clean: false
+        continue-on-error: true
       - name: Link the test samples
         if: steps.check-service-changed.outputs.exit-code != 0 && matrix.service == 'ASTGrep'
         run: |
