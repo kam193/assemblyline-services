@@ -217,7 +217,7 @@
     "extracted": [],
     "supplementary": [
       {
-        "name": "semgrep_raw_results.json",
+        "name": "engine_raw_results.json",
         "sha256": "73a16093589b36627eaf69efa343b2953779d3ffbc77db11a2fd0ef112a86595"
       }
     ]

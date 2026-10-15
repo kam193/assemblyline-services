@@ -24,6 +24,8 @@ config:
   SEMGREP_TIMEOUT_TRESHOLD: 10
   # Maximum size for a file to be scanned by Semgrep
   SEMGREP_MAX_TARGET_BYTES: 5000000 # 5MB
+  # Use the Opengrep engine instead of Semgrep
+  USE_OPENGREP: false
   # LSP keeps the semgrep process running in the background
   # reducing the startup time for subsequent requests
   # but may be less stable

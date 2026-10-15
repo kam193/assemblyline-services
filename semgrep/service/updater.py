@@ -6,7 +6,8 @@ import yaml
 from assemblyline.odm.models.signature import Signature
 from assemblyline_v4_service.updater.updater import ServiceUpdater
 
-from .helpers import BASE_CONFIG, configure_yaml
+from .controller import Engine, engine_from_config
+from .helpers import configure_yaml
 
 configure_yaml()
 
@@ -21,6 +22,10 @@ class AssemblylineServiceUpdater(ServiceUpdater):
         self.signatures_query = f"type:{self.updater_type} AND ({status_query})"
 
         self.persistent_dir = pathlib.Path(os.getenv("UPDATER_DIR", "/tmp/updater"))
+
+    @property
+    def engine(self) -> Engine:
+        return engine_from_config(self._service.config if self._service else {})
 
     def _has_valid_metadata(self, file_path: str) -> bool:
         try:
@@ -47,8 +52,16 @@ class AssemblylineServiceUpdater(ServiceUpdater):
         # as per https://github.com/semgrep/semgrep/blob/73b6cf90c5ac71e001711f98adb72ca4ba8b2f8f/src/metachecking/Check_rule.ml#L44
         # they are necessary to validate the rule file
         self.log.info("Validating semgrep rule file: %s", file_path)
+        engine = self.engine
         result = subprocess.run(
-            ["semgrep"] + BASE_CONFIG + ["--config", file_path, "--validate"],
+            [
+                engine.binary,
+                *engine.cli_prefix,
+                *engine.cli_config,
+                "--config",
+                file_path,
+                "--validate",
+            ],
             capture_output=True,
             text=True,
         )

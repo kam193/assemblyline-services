@@ -1,7 +1,10 @@
 import os
 
+import pylspclient
 import pytest
 from service.controller import (
+    OPENGREP,
+    SEMGREP,
     SemgrepError,
     SemgrepLSPController,
     SemgrepScanController,
@@ -10,6 +13,7 @@ from service.controller import (
 
 from tests.al import build_request, matches
 from tests.factories import rule
+from tests.processes import descendants, is_running, kill_all, run_within
 
 EXEC = rule("exec-call", "exec(...)")
 RULES_YAML = (
@@ -18,10 +22,15 @@ RULES_YAML = (
 )
 
 
+@pytest.fixture
+def engine_definition(engine):
+    return OPENGREP if engine == "opengrep" else SEMGREP
+
+
 class TestSemgrepScanController:
     @pytest.fixture
-    def controller(self, tmp_path):
-        controller = SemgrepScanController(rules_dir=str(tmp_path))
+    def controller(self, tmp_path, engine_definition):
+        controller = SemgrepScanController(rules_dir=str(tmp_path), engine=engine_definition)
         controller.set_config("timeout", "5")
         controller.set_config("max-memory", "1000")
         controller.set_config("max-target-bytes", "1000000")
@@ -130,3 +139,93 @@ class TestSemgrepLSPController_Lifecycle:
         svc.execute(request)
 
         assert matches(request) == {"Message of exec-call": ["Match at line 1"]}
+
+    def test_killed_server_leaves_no_orphaned_processes(self, service_with_rules, sample_file):
+        svc = service_with_rules(EXEC)
+        lsp = svc._semgrep
+        held_open = lsp._server_process
+        pids = descendants(held_open.pid)
+        held_open.kill()
+        held_open.wait()
+
+        try:
+            svc._cleanup()
+            survivors = [pid for pid in pids if is_running(pid)]
+        finally:
+            kill_all(pids)
+
+        assert survivors == []
+
+    def test_stop_kills_server_that_ignores_exit(self, service_with_rules, mocker):
+        svc = service_with_rules(EXEC)
+        lsp = svc._semgrep
+        lsp.SHUTDOWN_TIMEOUT = 0.5
+        pids = descendants(lsp._server_process.pid)
+        mocker.patch.object(lsp.client, "exit", autospec=True, side_effect=RuntimeError)
+        mocker.patch.object(lsp.client, "shutdown", autospec=True, side_effect=RuntimeError)
+
+        try:
+            finished, _ = run_within(lsp.stop, 30)
+            survivors = [pid for pid in pids if is_running(pid)]
+        finally:
+            kill_all(pids)
+
+        assert finished
+        assert survivors == []
+
+    def test_reload_after_timeout_leaves_no_old_server(self, service_with_rules, data_file):
+        svc = service_with_rules(EXEC, config={"SILENT_TIMEOUTS": True})
+        lsp = svc._semgrep
+        pids = descendants(lsp._server_process.pid)
+        lsp.cli_timeout = 0
+        svc.execute(build_request(data_file("danger.py")))
+        lsp.cli_timeout = 30
+
+        try:
+            svc._cleanup()
+            survivors = [pid for pid in pids if is_running(pid)]
+        finally:
+            kill_all(pids)
+
+        assert survivors == []
+        request = build_request(data_file("danger.py"))
+        svc.execute(request)
+        assert matches(request)
+
+
+class TestSemgrepLSPController_Startup:
+    @pytest.fixture
+    def controller(self, tmp_path, engine_definition):
+        controller = SemgrepLSPController(rules_dir=str(tmp_path), engine=engine_definition)
+        controller.SHUTDOWN_TIMEOUT = 0.5
+        controller.set_config("timeout", "5")
+        controller.set_config("max-memory", "1000")
+        controller.set_config("max-target-bytes", "1000000")
+        controller.set_config("timeout-threshold", "3")
+        return controller
+
+    def test_failed_initialization_leaves_no_server(self, controller, mocker):
+        pids = []
+
+        def fail(*_, **__):
+            pids.extend(descendants(controller._server_process.pid))
+            raise RuntimeError("init failed")
+
+        mocker.patch.object(pylspclient.LspClient, "initialized", autospec=True, side_effect=fail)
+
+        try:
+            finished, error = run_within(lambda: controller.load_rules([], ""), 30)
+            survivors = [pid for pid in pids if is_running(pid)]
+        finally:
+            kill_all(pids)
+
+        assert finished
+        assert isinstance(error, RuntimeError)
+        assert pids
+        assert survivors == []
+
+    def test_stop_without_started_server_is_noop(self, controller):
+        controller.stop()
+
+    def test_cleanup_without_started_server_is_noop(self, controller):
+        controller.cleanup()

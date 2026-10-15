@@ -26,7 +26,6 @@
           "title": "Dynamic exec"
         },
         "severity": "WARNING",
-        "fingerprint": "requires login",
         "lines": "requires login",
         "validation_state": "NO_VALIDATOR",
         "engine_kind": "OSS"
@@ -49,7 +48,6 @@
         "message": "Evaluating dynamic code",
         "metadata": {},
         "severity": "ERROR",
-        "fingerprint": "requires login",
         "lines": "requires login",
         "validation_state": "NO_VALIDATOR",
         "engine_kind": "OSS"
@@ -81,7 +79,6 @@
           "title": "Dynamic exec"
         },
         "severity": "WARNING",
-        "fingerprint": "requires login",
         "lines": "requires login",
         "validation_state": "NO_VALIDATOR",
         "engine_kind": "OSS"
@@ -104,7 +101,6 @@
         "message": "Printing",
         "metadata": {},
         "severity": "INFO",
-        "fingerprint": "requires login",
         "lines": "requires login",
         "validation_state": "NO_VALIDATOR",
         "engine_kind": "OSS"

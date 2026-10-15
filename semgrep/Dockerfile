@@ -17,6 +17,10 @@ RUN --mount=type=secret,id=pypi,target=/etc/pip.conf,mode=0444 \
 
 WORKDIR /opt/al_service
 
+COPY opengrep.lock.json /opt/al_service/opengrep.lock.json
+COPY scripts/opengrep.py /opt/al_service/scripts/opengrep.py
+RUN python scripts/opengrep.py install --dest ~/.local/bin
+
 FROM base AS test
 COPY requirements-test.txt requirements-test.txt
 RUN --mount=type=secret,id=pypi,target=/etc/pip.conf,mode=0444 \

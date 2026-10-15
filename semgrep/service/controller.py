@@ -2,10 +2,12 @@ import json
 import logging
 import os
 import queue
+import signal
 import subprocess
 import tempfile
 import threading
 from contextlib import suppress
+from dataclasses import dataclass
 from threading import RLock
 from typing import Iterable
 
@@ -14,7 +16,7 @@ import pylspclient.lsp_pydantic_strcuts
 from assemblyline.common.exceptions import RecoverableError
 from assemblyline.common.identify_defaults import type_to_extension
 
-from .helpers import BASE_CONFIG, configure_yaml
+from .helpers import configure_yaml
 
 configure_yaml()
 
@@ -64,11 +66,59 @@ class SemgrepTimeoutError(SemgrepError, TimeoutError):
     pass
 
 
+@dataclass(frozen=True)
+class Engine:
+    binary: str
+    name: str
+    cli_prefix: tuple[str, ...]
+    cli_config: tuple[str, ...]
+
+
+SEMGREP = Engine(
+    binary="semgrep",
+    name="Semgrep™ OSS",
+    cli_prefix=(),
+    cli_config=(
+        "--metrics=off",
+        "--quiet",
+        "--error",
+        "--no-autofix",
+        "--no-git-ignore",
+        "--disable-version-check",
+        "--disable-nosem",
+        "--json",
+    ),
+)
+OPENGREP = Engine(
+    binary="opengrep",
+    name="Opengrep",
+    cli_prefix=("scan",),
+    cli_config=(
+        "--quiet",
+        "--error",
+        "--no-autofix",
+        "--no-git-ignore",
+        "--disable-version-check",
+        "--disable-nosem",
+        "--json",
+    ),
+)
+
+
+def engine_from_config(config: dict) -> Engine:
+    return OPENGREP if config.get("USE_OPENGREP", False) else SEMGREP
+
+
 class SemgrepScanController:
     LINE_START = 1
-    NAME = "Semgrep™ OSS"
 
-    def __init__(self, logger: logging.Logger = None, rules_dir: str = None):
+    def __init__(
+        self,
+        logger: logging.Logger = None,
+        rules_dir: str = None,
+        engine: Engine = SEMGREP,
+    ):
+        self.engine = engine
         self._active_rules = []
         self._active_rules_prefix = ""
         self._semgrep_config = {}
@@ -80,7 +130,6 @@ class SemgrepScanController:
         self.cli_timeout = 60
         self._rules_dir = rules_dir
         self._working_file = ""
-        self._cli_config = BASE_CONFIG
 
         self.workspace = tempfile.TemporaryDirectory("semgrep_workspace")
 
@@ -88,6 +137,10 @@ class SemgrepScanController:
             self.log = logger.getChild(self.__class__.__name__.lower())
         else:
             self.log = logging.getLogger(__name__)
+
+    @property
+    def NAME(self):
+        return self.engine.name
 
     @property
     def ready(self):
@@ -126,7 +179,7 @@ class SemgrepScanController:
             self._ready = True
 
     def _execute_semgrep(self, file_path: str) -> dict:
-        cmd = ["semgrep"] + self._cli_config
+        cmd = [self.engine.binary, *self.engine.cli_prefix, *self.engine.cli_config]
         for option, value in self._semgrep_config.items():
             cmd.append(f"--{option}")
             cmd.append(value)
@@ -213,6 +266,7 @@ class LSPSemgrepClient(pylspclient.LspClient):
 
 class SemgrepLSPController(SemgrepScanController):
     LINE_START = 0
+    SHUTDOWN_TIMEOUT = 5
 
     def _startup_values(self):
         self._is_initialized = False
@@ -227,9 +281,16 @@ class SemgrepLSPController(SemgrepScanController):
         self._refresh_rules_cond = threading.Condition(self._lock)
         self._server_stderr = queue.Queue()
         self._server_stderr_thread = None
+        self._server_process = None
+        self.endpoint = None
 
-    def __init__(self, logger: logging.Logger = None, rules_dir: str = None):
-        super().__init__(logger, rules_dir)
+    def __init__(
+        self,
+        logger: logging.Logger = None,
+        rules_dir: str = None,
+        engine: Engine = SEMGREP,
+    ):
+        super().__init__(logger, rules_dir, engine)
         self.client = None
         self._startup_values()
 
@@ -248,21 +309,23 @@ class SemgrepLSPController(SemgrepScanController):
             self._diagnostic_cond.notify()
 
     def _collect_server_stderr(self):
-        while line := self._server_process.stderr.readline():
+        process = self._server_process
+        while line := process.stderr.readline():
             # self.log.debug("Semgrep stderr: %s", line)
             self._server_stderr.put(line.decode())
-            if self._server_process.poll() is not None:
+            if process.poll() is not None:
                 # process terminated
                 return
 
     def _initialize(self):
         os.makedirs(f"{os.environ['HOME']}/.semgrep/cache", exist_ok=True)
         self._server_process = subprocess.Popen(
-            ["semgrep", "lsp"],
+            [self.engine.binary, "lsp"],
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             env={**os.environ, "NO_COLOR": "true"},
+            start_new_session=True,
         )
 
         if self._server_process.returncode is not None:
@@ -285,6 +348,7 @@ class SemgrepLSPController(SemgrepScanController):
             },
             timeout=10,
         )
+        self.endpoint.daemon = True
         self.client = LSPSemgrepClient(self.endpoint)
         self._server_stderr_thread = threading.Thread(
             target=self._collect_server_stderr, daemon=True
@@ -346,6 +410,32 @@ class SemgrepLSPController(SemgrepScanController):
             self._server_stderr.get()
             self._server_stderr.task_done()
 
+    def _drain_server_stderr(self) -> str:
+        lines = []
+        while not self._server_stderr.empty():
+            lines.append(self._server_stderr.get())
+            self._server_stderr.task_done()
+        return "".join(lines)
+
+    def _kill_server(self, grace: float):
+        # Engine launchers may leave a child behind, so the whole process group is killed
+        process = self._server_process
+        if process is None:
+            return
+        with suppress(Exception):
+            self.endpoint.stop()
+        with suppress(subprocess.TimeoutExpired):
+            process.wait(grace)
+        with suppress(ProcessLookupError, PermissionError):
+            os.killpg(process.pid, signal.SIGKILL)
+        process.wait()
+        for thread in (self.endpoint, self._server_stderr_thread):
+            if thread and thread.is_alive():
+                thread.join(2)
+        for stream in (process.stdin, process.stdout, process.stderr):
+            with suppress(Exception):
+                stream.close()
+
     def load_rules(self, _: list[str], __: str):
         with self._refresh_rules_cond:
             if not self._is_initialized:
@@ -354,12 +444,8 @@ class SemgrepLSPController(SemgrepScanController):
                     self.client.initialized()
                     self._is_initialized = True
                 except:
-                    self._server_process.terminate()
-                    self.log.error(
-                        "stdout: %s, stderr: %s",
-                        self._server_process.stdout.read(),
-                        self._server_process.stderr.read(),
-                    )
+                    self._kill_server(grace=0)
+                    self.log.error("stderr: %s", self._drain_server_stderr())
                     raise
 
             self._ready = False
@@ -373,29 +459,19 @@ class SemgrepLSPController(SemgrepScanController):
                 raise TimeoutError("Semgrep LSP wasn't ready on time")
 
     def _shutdown(self):
+        if self._server_process is None:
+            return
         self.log.info("Shutting down semgrep lsp server")
-        with suppress(Exception):
-            self.client.exit()
-            self.client.shutdown()
-        with suppress(Exception):
-            self._server_process.terminate()
-            self._server_process.wait()
-            self._server_stderr_thread.join()
+        if self._server_process.poll() is None:
+            with suppress(Exception):
+                self.client.exit()
+            with suppress(Exception):
+                self.client.shutdown()
+        self._kill_server(self.SHUTDOWN_TIMEOUT)
 
     def _reload_server(self):
-        if self._server_process.poll() is None:
-            self._shutdown()
-
-        if self.log.isEnabledFor(logging.DEBUG):
-            self.log.debug(
-                "Server stdout: %s, stderr: %s",
-                self._server_process.stdout.read(),
-                self._server_process.stderr.read(),
-            )
+        self._shutdown()
         self.log.info("Resetting state for semgrep lsp server")
-        if self.endpoint.is_alive():
-            self.endpoint.stop()
-
         self._startup_values()
         self.load_rules([], "")
 
@@ -461,8 +537,6 @@ class SemgrepLSPController(SemgrepScanController):
             raise SemgrepError("".join(stderr))
 
     def stop(self):
-        if not self.client:
-            pass
         with suppress(Exception):
             self._shutdown()
             self.log.info("Semgrep server stopped")
@@ -470,6 +544,9 @@ class SemgrepLSPController(SemgrepScanController):
     def cleanup(self):
         super().cleanup()
         self._current_uri = ""
+
+        if self._server_process is None:
+            return
 
         server_running = self._server_process.poll() is None
         if not server_running:

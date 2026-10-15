@@ -37,6 +37,11 @@ def mode(request):
     return request.param
 
 
+@pytest.fixture(params=["semgrep", "opengrep"])
+def engine(request):
+    return request.param
+
+
 @pytest.fixture
 def service(monkeypatch, tmp_path):
     from service.al_run import AssemblylineService
@@ -56,13 +61,14 @@ def service(monkeypatch, tmp_path):
 
 
 @pytest.fixture
-def service_with_rules(service, tmp_path, mode):
+def service_with_rules(service, tmp_path, mode, engine):
     from tests.factories import default_meta, write_rules
 
     def _make(*rules, signatures_meta=None, config=None, source=None):
         svc = service(
             {
                 "USE_LANGUAGE_SERVER_PROTOCOL": mode == "lsp",
+                "USE_OPENGREP": engine == "opengrep",
                 "FALLBACK_TO_SCAN": False,
                 **(config or {}),
             }

@@ -92,6 +92,8 @@ def _without_volatile_fields(controller):
         if isinstance(controller.last_results, dict):
             controller.last_results.pop("time", None)
             controller.last_results.pop("version", None)
+            for result in controller.last_results.get("results", []):
+                result.get("extra", {}).pop("fingerprint", None)
 
     return wrapper
 

@@ -1,0 +1,7 @@
+{
+  "version": "v1.30.2",
+  "assets": {
+    "opengrep_manylinux_x86": "a66aa3278457f02b287b985a45b6762aebcaba5000f2689245fd1ed86d1456c7",
+    "opengrep_manylinux_aarch64": "90acea5df4b733083f388d4feeb250ca802f671b33d1f222653d1e571dd2b0d8"
+  }
+}

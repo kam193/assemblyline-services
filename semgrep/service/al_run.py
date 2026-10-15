@@ -26,6 +26,7 @@ from .controller import (
     SemgrepScanController,
     SemgrepTimeoutError,
     UnsupportedLanguageError,
+    engine_from_config,
 )
 from .helpers import configure_yaml
 
@@ -90,13 +91,14 @@ class AssemblylineService(ServiceBase):
         self.classification = forge.get_classification()
 
         self.use_lsp = self.config.get("USE_LANGUAGE_SERVER_PROTOCOL", True)
+        engine = engine_from_config(self.config)
         if self.use_lsp:
-            self._semgrep = SemgrepLSPController(self.log, RULES_DIR)
+            self._semgrep = SemgrepLSPController(self.log, RULES_DIR, engine)
         else:
-            self._semgrep = SemgrepScanController(self.log, RULES_DIR)
+            self._semgrep = SemgrepScanController(self.log, RULES_DIR, engine)
 
         if self.use_lsp and self.fallback_to_scan:
-            self._fallback_semgrep = SemgrepScanController(self.log, RULES_DIR)
+            self._fallback_semgrep = SemgrepScanController(self.log, RULES_DIR, engine)
         self._load_config()
 
     def start(self):
@@ -299,7 +301,7 @@ class AssemblylineService(ServiceBase):
             with tempfile.NamedTemporaryFile("w", delete=False) as f:
                 json.dump(semgrep.last_results, f, indent=2)
             self._request.add_supplementary(
-                f.name, "semgrep_raw_results.json", f"{semgrep.NAME} Results"
+                f.name, "engine_raw_results.json", f"{semgrep.NAME} Results"
             )
 
         for heur_id in (2, 1, 3):  # ERROR, WARNING, INFO

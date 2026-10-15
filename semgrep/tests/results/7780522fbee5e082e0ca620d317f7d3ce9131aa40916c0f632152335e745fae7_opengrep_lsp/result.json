@@ -1,0 +1,329 @@
+{
+  "extra": {
+    "drop_file": false,
+    "score": 1310,
+    "sections": [
+      {
+        "auto_collapse": false,
+        "body": null,
+        "body_config": {},
+        "body_format": "TEXT",
+        "classification": "TLP:C",
+        "depth": 0,
+        "heuristic": null,
+        "promote_to": null,
+        "tags": {},
+        "title_text": "Processing as code/python",
+        "zeroize_on_tag_safe": false
+      },
+      {
+        "auto_collapse": false,
+        "body": "Evaluating dynamic code",
+        "body_config": {},
+        "body_format": "TEXT",
+        "classification": "TLP:C",
+        "depth": 1,
+        "heuristic": {
+          "attack_ids": [],
+          "frequency": 1,
+          "heur_id": 2,
+          "score": 1000,
+          "score_map": {},
+          "signatures": {
+            "test-source.eval-call": 1
+          }
+        },
+        "promote_to": null,
+        "tags": {
+          "code": {
+            "sha256": [
+              "277a6951495aff6368d3db2ce16cf738fa1b5fcd0aa42e7147078ab9e8472932"
+            ]
+          }
+        },
+        "title_text": "Evaluating dynamic code",
+        "zeroize_on_tag_safe": true
+      },
+      {
+        "auto_collapse": false,
+        "body": "value = eval(\"1 + 1\")\n",
+        "body_config": {},
+        "body_format": "MEMORY_DUMP",
+        "classification": "TLP:C",
+        "depth": 2,
+        "heuristic": null,
+        "promote_to": null,
+        "tags": {
+          "code": {
+            "sha256": [
+              "277a6951495aff6368d3db2ce16cf738fa1b5fcd0aa42e7147078ab9e8472932"
+            ]
+          },
+          "file": {
+            "rule": {
+              "semgrep": [
+                "test-source.eval-call"
+              ]
+            }
+          }
+        },
+        "title_text": "Match at line 5",
+        "zeroize_on_tag_safe": true
+      },
+      {
+        "auto_collapse": false,
+        "body": "Executing dynamic code",
+        "body_config": {},
+        "body_format": "TEXT",
+        "classification": "TLP:C",
+        "depth": 1,
+        "heuristic": {
+          "attack_ids": [
+            "T1059.006"
+          ],
+          "frequency": 1,
+          "heur_id": 1,
+          "score": 300,
+          "score_map": {},
+          "signatures": {
+            "test-source.exec-call": 1
+          }
+        },
+        "promote_to": null,
+        "tags": {
+          "attribution": {
+            "family": [
+              "evilfam"
+            ]
+          },
+          "code": {
+            "sha256": [
+              "012fbd41dab61f65656b793ff6007fe1d8787a2d7751ee8b0b12fb6187e11571"
+            ]
+          }
+        },
+        "title_text": "Dynamic exec",
+        "zeroize_on_tag_safe": true
+      },
+      {
+        "auto_collapse": false,
+        "body": "\nexec(base64.b64decode(\"cHJpbnQoIiI=\"))\n",
+        "body_config": {},
+        "body_format": "MEMORY_DUMP",
+        "classification": "TLP:C",
+        "depth": 2,
+        "heuristic": null,
+        "promote_to": null,
+        "tags": {
+          "code": {
+            "sha256": [
+              "012fbd41dab61f65656b793ff6007fe1d8787a2d7751ee8b0b12fb6187e11571"
+            ]
+          },
+          "file": {
+            "rule": {
+              "semgrep": [
+                "test-source.exec-call"
+              ]
+            }
+          }
+        },
+        "title_text": "Match at line 3 (+1 lines before)",
+        "zeroize_on_tag_safe": true
+      },
+      {
+        "auto_collapse": false,
+        "body": "\nexec(\n    base64.b64decode(\n        \"cHJpbnQoIiI=\"\n    )\n)\n",
+        "body_config": {},
+        "body_format": "MEMORY_DUMP",
+        "classification": "TLP:C",
+        "depth": 2,
+        "heuristic": null,
+        "promote_to": null,
+        "tags": {
+          "code": {
+            "sha256": [
+              "012fbd41dab61f65656b793ff6007fe1d8787a2d7751ee8b0b12fb6187e11571"
+            ]
+          },
+          "file": {
+            "rule": {
+              "semgrep": [
+                "test-source.exec-call"
+              ]
+            }
+          }
+        },
+        "title_text": "Match at lines 7 - 11 (+1 lines before)",
+        "zeroize_on_tag_safe": true
+      },
+      {
+        "auto_collapse": false,
+        "body": "Printing",
+        "body_config": {},
+        "body_format": "TEXT",
+        "classification": "TLP:C",
+        "depth": 1,
+        "heuristic": {
+          "attack_ids": [],
+          "frequency": 1,
+          "heur_id": 3,
+          "score": 10,
+          "score_map": {},
+          "signatures": {
+            "test-source.print-call": 1
+          }
+        },
+        "promote_to": null,
+        "tags": {
+          "code": {
+            "sha256": [
+              "7de9b6d942486ca581cec6d40d6c07c1c21369cd0b7392629f314cfa362019d9"
+            ]
+          }
+        },
+        "title_text": "Printing",
+        "zeroize_on_tag_safe": true
+      },
+      {
+        "auto_collapse": false,
+        "body": "print(\"done\")\n",
+        "body_config": {},
+        "body_format": "MEMORY_DUMP",
+        "classification": "TLP:C",
+        "depth": 2,
+        "heuristic": null,
+        "promote_to": null,
+        "tags": {
+          "code": {
+            "sha256": [
+              "7de9b6d942486ca581cec6d40d6c07c1c21369cd0b7392629f314cfa362019d9"
+            ]
+          },
+          "file": {
+            "rule": {
+              "semgrep": [
+                "test-source.print-call"
+              ]
+            }
+          }
+        },
+        "title_text": "Match at line 13",
+        "zeroize_on_tag_safe": true
+      }
+    ]
+  },
+  "files": {
+    "extracted": [],
+    "supplementary": [
+      {
+        "name": "engine_raw_results.json",
+        "sha256": "73a16093589b36627eaf69efa343b2953779d3ffbc77db11a2fd0ef112a86595"
+      }
+    ]
+  },
+  "results": {
+    "heuristics": [
+      {
+        "attack_ids": [
+          "T1059.006"
+        ],
+        "heur_id": 1,
+        "signatures": [
+          "test-source.exec-call"
+        ]
+      },
+      {
+        "attack_ids": [],
+        "heur_id": 2,
+        "signatures": [
+          "test-source.eval-call"
+        ]
+      },
+      {
+        "attack_ids": [],
+        "heur_id": 3,
+        "signatures": [
+          "test-source.print-call"
+        ]
+      }
+    ],
+    "tags": {
+      "attribution.family": [
+        {
+          "heur_id": 1,
+          "signatures": [
+            "test-source.exec-call"
+          ],
+          "value": "evilfam"
+        }
+      ],
+      "code.sha256": [
+        {
+          "heur_id": 1,
+          "signatures": [
+            "test-source.exec-call"
+          ],
+          "value": "012fbd41dab61f65656b793ff6007fe1d8787a2d7751ee8b0b12fb6187e11571"
+        },
+        {
+          "heur_id": null,
+          "signatures": [],
+          "value": "012fbd41dab61f65656b793ff6007fe1d8787a2d7751ee8b0b12fb6187e11571"
+        },
+        {
+          "heur_id": null,
+          "signatures": [],
+          "value": "012fbd41dab61f65656b793ff6007fe1d8787a2d7751ee8b0b12fb6187e11571"
+        },
+        {
+          "heur_id": 2,
+          "signatures": [
+            "test-source.eval-call"
+          ],
+          "value": "277a6951495aff6368d3db2ce16cf738fa1b5fcd0aa42e7147078ab9e8472932"
+        },
+        {
+          "heur_id": null,
+          "signatures": [],
+          "value": "277a6951495aff6368d3db2ce16cf738fa1b5fcd0aa42e7147078ab9e8472932"
+        },
+        {
+          "heur_id": 3,
+          "signatures": [
+            "test-source.print-call"
+          ],
+          "value": "7de9b6d942486ca581cec6d40d6c07c1c21369cd0b7392629f314cfa362019d9"
+        },
+        {
+          "heur_id": null,
+          "signatures": [],
+          "value": "7de9b6d942486ca581cec6d40d6c07c1c21369cd0b7392629f314cfa362019d9"
+        }
+      ],
+      "file.rule.semgrep": [
+        {
+          "heur_id": null,
+          "signatures": [],
+          "value": "test-source.eval-call"
+        },
+        {
+          "heur_id": null,
+          "signatures": [],
+          "value": "test-source.exec-call"
+        },
+        {
+          "heur_id": null,
+          "signatures": [],
+          "value": "test-source.exec-call"
+        },
+        {
+          "heur_id": null,
+          "signatures": [],
+          "value": "test-source.print-call"
+        }
+      ]
+    },
+    "temp_submission_data": {}
+  }
+}

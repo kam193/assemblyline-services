@@ -6,7 +6,7 @@ import pytest
 import yaml
 from assemblyline.common import forge
 from assemblyline.odm.models.signature import Signature
-from service.helpers import BASE_CONFIG
+from service.controller import OPENGREP, SEMGREP
 from service.updater import AssemblylineServiceUpdater
 
 _CLASSIFICATION = forge.get_classification().UNRESTRICTED
@@ -17,9 +17,11 @@ class _FakeUpdater:
     updater_type = "semgrep"
     _preprocess_rule = AssemblylineServiceUpdater._preprocess_rule
     _has_valid_metadata = AssemblylineServiceUpdater._has_valid_metadata
+    engine = AssemblylineServiceUpdater.engine
 
-    def __init__(self):
+    def __init__(self, service_config=None):
         self.client = Mock()
+        self._service = Mock(config=service_config or {})
 
 
 def _write_rules(tmp_path, *rules):
@@ -56,13 +58,30 @@ class TestAssemblylineServiceUpdater_IsValid:
 
         assert AssemblylineServiceUpdater.is_valid(_FakeUpdater(), str(path)) is expected
 
-    def test_semgrep_is_called_in_validate_mode_on_given_file(self, mock_run, tmp_path):
+    @pytest.mark.parametrize(
+        "service_config,engine",
+        [
+            ({}, SEMGREP),
+            ({"USE_OPENGREP": False}, SEMGREP),
+            ({"USE_OPENGREP": True}, OPENGREP),
+        ],
+    )
+    def test_configured_engine_is_called_in_validate_mode_on_given_file(
+        self, mock_run, tmp_path, service_config, engine
+    ):
         path = _write_rules(tmp_path, _rule())
 
-        AssemblylineServiceUpdater.is_valid(_FakeUpdater(), str(path))
+        AssemblylineServiceUpdater.is_valid(_FakeUpdater(service_config), str(path))
 
         [command] = mock_run.call_args.args
-        assert command == ["semgrep"] + BASE_CONFIG + ["--config", str(path), "--validate"]
+        assert command == [
+            engine.binary,
+            *engine.cli_prefix,
+            *engine.cli_config,
+            "--config",
+            str(path),
+            "--validate",
+        ]
 
     @pytest.mark.parametrize("value", [0, 2, None, ""])
     def test_integer_or_empty_extend_preview_is_accepted(self, mock_run, tmp_path, value):

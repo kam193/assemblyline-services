@@ -105,7 +105,7 @@ class TestAssemblylineService:
         svc.execute(request)
 
         [supplementary] = request.task.supplementary
-        assert supplementary["name"] == "semgrep_raw_results.json"
+        assert supplementary["name"] == "engine_raw_results.json"
         assert json.load(open(supplementary["path"]))
 
     def test_no_raw_results_without_matches(self, service_with_rules, data_file):
@@ -116,13 +116,16 @@ class TestAssemblylineService:
 
         assert request.task.supplementary == []
 
-    def test_service_context_names_engine_and_mode(self, service_with_rules, data_file, mode):
+    def test_service_context_names_engine_and_mode(
+        self, service_with_rules, data_file, mode, engine
+    ):
         svc = service_with_rules(EVAL)
         request = build_request(data_file("danger.py"))
 
         svc.execute(request)
 
-        assert request.task.service_context.startswith("Semgrep")
+        expected_name = "Opengrep" if engine == "opengrep" else "Semgrep"
+        assert request.task.service_context.startswith(expected_name)
         assert request.task.service_context.endswith("LSP" if mode == "lsp" else "scan CLI")
 
     @pytest.mark.parametrize("content", ["hello world\n", "exec(os.environ['X'])\n"])

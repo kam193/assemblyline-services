@@ -1,0 +1,66 @@
+[
+  {
+    "code": "test-source.exec-call",
+    "message": "Executing dynamic code",
+    "range": {
+      "end": {
+        "character": 38,
+        "line": 2
+      },
+      "start": {
+        "character": 0,
+        "line": 2
+      }
+    },
+    "severity": 2,
+    "source": "Semgrep"
+  },
+  {
+    "code": "test-source.eval-call",
+    "message": "Evaluating dynamic code",
+    "range": {
+      "end": {
+        "character": 21,
+        "line": 4
+      },
+      "start": {
+        "character": 8,
+        "line": 4
+      }
+    },
+    "severity": 1,
+    "source": "Semgrep"
+  },
+  {
+    "code": "test-source.exec-call",
+    "message": "Executing dynamic code",
+    "range": {
+      "end": {
+        "character": 1,
+        "line": 10
+      },
+      "start": {
+        "character": 0,
+        "line": 6
+      }
+    },
+    "severity": 2,
+    "source": "Semgrep"
+  },
+  {
+    "code": "test-source.print-call",
+    "message": "Printing",
+    "range": {
+      "end": {
+        "character": 13,
+        "line": 12
+      },
+      "start": {
+        "character": 0,
+        "line": 12
+      }
+    },
+    "severity": 3,
+    "source": "Semgrep"
+  }
+]
