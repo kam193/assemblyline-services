@@ -3,6 +3,8 @@ run-name: Building service containers
 on:
   push:
 
+permissions: {}
+
 env:
   BASE_IMAGE: cccs/assemblyline-v4-service-base:4.7.stable
   REGISTRY: ghcr.io
@@ -13,18 +15,23 @@ env:
 jobs:
   discover-services:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
         with:
           fetch-depth: 0
+          persist-credentials: false
       - name: Discover directories with Dockerfiles
         id: services
         run: |
           echo "services=$(find . -type f -name Dockerfile | xargs -n 1 dirname | uniq | cut -d '/' -f 2 | grep -v 'TEMPLATE' | grep -v '_dev' | grep -v '_on_hold' | grep -v '.devcontainer' | jq -R -s -c 'split("\n")[:-1]')" >> "$GITHUB_OUTPUT"
       - name: Print services with Dockerfiles
+        env:
+          SERVICES: ${{ steps.services.outputs.services }}
         run: |
-          echo "Services with Dockerfiles: ${{ steps.services.outputs.services }}"
+          echo "Services with Dockerfiles: $SERVICES"
     outputs:
       services: ${{ steps.services.outputs.services }}
   build-containers:
@@ -42,17 +49,22 @@ jobs:
         working-directory: ${{ matrix.service }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
         with:
           fetch-depth: 0
+          persist-credentials: false
       - name: Authorize to GitHub Packages
-        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-      - name: Authorize to Github Docker Registry
-        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login docker.pkg.github.com -u ${{ github.actor }} --password-stdin
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ACTOR: ${{ github.actor }}
+        run: echo "$GITHUB_TOKEN" | docker login ghcr.io -u "$ACTOR" --password-stdin
       - name: Check service was changed in the commit
         id: check-service-changed
+        env:
+          BEFORE: ${{ github.event.before }}
+          AFTER: ${{ github.event.after }}
         run: |
-          git diff --quiet ${{ github.event.before }} ${{ github.event.after }} -- .
+          git diff --quiet "$BEFORE" "$AFTER" -- .
           echo exit-code=$? >> $GITHUB_OUTPUT
         shell: bash {0}
         continue-on-error: true
@@ -63,7 +75,7 @@ jobs:
         # Tests based on real examples, not suitable to keep in the public repo
       - name: Checkout repository with test samples
         if: steps.check-service-changed.outputs.exit-code != 0 && matrix.service == 'ASTGrep'
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
         with:
           repository: kam193/unsafe-examples
           path: ASTGrep/tmp/
@@ -81,7 +93,7 @@ jobs:
           ln -s ../tmp/real_negative_examples/ real_negative_examples
 
       - name: Install Python 3.11 as in the container
-        uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b #v5.3.0
+        uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b # v5.3.0
         with:
           python-version: "3.11"
 
@@ -102,8 +114,10 @@ jobs:
         continue-on-error: true
       - name: Check if the current version has already been pushed
         id: check-if-pushed
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          export GHCR_TOKEN=$(echo -n ${{ secrets.GITHUB_TOKEN }} | base64 -w 0)
+          export GHCR_TOKEN=$(echo -n "$GITHUB_TOKEN" | base64 -w 0)
           export TAG=$BASE_TAG$(cat VERSION)
           echo manifest=$(curl -s -H "Authorization: Bearer ${GHCR_TOKEN}" https://ghcr.io/v2/kam193/$(make print)/manifests/$TAG | grep "manifest unknown") >> $GITHUB_OUTPUT
       - name: Push container
@@ -114,7 +128,7 @@ jobs:
           cat VERSION > version.txt
       - name: Upload artifact
         if: steps.check-if-pushed.outputs.manifest
-        uses: actions/upload-artifact@5d5d22a31266ced268874388b861e4b58bb5c2f3
+        uses: actions/upload-artifact@5d5d22a31266ced268874388b861e4b58bb5c2f3 # v4.3.1
         with:
           name: ${{ matrix.service }}
           path: |
@@ -127,7 +141,7 @@ jobs:
       contents: write
     steps:
       - name: Download artifacts
-        uses: actions/download-artifact@c850b930e6ba138125429b7e5c93fc707a7f8427
+        uses: actions/download-artifact@c850b930e6ba138125429b7e5c93fc707a7f8427 # v4.1.4
         with:
           path: ./artifacts
       - name: Gain release info
@@ -150,10 +164,14 @@ jobs:
           fi
       - name: Release changes
         if: steps.check-if-release.outputs.release == 'true'
-        uses: ncipollo/release-action@2c591bcc8ecdcd2db72b97d6147f871fcd833ba5
-        with:
-          name: Release on ${{ env.CURRENT_DATE }}
-          bodyFile: release_body.md
-          makeLatest: true
-          tag: release-${{ env.CURRENT_DATE }}
-          generateReleaseNotes: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TARGET: ${{ github.sha }}
+        run: |
+          gh release create "release-$CURRENT_DATE" \
+            --title "Release on $CURRENT_DATE" \
+            --notes-file release_body.md \
+            --generate-notes \
+            --latest \
+            --target "$TARGET"
