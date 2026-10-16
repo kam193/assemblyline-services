@@ -145,6 +145,7 @@ jobs:
           path: ./artifacts
       - name: Gain release info
         run: |
+          mkdir -p ./artifacts
           find ./artifacts -type f -name release.md -exec cat {} + > release_text.md
       - name: Check if anything to release
         id: check-if-release
