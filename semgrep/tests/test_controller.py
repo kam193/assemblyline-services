@@ -173,6 +173,82 @@ class TestSemgrepLSPController_Lifecycle:
         assert finished
         assert survivors == []
 
+    @pytest.mark.parametrize(
+        "config",
+        [{"LSP_MAX_FILES_PER_SERVER": 1}, {"LSP_MAX_RSS_MB": 1}],
+    )
+    def test_server_is_recycled_when_limit_exceeded(self, service_with_rules, sample_file, config):
+        svc = service_with_rules(EXEC, config=config)
+        lsp = svc._semgrep
+        old_pid = lsp._server_process.pid
+        pids = [old_pid, *descendants(old_pid)]
+        svc.execute(build_request(sample_file("exec(1)\n")))
+
+        try:
+            svc._cleanup()
+            survivors = [pid for pid in pids if is_running(pid)]
+        finally:
+            kill_all(pids)
+
+        assert survivors == []
+        assert lsp._server_process.pid != old_pid
+        request = build_request(sample_file("exec(1)\n"))
+        svc.execute(request)
+        assert matches(request) == {"Message of exec-call": ["Match at line 1"]}
+
+    def test_server_is_kept_when_limits_are_disabled(self, service_with_rules, sample_file):
+        svc = service_with_rules(EXEC, config={"LSP_MAX_FILES_PER_SERVER": 0, "LSP_MAX_RSS_MB": 0})
+        old_pid = svc._semgrep._server_process.pid
+
+        for _ in range(3):
+            svc.execute(build_request(sample_file("exec(1)\n")))
+            svc._cleanup()
+
+        assert svc._semgrep._server_process.pid == old_pid
+
+    def test_rules_update_restarts_server_that_scanned_many_files(
+        self, service_with_rules, sample_file
+    ):
+        svc = service_with_rules(EXEC)
+        lsp = svc._semgrep
+        lsp.RESTART_ON_REFRESH_FILES = 1
+        for _ in range(2):
+            svc.execute(build_request(sample_file("exec(1)\n")))
+            svc._cleanup()
+        old_pid = lsp._server_process.pid
+        pids = [old_pid, *descendants(old_pid)]
+
+        try:
+            svc._load_rules()
+            survivors = [pid for pid in pids if is_running(pid)]
+        finally:
+            kill_all(pids)
+
+        assert survivors == []
+        request = build_request(sample_file("exec(1)\n"))
+        svc.execute(request)
+        assert matches(request) == {"Message of exec-call": ["Match at line 1"]}
+
+    def test_rules_update_keeps_server_that_scanned_few_files(
+        self, service_with_rules, sample_file
+    ):
+        svc = service_with_rules(EXEC)
+        old_pid = svc._semgrep._server_process.pid
+        svc.execute(build_request(sample_file("exec(1)\n")))
+        svc._cleanup()
+
+        svc._load_rules()
+
+        assert svc._semgrep._server_process.pid == old_pid
+        request = build_request(sample_file("exec(1)\n"))
+        svc.execute(request)
+        assert matches(request) == {"Message of exec-call": ["Match at line 1"]}
+
+    def test_server_memory_is_reported(self, service_with_rules):
+        lsp = service_with_rules(EXEC)._semgrep
+
+        assert lsp._server_rss_mb() > 0
+
     def test_reload_after_timeout_leaves_no_old_server(self, service_with_rules, data_file):
         svc = service_with_rules(EXEC, config={"SILENT_TIMEOUTS": True})
         lsp = svc._semgrep

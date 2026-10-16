@@ -267,6 +267,7 @@ class LSPSemgrepClient(pylspclient.LspClient):
 class SemgrepLSPController(SemgrepScanController):
     LINE_START = 0
     SHUTDOWN_TIMEOUT = 5
+    RESTART_ON_REFRESH_FILES = 100
 
     def _startup_values(self):
         self._is_initialized = False
@@ -275,6 +276,7 @@ class SemgrepLSPController(SemgrepScanController):
         self._current_uri = ""
         self._was_timeout = False
         self._ready = False
+        self._files_scanned = 0
 
         self._lock = RLock()
         self._diagnostic_cond = threading.Condition(self._lock)
@@ -292,6 +294,8 @@ class SemgrepLSPController(SemgrepScanController):
     ):
         super().__init__(logger, rules_dir, engine)
         self.client = None
+        self.max_files = 5000
+        self.max_rss_mb = 700
         self._startup_values()
 
     def _set_rules_refreshed(self, *_, **__):
@@ -437,6 +441,12 @@ class SemgrepLSPController(SemgrepScanController):
                 stream.close()
 
     def load_rules(self, _: list[str], __: str):
+        if self._is_initialized and self._files_scanned > self.RESTART_ON_REFRESH_FILES:
+            # A refresh makes the server republish diagnostics for every cached file
+            self.log.info("Restarting engine lsp server to apply new rules")
+            self._reload_server()
+            return
+
         with self._refresh_rules_cond:
             if not self._is_initialized:
                 try:
@@ -469,9 +479,35 @@ class SemgrepLSPController(SemgrepScanController):
                 self.client.shutdown()
         self._kill_server(self.SHUTDOWN_TIMEOUT)
 
+    def _server_rss_mb(self) -> float:
+        group = self._server_process.pid
+        total_kb = 0
+        for entry in os.scandir("/proc"):
+            if not entry.name.isdigit():
+                continue
+            with suppress(OSError, ValueError, IndexError):
+                with open(f"{entry.path}/stat") as f:
+                    if int(f.read().rsplit(")", 1)[1].split()[2]) != group:
+                        continue
+                with open(f"{entry.path}/status") as f:
+                    for line in f:
+                        if line.startswith("VmRSS:"):
+                            total_kb += int(line.split()[1])
+        return total_kb / 1024
+
+    def _limits_exceeded(self) -> bool:
+        # The server caches results of every scanned path and never evicts them
+        if self.max_files and self._files_scanned >= self.max_files:
+            self.log.info("Recycling engine lsp server after %d files", self._files_scanned)
+            return True
+        if self.max_rss_mb and (rss := self._server_rss_mb()) >= self.max_rss_mb:
+            self.log.info("Recycling engine lsp server using %.0f MB", rss)
+            return True
+        return False
+
     def _reload_server(self):
         self._shutdown()
-        self.log.info("Resetting state for semgrep lsp server")
+        self.log.info("Resetting state for engine lsp server")
         self._startup_values()
         self.load_rules([], "")
 
@@ -486,6 +522,7 @@ class SemgrepLSPController(SemgrepScanController):
                 self.last_results = []
                 self._prepare_file_with_extension(file_path, file_type)
                 self._current_uri = f"file://{self._working_file}"
+                self._files_scanned += 1
 
                 self.client.didCreateFiles(self._current_uri)
                 self.client.didOpen(
@@ -552,7 +589,7 @@ class SemgrepLSPController(SemgrepScanController):
         if not server_running:
             self.log.error("Semgrep server is not running any more")
             self._reload_server()
-        elif self._was_timeout:
+        elif self._was_timeout or self._limits_exceeded():
             self._reload_server()
 
     def can_handle_file(self, file_path: str, file_type: str) -> bool:

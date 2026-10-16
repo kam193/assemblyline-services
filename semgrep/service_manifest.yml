@@ -20,6 +20,10 @@ config:
   # The maximum time to wait for results from Semgrep
   SEMGREP_CLI_TIMEOUT: 90
   SEMGREP_LSP_TIMEOUT: 30
+  # The may LSP server never free per-file results: restart it after this many files
+  # or when its memory exceeds the limit (0 disables the check)
+  LSP_MAX_FILES_PER_SERVER: 5000
+  LSP_MAX_RSS_MB: 700
   # Number of rules that can timeout before the file is skipped
   SEMGREP_TIMEOUT_TRESHOLD: 10
   # Maximum size for a file to be scanned by Semgrep

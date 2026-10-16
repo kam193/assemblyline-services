@@ -69,6 +69,8 @@ class AssemblylineService(ServiceBase):
         for semgrep in semgreps:
             if isinstance(semgrep, SemgrepLSPController):
                 semgrep.cli_timeout = int(self.config.get("SEMGREP_LSP_TIMEOUT", 30))
+                semgrep.max_files = int(self.config.get("LSP_MAX_FILES_PER_SERVER", 5000))
+                semgrep.max_rss_mb = int(self.config.get("LSP_MAX_RSS_MB", 700))
             else:
                 semgrep.cli_timeout = int(self.config.get("SEMGREP_CLI_TIMEOUT", 60))
             semgrep.set_config("timeout", str(self.config.get("SEMGREP_RULE_TIMEOUT", 10)))
