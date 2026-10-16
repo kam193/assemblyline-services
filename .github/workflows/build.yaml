@@ -125,16 +125,14 @@ jobs:
         if: steps.check-if-pushed.outputs.manifest
         run: |
           make push
-          echo "ghcr.io/kam193/$(make print):$BASE_TAG$(cat VERSION)" > tag.txt
-          cat VERSION > version.txt
+          echo "## $(make print) $BASE_TAG$(cat VERSION)" > release.md
+          echo "Uploaded image: \`ghcr.io/kam193/$(make print):$BASE_TAG$(cat VERSION)\`" >> release.md
       - name: Upload artifact
         if: steps.check-if-pushed.outputs.manifest
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: ${{ matrix.service }}
-          path: |
-            ${{ matrix.service }}/tag.txt
-            ${{ matrix.service }}/version.txt
+          path: ${{ matrix.service }}/release.md
   release:
     needs: build-containers
     runs-on: ubuntu-latest
@@ -147,11 +145,7 @@ jobs:
           path: ./artifacts
       - name: Gain release info
         run: |
-          for service in $(ls -1 ./artifacts); do
-            output=$(cat ./artifacts/$service/tag.txt)
-            echo "## $service $BASE_TAG$(cat ./artifacts/$service/version.txt)" >> release_text.md
-            echo "Uploaded image: \`$output\`" >> release_text.md
-          done
+          find ./artifacts -type f -name release.md -exec cat {} + > release_text.md
       - name: Check if anything to release
         id: check-if-release
         run: |
