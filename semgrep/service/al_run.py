@@ -327,7 +327,7 @@ class AssemblylineService(ServiceBase):
                 else:
                     raise
             finally:
-                if result_section:
+                if result_section and result_section.subsections:
                     self._request.result.add_section(result_section)
         except (UnsupportedLanguageError, UnsupportedFileError):
             self.log.warning(f"Unsupported language: {self._request.file_type}")

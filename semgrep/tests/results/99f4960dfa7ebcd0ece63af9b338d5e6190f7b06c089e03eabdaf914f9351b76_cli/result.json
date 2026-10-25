@@ -2,21 +2,7 @@
   "extra": {
     "drop_file": false,
     "score": 0,
-    "sections": [
-      {
-        "auto_collapse": false,
-        "body": null,
-        "body_config": {},
-        "body_format": "TEXT",
-        "classification": "TLP:C",
-        "depth": 0,
-        "heuristic": null,
-        "promote_to": null,
-        "tags": {},
-        "title_text": "Processing as code/python",
-        "zeroize_on_tag_safe": false
-      }
-    ]
+    "sections": []
   },
   "files": {
     "extracted": [],

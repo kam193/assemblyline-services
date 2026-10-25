@@ -72,14 +72,13 @@ class TestAssemblylineService:
         assert "\n" in spread.body.strip()
         assert compact.tags["code.sha256"] == spread.tags["code.sha256"]
 
-    def test_no_match_gives_empty_section(self, service_with_rules, data_file):
+    def test_no_match_gives_no_sections(self, service_with_rules, data_file):
         svc = service_with_rules(EXEC, EVAL)
         request = build_request(data_file("clean.py"))
 
         svc.execute(request)
 
-        assert len(request.result.sections) == 1
-        assert request.result.sections[0].subsections == []
+        assert request.result.sections == []
 
     def test_multiple_matches_in_one_line_are_collapsed(self, service_with_rules, sample_file):
         svc = service_with_rules(PRINT)
