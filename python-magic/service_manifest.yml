@@ -75,7 +75,8 @@ heuristics:
     max_score: 500
   - description: >
       The binary is a Cython-compiled native module whose Python string table is stored
-      compressed (CYTHON_COMPRESS_STRINGS directive, available since Cython 3.2).
+      compressed (CYTHON_COMPRESS_STRINGS directive, available since Cython 3.2;
+      LZSS is the default algorithm since Cython 3.3).
       The strings have been decompressed and extracted as a .txt file so other
       services can analyse them. Score is informative by default.
     filetype: "*"

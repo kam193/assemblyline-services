@@ -42,7 +42,7 @@ class CythonStringExtractor(ExtractorBase):
 
         if not blobs:
             section.add_line(
-                "Marker CYTHON_COMPRESS_STRINGS is present but no decompressible blob was found. "
+                "Cython string compression marker is present but no decompressible blob was found. "
                 "The binary may use an unsupported compression algorithm (e.g. zstd requires Python 3.14+) "
                 "or the blob may be stripped."
             )
