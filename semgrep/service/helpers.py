@@ -10,4 +10,5 @@ def _str_repr(dumper, data):
 
 
 def configure_yaml():
+    yaml.SafeDumper.ignore_aliases = lambda self, data: True
     yaml.add_representer(str, _str_repr, Dumper=yaml.SafeDumper)

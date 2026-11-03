@@ -143,3 +143,33 @@ class TestAssemblylineServiceUpdater_ImportUpdate:
         *_, [signature] = self._import(tmp_path, _rule(paths={"include": ["src/"]}))
 
         assert "paths" not in yaml.safe_load(signature.data)
+
+    def test_yaml_aliases_are_resolved(self, tmp_path):
+        path = tmp_path / "rules.yml"
+        path.write_text(
+            "rules:\n"
+            "  - id: alias\n"
+            "    languages: [python]\n"
+            "    severity: WARNING\n"
+            "    message: msg\n"
+            "    patterns:\n"
+            "      - pattern-either: &calls\n"
+            "          - pattern: os.system(...)\n"
+            "      - pattern-not:\n"
+            "          patterns:\n"
+            "            - pattern-either: *calls\n"
+        )
+        updater = _FakeUpdater()
+        AssemblylineServiceUpdater.import_update(
+            updater, [(str(path), "sha")], "src", _CLASSIFICATION
+        )
+        [call] = updater.client.signature.add_update_many.call_args_list
+        [signature] = call.args[2]
+
+        calls = [{"pattern": "os.system(...)"}]
+        assert "&" not in signature.data
+        assert "*" not in signature.data
+        assert yaml.safe_load(signature.data)["patterns"] == [
+            {"pattern-either": calls},
+            {"pattern-not": {"patterns": [{"pattern-either": calls}]}},
+        ]
