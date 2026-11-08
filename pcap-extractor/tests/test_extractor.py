@@ -191,11 +191,15 @@ class TestExtractorDnsResponses:
     def _feed(self, extractor, **layers):
         extractor._parse_conversation_line(json.dumps({"layers": layers}))
 
-    def test_response_answers_attached_to_query(self, extractor):
+    @pytest.mark.parametrize("query_flag, response_flag", [("False", "True"), ("0", "1")])
+    def test_response_answers_attached_to_query(self, extractor, query_flag, response_flag):
         base = {"dns_qry_name": ["example.com"], "dns_qry_type": ["1"]}
-        self._feed(extractor, **base, dns_flags_response=["False"])
+        self._feed(extractor, **base, dns_flags_response=[query_flag])
         self._feed(
-            extractor, **base, dns_flags_response=["True"], dns_a=["1.1.1.1", "2.2.2.2", "1.1.1.1"]
+            extractor,
+            **base,
+            dns_flags_response=[response_flag],
+            dns_a=["1.1.1.1", "2.2.2.2", "1.1.1.1"],
         )
 
         (query,) = extractor.dns_queries
@@ -212,9 +216,10 @@ class TestExtractorDnsResponses:
 
         assert list(extractor.dns_queries[0].domains) == ["example.com"]
 
-    def test_query_without_response_has_no_answers(self, extractor):
+    @pytest.mark.parametrize("query_flag", ["False", "0"])
+    def test_query_without_response_has_no_answers(self, extractor, query_flag):
         self._feed(
-            extractor, dns_qry_name=["a.com"], dns_qry_type=["16"], dns_flags_response=["False"]
+            extractor, dns_qry_name=["a.com"], dns_qry_type=["16"], dns_flags_response=[query_flag]
         )
 
         assert extractor.dns_queries[0].answered is False

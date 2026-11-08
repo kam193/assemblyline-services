@@ -63,6 +63,7 @@ _DNS_DOMAIN_FIELDS = (
     "dns_naptr_replacement",
 )
 _DNS_EMPTY_DOMAINS = ("", "<Root>")
+_DNS_RESPONSE_FLAGS = ("true", "1")
 
 UNSUPPORTED_CAPTURE_FORMAT_MSG = "isn't a capture file in a format TShark understands"
 
@@ -363,7 +364,7 @@ class Extractor:
                 self._dns_queries.setdefault((name, record_type), DnsQuery(name, record_type))
             )
 
-        if layers.get("dns_flags_response", [""])[0].lower() != "true":
+        if layers.get("dns_flags_response", [""])[0].lower() not in _DNS_RESPONSE_FLAGS:
             return
         query = queries[0]
         for field_name in _DNS_IP_FIELDS:
