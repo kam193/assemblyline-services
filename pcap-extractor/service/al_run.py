@@ -1,6 +1,7 @@
 import hashlib
 import ipaddress
 import os
+import re
 from collections import defaultdict
 from threading import RLock
 
@@ -10,7 +11,9 @@ from assemblyline_v4_service.common.result import (
     Result,
     ResultJSONSection,
     ResultMemoryDumpSection,
+    ResultTableSection,
     ResultTextSection,
+    TableRow,
 )
 from assemblyline_v4_service.common.task import MaxExtractedExceeded
 
@@ -20,6 +23,13 @@ from .rules import DOMAIN, NO_SCORE, SAFELIST, URI, RuleSet
 CHUNK_SIZE = 1000
 DEBUG = os.getenv("DEBUG", False)
 RULES_LOCK = RLock()
+BENIGN_TXT = re.compile(
+    r"(v=spf1|v=DKIM1|v=DMARC1|v=BIMI1|v=STSv1|v=TLSRPTv1|google-site-verification=|"
+    r"MS=|facebook-domain-verification=|apple-domain-verification=|"
+    r"atlassian-domain-verification=|docusign=|_globalsign-domain-verification=|"
+    r"_k2n1y4vw3qtb4skdx9e7dxt97qrmmq9)",
+    re.IGNORECASE,
+)
 
 
 class AssemblylineService(ServiceBase):
@@ -62,6 +72,9 @@ class AssemblylineService(ServiceBase):
 
         self.command_timeout = int(self.config.get("command_timeout", 30))
         self.exfiltration_threshold = int(self.config.get("exfiltration_threshold_mb", 10)) * 10**6
+        self.long_domain_threshold = int(self.config.get("long_domain_threshold", 50))
+        self.txt_max_length = int(self.config.get("txt_max_length", 150))
+        self.txt_queries_threshold = int(self.config.get("txt_queries_threshold", 5))
         self.exfiltration_count_no_score = bool(
             self.config.get("exfiltration_count_no_score", False)
         )
@@ -300,6 +313,69 @@ class AssemblylineService(ServiceBase):
                 f"Total data sent: {bytes_to_human(total_sent)} exceeded the exfiltration warning threshold."
             )
 
+        dns_section = ResultTableSection("DNS queries")
+        for query in extractor.dns_queries:
+            if (
+                query.name in safelisted_tags["network.dynamic.domain"]
+                or query.name in rule_safelisted_domains
+            ):
+                continue
+            dns_section.add_row(
+                TableRow(
+                    Record=query.record_type,
+                    Query=query.name,
+                    Answer="\n".join(query.answers) if query.answered else "no answer",
+                )
+            )
+            dns_section.add_tag("network.dynamic.domain", query.name)
+            for ip in query.ips:
+                dns_section.add_tag("network.static.ip", ip)
+            for domain in query.domains:
+                dns_section.add_tag("network.static.domain", domain)
+
+        txt_section = ResultTextSection("Suspicious TXT records")
+        txt_queries = [
+            query
+            for query in extractor.dns_queries
+            if query.record_type == "TXT"
+            and query.name not in safelisted_tags["network.dynamic.domain"]
+            and query.name not in rule_safelisted_domains
+        ]
+        if self.txt_max_length:
+            for query in txt_queries:
+                for text in query.texts:
+                    if len(text) > self.txt_max_length and not BENIGN_TXT.match(text):
+                        txt_section.add_line(
+                            f"{query.name}: TXT record of {len(text)} chars: {text[:100]}..."
+                        )
+        if self.txt_queries_threshold and len(txt_queries) > self.txt_queries_threshold:
+            txt_section.add_line(
+                f"{len(txt_queries)} different TXT queries (threshold: {self.txt_queries_threshold})"
+            )
+        if txt_section.body:
+            txt_section.set_heuristic(5)
+            main_section.add_subsection(txt_section)
+
+        long_domains_section = ResultTextSection("Long dynamic domains")
+        if self.long_domain_threshold:
+            for domain in sorted(domains):
+                if (
+                    len(domain) <= self.long_domain_threshold
+                    or domain in safelisted_tags["network.dynamic.domain"]
+                    or domain in rule_safelisted_domains
+                    or domain in rule_no_score_domains
+                    or domain in self.no_score_domains
+                ):
+                    continue
+                long_domains_section.add_line(f"{domain} ({len(domain)} chars)")
+                long_domains_section.add_tag("network.dynamic.domain", domain)
+            if long_domains_section.body:
+                long_domains_section.set_heuristic(4)
+
+        if dns_section.body:
+            main_section.add_subsection(dns_section)
+        if long_domains_section.body:
+            main_section.add_subsection(long_domains_section)
         if tcp_section.subsections:
             main_section.add_subsection(tcp_section)
         if stats_section.body:

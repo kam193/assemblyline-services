@@ -1,4 +1,6 @@
 import ipaddress
+import json
+import pathlib
 
 import pytest
 from service.extractor import Conversation, Extractor, UnsupportedCaptureFile
@@ -29,6 +31,10 @@ def _layer(
     if sni is not None:
         layers["tls_handshake_extensions_server_name"] = sni if isinstance(sni, list) else [sni]
     return {"layers": layers}
+
+
+def _dns_layer(name):
+    return {"layers": {"dns_qry_name": [name], "dns_flags_response": ["False"]}}
 
 
 class TestConversationFromDict:
@@ -158,6 +164,73 @@ class TestExtractorGetIocs:
         assert domains == {"sni-only.example.com"}
         assert uris == set()
 
+    def test_get_iocs_includes_dns_domains(self):
+        extractor = Extractor("/nonexistent.pcap")
+        extractor._parse_conversation_line(json.dumps(_dns_layer("a.example.com")))
+
+        ips, domains, uris = extractor.get_iocs()
+
+        assert (ips, domains, uris) == (set(), {"a.example.com"}, set())
+
+
+class TestExtractorDns:
+    def test_dns_names_collected_and_deduplicated(self):
+        extractor = Extractor("/nonexistent.pcap")
+        for name in ["a.example.com", "b.example.com", "a.example.com"]:
+            extractor._parse_conversation_line(json.dumps(_dns_layer(name)))
+
+        assert extractor.dns_domains == ["a.example.com", "b.example.com"]
+        assert list(extractor.conversations) == []
+
+
+class TestExtractorDnsResponses:
+    @pytest.fixture
+    def extractor(self):
+        return Extractor("/nonexistent.pcap")
+
+    def _feed(self, extractor, **layers):
+        extractor._parse_conversation_line(json.dumps({"layers": layers}))
+
+    def test_response_answers_attached_to_query(self, extractor):
+        base = {"dns_qry_name": ["example.com"], "dns_qry_type": ["1"]}
+        self._feed(extractor, **base, dns_flags_response=["False"])
+        self._feed(
+            extractor, **base, dns_flags_response=["True"], dns_a=["1.1.1.1", "2.2.2.2", "1.1.1.1"]
+        )
+
+        (query,) = extractor.dns_queries
+        assert (query.record_type, list(query.ips)) == ("A", ["1.1.1.1", "2.2.2.2"])
+
+    def test_cname_answer_stored_as_domain(self, extractor):
+        self._feed(
+            extractor,
+            dns_qry_name=["www.example.com"],
+            dns_qry_type=["5"],
+            dns_flags_response=["True"],
+            dns_cname=["example.com"],
+        )
+
+        assert list(extractor.dns_queries[0].domains) == ["example.com"]
+
+    def test_query_without_response_has_no_answers(self, extractor):
+        self._feed(
+            extractor, dns_qry_name=["a.com"], dns_qry_type=["16"], dns_flags_response=["False"]
+        )
+
+        assert extractor.dns_queries[0].answered is False
+
+    def test_unknown_record_type_named_by_code(self, extractor):
+        self._feed(extractor, dns_qry_name=["a.com"], dns_qry_type=["99"])
+
+        assert extractor.dns_queries[0].record_type == "TYPE99"
+
+    def test_real_capture_with_multiple_record_types(self):
+        extractor = Extractor(str(pathlib.Path(__file__).parent / "data" / "dns-record-types.pcap"))
+        extractor.extract()
+
+        types = {(q.record_type, q.name) for q in extractor.dns_queries}
+        assert {("MX", "gmail.com"), ("CNAME", "www.github.com"), ("TXT", "example.com")} <= types
+
 
 def _stats_text(tcp_first: bool) -> list[str]:
     width = 50
@@ -232,8 +305,11 @@ class TestExtractorIgnoredFilter:
     @pytest.mark.parametrize(
         "ignore_ips, expected",
         [
-            ([], "tcp"),
-            ([ipaddress.ip_address("192.168.0.1")], "tcp and ip.addr not in {192.168.0.1}"),
+            ([], "(tcp or dns)"),
+            (
+                [ipaddress.ip_address("192.168.0.1")],
+                "(tcp or dns) and ip.addr not in {192.168.0.1}",
+            ),
         ],
     )
     def test_display_filter_has_no_dangling_operator(self, mocker, ignore_ips, expected):

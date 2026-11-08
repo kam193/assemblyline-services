@@ -1,7 +1,7 @@
 name: PCAP-Extractor
 version: $SERVICE_TAG
 description: |
-  This service list TCP flows from a pcap
+  This service list TCP flows and DNS queries from a pcap
   file using Tshark. If supported by Tshark, it can also extract files.
 enabled: true
 
@@ -19,6 +19,12 @@ config:
   ignore_ips: "192.168.0.1"
   command_timeout: 30
   exfiltration_threshold_mb: 10
+  # Domains longer than this (chars) fire the 'Long dynamic domain' heuristic; 0 disables
+  long_domain_threshold: 50
+  # A TXT record longer than this (chars) and not matching a known benign pattern is suspicious; 0 disables
+  txt_max_length: 150
+  # More different TXT queries than this in one PCAP is suspicious; 0 disables
+  txt_queries_threshold: 5
   # Count no-score traffic towards the exfiltration metric (safelisted is never counted)
   exfiltration_count_no_score: false
   # Following will still be extracted if not safelisted, but without attaching any heuristics
@@ -69,6 +75,16 @@ heuristics:
     heur_id: 3
     name: Possible data exfiltration
     score: 700
+  - description: Domain name is longer than the configured threshold. Possible DNS tunneling or exfiltration.
+    filetype: "*"
+    heur_id: 4
+    name: Long dynamic domain
+    score: 300
+  - description: Unusually long non-standard TXT record, or many different TXT queries. Possible DNS tunneling or C2.
+    filetype: "*"
+    heur_id: 5
+    name: Suspicious TXT records
+    score: 500
 
 docker_config:
   image: ${REGISTRY}ghcr.io/kam193/assemblyline-service-pcap-extractor:$SERVICE_TAG

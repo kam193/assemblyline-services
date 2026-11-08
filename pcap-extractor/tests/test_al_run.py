@@ -1,9 +1,16 @@
 import functools
 import ipaddress
+import json
 import pathlib
 
 import pytest
-from service.extractor import Conversation, ConversationStat, Extractor, UnsupportedCaptureFile
+from service.extractor import (
+    Conversation,
+    ConversationStat,
+    DnsQuery,
+    Extractor,
+    UnsupportedCaptureFile,
+)
 from service.rules import NO_SCORE, SAFELIST, RuleSet, validate_rule
 
 from tests.al import build_request, make_safelist_api
@@ -343,3 +350,207 @@ class TestAssemblylineServiceExfiltration:
     )
     def test_excluded_traffic_fires_no_heuristic(self, service, monkeypatch, kwargs):
         assert self._run(service, monkeypatch, **kwargs) == set()
+
+
+def _sections_titled(request, title):
+    found = []
+
+    def walk(section):
+        if section.title_text == title:
+            found.append(section)
+        for sub in section.subsections:
+            walk(sub)
+
+    for section in request.result.sections:
+        walk(section)
+    return found
+
+
+def _run_with_dns(service, monkeypatch, dns_domains, config=None, conversations=(), rules=None):
+    extractor = _patch_extractor(monkeypatch, conversations)
+    extractor._dns_queries = {(d, "A"): DnsQuery(d, "A") for d in dns_domains}
+    svc = service(config)
+    if rules:
+        svc._rules = RuleSet([validate_rule(rule) for rule in rules])
+    request = build_request(
+        str(pathlib.Path(__file__)), params={"extract_streams": False, "extract_files": False}
+    )
+    svc.execute(request)
+    return request
+
+
+LONG_DOMAIN = "import-1eb4ba65.blender-headless-fa48e167555c.finaltests99.dssldrf.net"
+
+
+class TestAssemblylineServiceDns:
+    def test_dns_query_tagged_as_domain(self, service, monkeypatch):
+        request = _run_with_dns(service, monkeypatch, ["short.example.com"])
+
+        tags = set()
+        for section in request.result.sections:
+            tags |= _collect_tags(section, "network.dynamic.domain")
+        assert tags == {"short.example.com"}
+        assert _collect_heuristic_ids(request.result.sections) == set()
+
+    @pytest.mark.parametrize(
+        "config, dns_domains, conversations",
+        [
+            ({}, [LONG_DOMAIN], []),
+            ({"long_domain_threshold": 10}, ["short.example.com"], []),
+            ({}, [], [_make_conversation(1, domains=[LONG_DOMAIN])]),
+        ],
+    )
+    def test_long_domain_fires_heuristic(
+        self, service, monkeypatch, config, dns_domains, conversations
+    ):
+        request = _run_with_dns(
+            service, monkeypatch, dns_domains, config=config, conversations=conversations
+        )
+
+        assert 4 in _collect_heuristic_ids(request.result.sections)
+        assert len(_sections_titled(request, "Long dynamic domains")) == 1
+
+    @pytest.mark.parametrize(
+        "config, rules",
+        [
+            ({"long_domain_threshold": 100}, None),
+            ({"long_domain_threshold": 0}, None),
+            ({"no_score_domains": LONG_DOMAIN}, None),
+            (
+                {},
+                [{"name": "safe", "action": SAFELIST, "domains": [r".+\.dssldrf\.net"]}],
+            ),
+            (
+                {},
+                [{"name": "quiet", "action": NO_SCORE, "domains": [r".+\.dssldrf\.net"]}],
+            ),
+        ],
+    )
+    def test_long_domain_does_not_fire_heuristic(self, service, monkeypatch, config, rules):
+        request = _run_with_dns(service, monkeypatch, [LONG_DOMAIN], config=config, rules=rules)
+
+        assert 4 not in _collect_heuristic_ids(request.result.sections)
+
+    @skip_if_missing("pentest-domains.pcap")
+    def test_real_dns_capture(self, service, sample_path=None):
+        svc = service()
+        request = build_request(str(sample_path))
+        svc.execute(request)
+
+        tags = set()
+        for section in request.result.sections:
+            tags |= _collect_tags(section, "network.dynamic.domain")
+        assert tags == {
+            LONG_DOMAIN,
+            LONG_DOMAIN.replace("1eb4ba65", "7d3af743"),
+        }
+        assert 4 in _collect_heuristic_ids(request.result.sections)
+
+
+DNS_TYPES_PCAP = pathlib.Path(__file__).parent / "data" / "dns-record-types.pcap"
+
+
+class TestAssemblylineServiceDnsRecords:
+    def _run(self, service):
+        request = build_request(str(DNS_TYPES_PCAP))
+        service().execute(request)
+        return request
+
+    @pytest.mark.parametrize(
+        "record, query, answer",
+        [
+            ("A", "example.com", "104.20.23.154"),
+            ("AAAA", "example.com", "2606:4700:10::6814:179a"),
+            ("CNAME", "www.github.com", "github.com"),
+            ("MX", "gmail.com", "gmail-smtp-in.l.google.com"),
+            ("NS", "example.com", "hera.ns.cloudflare.com"),
+            ("TXT", "example.com", "v=spf1 -all"),
+            ("SOA", "example.com", "elliott.ns.cloudflare.com"),
+            ("HTTPS", "cloudflare.com", "104.16.132.229"),
+            ("CAA", "google.com", "issue pki.goog"),
+            ("NAPTR", "sip2sip.info", "_sip._udp.sip2sip.info"),
+        ],
+    )
+    def test_dns_table_lists_queried_record_and_answer(self, service, record, query, answer):
+        request = self._run(service)
+
+        rows = json.loads(_sections_titled(request, "DNS queries")[0].body)
+        assert any(
+            row["Record"] == record and row["Query"] == query and answer in row["Answer"]
+            for row in rows
+        )
+
+    def test_unanswered_query_marked(self, service):
+        request = self._run(service)
+
+        rows = json.loads(_sections_titled(request, "DNS queries")[0].body)
+        assert any(row["Record"] == "SVCB" and row["Answer"] == "no answer" for row in rows)
+
+    @pytest.mark.parametrize(
+        "tag_type, value",
+        [
+            ("network.static.ip", "104.20.23.154"),
+            ("network.static.ip", "2606:4700:10::6814:179a"),
+            ("network.static.domain", "github.com"),
+            ("network.static.domain", "gmail-smtp-in.l.google.com"),
+            ("network.static.domain", "hera.ns.cloudflare.com"),
+            ("network.dynamic.domain", "www.github.com"),
+            ("network.static.ip", "2606:4700::6810:84e5"),
+            ("network.static.domain", "dns.cloudflare.com"),
+            ("network.static.domain", "_sips._tcp.sip2sip.info"),
+        ],
+    )
+    def test_answers_tagged(self, service, tag_type, value):
+        request = self._run(service)
+
+        tags = set()
+        for section in request.result.sections:
+            tags |= _collect_tags(section, tag_type)
+        assert value in tags
+
+
+def _txt_query(name, *texts):
+    return DnsQuery(name, "TXT", texts=dict.fromkeys(texts))
+
+
+def _run_with_txt(service, monkeypatch, queries, config=None):
+    extractor = _patch_extractor(monkeypatch, [])
+    extractor._dns_queries = {(q.name, q.record_type): q for q in queries}
+    request = build_request(
+        str(pathlib.Path(__file__)), params={"extract_streams": False, "extract_files": False}
+    )
+    service(config).execute(request)
+    return request
+
+
+class TestAssemblylineServiceSuspiciousTxt:
+    @pytest.mark.parametrize(
+        "config, queries",
+        [
+            ({}, [_txt_query("a.com", "x" * 151)]),
+            ({"txt_max_length": 20}, [_txt_query("a.com", "x" * 21)]),
+            ({}, [_txt_query(f"{i}.com") for i in range(6)]),
+            ({"txt_queries_threshold": 1}, [_txt_query(f"{i}.com") for i in range(2)]),
+        ],
+    )
+    def test_fires_heuristic(self, service, monkeypatch, config, queries):
+        request = _run_with_txt(service, monkeypatch, queries, config)
+
+        assert 5 in _collect_heuristic_ids(request.result.sections)
+
+    @pytest.mark.parametrize(
+        "config, queries",
+        [
+            ({}, [_txt_query("a.com", "x" * 150)]),
+            ({}, [_txt_query("a.com", "v=spf1 " + "ip4:1.2.3.4 " * 30 + "-all")]),
+            ({}, [_txt_query("a.com", "google-site-verification=" + "x" * 200)]),
+            ({}, [_txt_query(f"{i}.com") for i in range(5)]),
+            ({}, [DnsQuery(f"{i}.com", "A") for i in range(10)]),
+            ({"txt_max_length": 0}, [_txt_query("a.com", "x" * 500)]),
+            ({"txt_queries_threshold": 0}, [_txt_query(f"{i}.com") for i in range(10)]),
+        ],
+    )
+    def test_does_not_fire_heuristic(self, service, monkeypatch, config, queries):
+        request = _run_with_txt(service, monkeypatch, queries, config)
+
+        assert 5 not in _collect_heuristic_ids(request.result.sections)

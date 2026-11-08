@@ -27,6 +27,43 @@ IMPORTANT_PROTOCOLS = ("http2", "http", "tls", "tcp", "udp")
 IP_STATS_TITLE = "IPv4 Conversations"
 TCP_STATS_TITLE = "TCP Conversations"
 
+DNS_RECORD_TYPES = {
+    "1": "A",
+    "2": "NS",
+    "5": "CNAME",
+    "6": "SOA",
+    "10": "NULL",
+    "12": "PTR",
+    "13": "HINFO",
+    "15": "MX",
+    "16": "TXT",
+    "28": "AAAA",
+    "33": "SRV",
+    "35": "NAPTR",
+    "64": "SVCB",
+    "65": "HTTPS",
+    "255": "ANY",
+    "257": "CAA",
+}
+_DNS_IP_FIELDS = (
+    "dns_a",
+    "dns_aaaa",
+    "dns_svcb_svcparam_ipv4hint_ip",
+    "dns_svcb_svcparam_ipv6hint_ip",
+)
+_DNS_DOMAIN_FIELDS = (
+    "dns_cname",
+    "dns_ns",
+    "dns_mx_mail_exchange",
+    "dns_ptr_domain_name",
+    "dns_srv_target",
+    "dns_soa_mname",
+    "dns_soa_rname",
+    "dns_svcb_targetname",
+    "dns_naptr_replacement",
+)
+_DNS_EMPTY_DOMAINS = ("", "<Root>")
+
 UNSUPPORTED_CAPTURE_FORMAT_MSG = "isn't a capture file in a format TShark understands"
 
 
@@ -47,6 +84,25 @@ _FIELDS_TO_EXTRACT = [
     "http2.header.name",
     "http2.header.value",
     "tls.handshake.extensions_server_name",
+    "dns.flags.response",
+    "dns.qry.name",
+    "dns.qry.type",
+    "dns.a",
+    "dns.aaaa",
+    "dns.cname",
+    "dns.ns",
+    "dns.mx.mail_exchange",
+    "dns.ptr.domain_name",
+    "dns.srv.target",
+    "dns.txt",
+    "dns.soa.mname",
+    "dns.soa.rname",
+    "dns.svcb.targetname",
+    "dns.svcb.svcparam.ipv4hint.ip",
+    "dns.svcb.svcparam.ipv6hint.ip",
+    "dns.caa.tag",
+    "dns.caa.value",
+    "dns.naptr.replacement",
 ]
 TSHARK_ANALYSIS_COMMAND = [
     "-T",
@@ -85,6 +141,23 @@ class ConversationStat:
     @property
     def received_human(self) -> str:
         return bytes_to_human(self.bytes_received)
+
+
+@dataclass
+class DnsQuery:
+    name: str
+    record_type: str
+    ips: dict[str, None] = field(default_factory=dict)
+    domains: dict[str, None] = field(default_factory=dict)
+    texts: dict[str, None] = field(default_factory=dict)
+
+    @property
+    def answered(self) -> bool:
+        return bool(self.ips or self.domains or self.texts)
+
+    @property
+    def answers(self) -> list[str]:
+        return [*self.ips, *self.domains, *self.texts]
 
 
 @dataclass
@@ -228,6 +301,7 @@ class Extractor:
         self.ignore_ips = ignore_ips or []
         self.max_packets = max_packets
         self._conversations = {}
+        self._dns_queries: dict[tuple[str, str], DnsQuery] = {}
         self._stats: list[ConversationStat] = []
         self._tcp_stats: list[ConversationStat] = []
 
@@ -276,9 +350,36 @@ class Extractor:
             )
         return result.stdout if not out_file else out_file
 
+    def _parse_dns(self, layers: dict):
+        names = layers.get("dns_qry_name", [])
+        if not names:
+            return
+        types = layers.get("dns_qry_type", [])
+        queries = []
+        for index, name in enumerate(names):
+            code = types[index] if index < len(types) else ""
+            record_type = DNS_RECORD_TYPES.get(code, f"TYPE{code}" if code else "UNKNOWN")
+            queries.append(
+                self._dns_queries.setdefault((name, record_type), DnsQuery(name, record_type))
+            )
+
+        if layers.get("dns_flags_response", [""])[0].lower() != "true":
+            return
+        query = queries[0]
+        for field_name in _DNS_IP_FIELDS:
+            query.ips.update(dict.fromkeys(layers.get(field_name, [])))
+        for field_name in _DNS_DOMAIN_FIELDS:
+            domains = layers.get(field_name, [])
+            query.domains.update(dict.fromkeys(d for d in domains if d not in _DNS_EMPTY_DOMAINS))
+        query.texts.update(dict.fromkeys(layers.get("dns_txt", [])))
+        caa = zip(layers.get("dns_caa_tag", []), layers.get("dns_caa_value", []))
+        query.texts.update(dict.fromkeys(f"{tag} {value}" for tag, value in caa))
+
     def _parse_conversation_line(self, line: str):
         data = json.loads(line)
-        tcp_stream = data.get("layers", {}).get("tcp_stream", [])
+        layers = data.get("layers", {})
+        self._parse_dns(layers)
+        tcp_stream = layers.get("tcp_stream", [])
         if not tcp_stream:
             return
         conv_id = int(tcp_stream[0])
@@ -372,7 +473,7 @@ class Extractor:
             TSHARK_ANALYSIS_COMMAND
             + [
                 "-Y",
-                " and ".join(filter(None, ["tcp", self._ignored_filter()])),
+                " and ".join(filter(None, ["(tcp or dns)", self._ignored_filter()])),
                 "-z",
                 f"conv,ip,{self._ignored_filter()}",
                 "-z",
@@ -420,6 +521,14 @@ class Extractor:
     @property
     def conversations(self) -> Iterable[Conversation]:
         return self._conversations.values()
+
+    @property
+    def dns_queries(self) -> list[DnsQuery]:
+        return list(self._dns_queries.values())
+
+    @property
+    def dns_domains(self) -> list[str]:
+        return list(dict.fromkeys(query.name for query in self._dns_queries.values()))
 
     @property
     def stats(self) -> Iterable[ConversationStat]:
@@ -472,7 +581,7 @@ class Extractor:
             yield os.path.join(out_dir, file)
 
     def get_iocs(self) -> tuple[set[str], set[str], set[str]]:
-        ips, domains, uris = set(), set(), set()
+        ips, domains, uris = set(), set(self.dns_domains), set()
         for conv in self.conversations:
             ips.add(str(conv.dst_ip))
             if conv.domains:

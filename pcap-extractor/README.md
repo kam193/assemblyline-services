@@ -8,7 +8,10 @@ to limit the amount of data extracted.
 Supported heuristics:
 
 - external HTTP/non-HTTP connections,
-- data exfiltration threshold (based on total data sent out).
+- data exfiltration threshold (based on total data sent out),
+- long dynamic domain (longer than `long_domain_threshold`, default 50; e.g. DNS tunneling),
+- suspicious TXT records (non-standard TXT longer than `txt_max_length`, default 150, or more than
+  `txt_queries_threshold`, default 5, different TXT queries).
 
 Note: Currently, the service is not always able to extract or tag all data from the PCAP.
 
