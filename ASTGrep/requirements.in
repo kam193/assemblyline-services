@@ -1,0 +1,9 @@
+assemblyline-v4-service
+ast-grep-cli==0.38.5
+pylspclient
+cryptography
+ast-grep-py
+jinja2
+ruff
+pycryptodome
+typer

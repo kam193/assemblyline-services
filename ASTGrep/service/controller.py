@@ -149,7 +149,7 @@ class ASTGrepScanController:
         self._active_rules_prefix = ""
         self._sg_config = {}
         self._lock = RLock()
-        self._ready = False
+        self._ready = True
         self.last_results = {}
         self.cli_timeout = cli_timeout
         self._rules_dir = rules_dir

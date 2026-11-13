@@ -41,6 +41,7 @@ EXT_TO_FILE_TYPE["js"] = "code/javascript"
 
 SEVERITY_TO_HEURISTIC = {
     "INFO": 3,
+    "HINT": 3,
     "WARNING": 1,
     "ERROR": 2,
     "LOW": 3,
@@ -62,6 +63,21 @@ RULES_DIR = [
     "./rules",
     # "./rules/detection",
 ]
+
+
+def _normalize_scan_result(result: dict) -> dict:
+    if "check_id" in result:
+        return result
+    return {
+        "check_id": result["ruleId"],
+        "start": result["range"]["start"],
+        "end": result["range"]["end"],
+        "extra": {
+            "severity": result["severity"],
+            "message": result["message"],
+            "lines": result["lines"],
+        },
+    }
 
 
 class AssemblylineService(ServiceBase):
@@ -143,7 +159,7 @@ class AssemblylineService(ServiceBase):
         result_by_rule = defaultdict(list)
         lines_by_rule = defaultdict(set)
         line_no = set()
-        for result in results:
+        for result in map(_normalize_scan_result, results):
             line_start, line_end = result["start"]["line"], result["end"]["line"]
             if (line_start, line_end) not in lines_by_rule[result["check_id"]]:
                 line_no.add((line_start, line_end))

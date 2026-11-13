@@ -10,7 +10,8 @@ PYPI_CFG?=../empty
 SERVICE_API_KEY?=password_789
 
 MANIFEST_REGISTRY?=
-PIP_COOLDOWN ?= P3D
+LOCK_PYTHON_VERSION ?= 3.14
+PIP_COOLDOWN ?= P7D
 
 manifest:
 	sed -i "s/al-name-template/${AL_SERVICE_NAME}/g" service_manifest.yml
@@ -125,14 +126,14 @@ al-service:
 		--name ${CONTAINER_NAME} ${SERVICE_IMAGE} ${COMMAND}
 
 lock:
-	PIP_UPLOADED_PRIOR_TO="$(PIP_COOLDOWN)" pip-compile --pip-args="--python-version 3.11" -q --generate-hashes --output-file requirements.txt $(ARGS) requirements.in
+	PIP_UPLOADED_PRIOR_TO="$(PIP_COOLDOWN)" pip-compile --pip-args="--python-version $(LOCK_PYTHON_VERSION)" -q --generate-hashes --output-file requirements.txt $(ARGS) requirements.in
 
 lock-test:
-	PIP_UPLOADED_PRIOR_TO="$(PIP_COOLDOWN)" pip-compile --pip-args="--python-version 3.11" -q --generate-hashes --output-file requirements-test.txt $(ARGS) requirements-test.in
+	PIP_UPLOADED_PRIOR_TO="$(PIP_COOLDOWN)" pip-compile --pip-args="--python-version $(LOCK_PYTHON_VERSION)" -q --generate-hashes --output-file requirements-test.txt $(ARGS) requirements-test.in
 
 lock-upgrade:
-	PIP_UPLOADED_PRIOR_TO="$(PIP_COOLDOWN)" pip-compile --pip-args="--python-version 3.11" -q --generate-hashes --output-file requirements.txt --upgrade requirements.in
-	PIP_UPLOADED_PRIOR_TO="$(PIP_COOLDOWN)" pip-compile --pip-args="--python-version 3.11" -q --generate-hashes --output-file requirements-test.txt --upgrade requirements-test.in
+	PIP_UPLOADED_PRIOR_TO="$(PIP_COOLDOWN)" pip-compile --pip-args="--python-version $(LOCK_PYTHON_VERSION)" -q --generate-hashes --output-file requirements.txt --upgrade requirements.in
+	PIP_UPLOADED_PRIOR_TO="$(PIP_COOLDOWN)" pip-compile --pip-args="--python-version $(LOCK_PYTHON_VERSION)" -q --generate-hashes --output-file requirements-test.txt --upgrade requirements-test.in
 
 # Resolve locks inside the base image
 DOCKER_LOCK = docker run --rm --user root -v $(CURDIR):/lock -w /lock \

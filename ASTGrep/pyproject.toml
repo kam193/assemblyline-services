@@ -1,4 +1,7 @@
 [tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-p no:cacheprovider --strict-markers"
 markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
 ]
