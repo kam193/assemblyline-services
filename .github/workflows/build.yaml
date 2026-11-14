@@ -96,30 +96,15 @@ jobs:
           ln -s ../tmp/dangerous_examples/ dangerous_examples
           ln -s ../tmp/real_negative_examples/ real_negative_examples
 
-      - name: Install Python 3.14 as in the container
-        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
-        with:
-          python-version: "3.14"
-
-      - name: Install test dependencies
-        if: steps.check-service-changed.outputs.exit-code != 0
-        run: |
-          sudo apt-get install -y libfuzzy-dev
-          make test-dependencies
-      - name: Allow tshark to read the workspace (AppArmor)
-        if: steps.check-service-changed.outputs.exit-code != 0 && matrix.service == 'pcap-extractor'
-        run: |
-          echo "${GITHUB_WORKSPACE}/pcap-extractor/tests/** r," | sudo tee -a /etc/apparmor.d/local/tshark
-          sudo apparmor_parser -r /etc/apparmor.d/tshark
       - name: Run tests
         if: steps.check-service-changed.outputs.exit-code != 0 && matrix.service != 'ASTGrep'
         run: |
-          make test
+          make docker-test
         # Temporary, hopefully
       - name: Run tests but continue on failure
         if: steps.check-service-changed.outputs.exit-code != 0 && matrix.service == 'ASTGrep'
         run: |
-          make test
+          make docker-test
         continue-on-error: true
       - name: Check if the current version has already been pushed
         id: check-if-pushed
