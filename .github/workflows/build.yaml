@@ -106,6 +106,13 @@ jobs:
         run: |
           sudo apt-get install -y libfuzzy-dev
           make test-dependencies
+      - name: Debug tshark fields
+        if: steps.check-service-changed.outputs.exit-code != 0 && matrix.service == 'pcap-extractor'
+        run: |
+          tshark -v | head -1
+          for f in dns.svcb.targetname dns.svcb.svcparam.ipv4hint.ip dns.svcb.svcparam.ipv6hint.ip dns.caa.tag dns.caa.value dns.naptr.replacement; do
+            tshark -G fields | grep -q "	$f	" || echo "MISSING $f"
+          done
       - name: Run tests
         if: steps.check-service-changed.outputs.exit-code != 0 && matrix.service != 'ASTGrep'
         run: |
