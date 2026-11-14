@@ -35,7 +35,7 @@ build: manifest
 
 TAG=$(shell cat VERSION)
 bump_version:
-	awk 'NR==1 && /^[0-9]+$/ {ok=1} END {exit !(ok && NR==1)}' VERSION
+	awk 'NR==1 && /^[0-9]+$$/ {ok=1} END {exit !(ok && NR==1)}' VERSION
 	NEW_TAG=$$((${TAG}+1)) && echo $$NEW_TAG > VERSION
 
 tag:

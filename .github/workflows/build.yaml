@@ -110,9 +110,11 @@ jobs:
         if: steps.check-service-changed.outputs.exit-code != 0 && matrix.service == 'pcap-extractor'
         run: |
           tshark -v | head -1
-          for f in dns.svcb.targetname dns.svcb.svcparam.ipv4hint.ip dns.svcb.svcparam.ipv6hint.ip dns.caa.tag dns.caa.value dns.naptr.replacement; do
-            tshark -G fields | grep -q "	$f	" || echo "MISSING $f"
+          tshark -G fields > /tmp/fields.txt
+          grep -oE '^    "[a-z0-9_]+\.[a-z0-9_.]+",$' service/extractor.py | tr -d ' ",' | while read -r f; do
+            grep -qF "$(printf '\t%s\t' "$f")" /tmp/fields.txt || echo "MISSING $f"
           done
+          tshark -r tests/data/dns-record-types.pcap -T ek -e dns.svcb.targetname -q 2>&1 | tail -5
       - name: Run tests
         if: steps.check-service-changed.outputs.exit-code != 0 && matrix.service != 'ASTGrep'
         run: |
