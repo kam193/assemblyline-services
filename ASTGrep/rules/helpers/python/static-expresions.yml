@@ -71,7 +71,7 @@ metadata:
 
 ---
 
-yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/main/schemas/rule.json
+# yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/main/schemas/rule.json
 
 id: python-static-string-replace
 message: Evaluate static replacement in strings

@@ -7,4 +7,5 @@ class Square:
 
 var1 = "value1"
 
+
 var2 = b"value2"

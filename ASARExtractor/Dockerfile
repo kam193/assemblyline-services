@@ -8,17 +8,17 @@ ENV SERVICE_PATH service.al_run.AssemblylineService
 USER root
 RUN --mount=type=secret,id=apt,target=/etc/apt/apt.conf.d/00cfg \
     apt-get update && apt-get upgrade -y && apt-get install -y curl \
-    && curl -fsSL https://deb.nodesource.com/setup_20.x -o nodesource_setup.sh \
+    && curl -fsSL https://deb.nodesource.com/setup_24.x -o nodesource_setup.sh \
     && bash nodesource_setup.sh \
     && apt-get install -y nodejs \
-    && npm install -g @electron/asar
+    && npm install -g @electron/asar@4.3.1
 
 USER assemblyline
 COPY requirements.txt requirements.txt
 
 RUN --mount=type=secret,id=pypi,target=/etc/pip.conf,mode=0444 \
     pip install --no-cache-dir --user --requirement requirements.txt && rm -rf ~/.cache/pip \
-    && npm install @electron/asar
+    && npm install @electron/asar@4.3.1
 
 WORKDIR /opt/al_service
 
@@ -35,7 +35,8 @@ COPY . .
 USER root
 ARG BASE_TAG=4.6.0.stable
 ARG MANIFEST_REGISTRY=ghcr.io/
-RUN sed -i "s|\(image: \${REGISTRY}\).*\(kam193/.*\)|\1$MANIFEST_REGISTRY\2|g" service_manifest.yml && \
+RUN awk 'NR==1 && /^[0-9]+$/ {ok=1} END {exit !(ok && NR==1)}' VERSION && \
+    sed -i "s|\(image: \${REGISTRY}\).*\(kam193/.*\)|\1$MANIFEST_REGISTRY\2|g" service_manifest.yml && \
     sed -i "s/\$SERVICE_TAG/$BASE_TAG$(cat VERSION)/g" service_manifest.yml
 
 USER assemblyline

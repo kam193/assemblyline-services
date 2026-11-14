@@ -1,4 +1,5 @@
 import codecs
+import itertools
 import json
 import logging
 import os
@@ -333,7 +334,8 @@ class ASTGrepLSPController(ASTGrepScanController):
 
     def _initialize(self):
         self._server_process = subprocess.Popen(
-            ["sg", "lsp", "-c", self.config_file],
+            ["sg", "lsp", "-c", os.path.abspath(self.config_file)],
+            cwd=self.workspace.name,
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
@@ -355,6 +357,9 @@ class ASTGrepLSPController(ASTGrepScanController):
                 "textDocument/publishDiagnostics": self._add_results,
                 "window/logMessage": self._handle_message,
                 # JsonRpcEndpoint does not understand rcp_id = 0 and thinks it's a notification :)
+                "client/registerCapability": lambda _: self.endpoint.json_rpc_endpoint.send_request(
+                    {"id": 0, "result": None, "jsonrpc": "2.0"}
+                ),
                 "workspace/workspaceFolders": lambda _: self.endpoint.json_rpc_endpoint.send_request(
                     {
                         "id": 0,
@@ -512,6 +517,7 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
         deobfuscation_timeout: int = 120,
     ):
         super().__init__(logger, rules_dirs)
+        self._template_counter = itertools.count()
         self._rules_transformations, self._metadata = self.read_rules(rules_dirs)
         self.cli_timeout = cli_timeout
         self.deobfuscation_timeout = deobfuscation_timeout
@@ -1158,7 +1164,7 @@ class ASTGrepDeobfuscationController(ASTGrepScanController):
         output, context = self.transform(result)
         if "OUTPUT" not in context:
             context["OUTPUT"] = output
-        counter = len(self._generated_templates)
+        counter = next(self._template_counter)
         tpl_values = {
             **metadata[rule_id],
             **self._global_variable_context,

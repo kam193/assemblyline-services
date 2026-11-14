@@ -7,14 +7,12 @@ rule:
   any:
     - kind: expression_statement
       has:
-        pattern:
-          context: $FUNC($VAR)
-          kind: call
-          has:
-            stopBy: end
-            pattern:
-              context: $VAR
-              kind: identifier
+        pattern: $FUNC($VAR)
+        kind: call
+        has:
+          stopBy: end
+          pattern: $VAR
+          kind: identifier
       follows:
         kind: expression_statement
         stopBy: end

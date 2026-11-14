@@ -8,7 +8,8 @@ without the scaler, updater and ingester. Necessary services are intended to sta
 Use `make gen-key` to generate the self-signed certificate. Then `make pull` to download current
 image versions and `make start` to start the appliance. After a while, `make bootstrap` for the first use.
 
-To register new service, use `make register` in the appropriate directory. For standard AL services,
+Since AL 4.8 the service server accepts registration only with a registry-writing key: run `make register-key`
+once after the stack is up. To register new service, use `make register` in the appropriate directory. For standard AL services,
 see some helpers in the common.mk - use `make service-xxx` in any directory to run them.
 
 If the service requires an update component, first call `make run-updater` to start the updater container,

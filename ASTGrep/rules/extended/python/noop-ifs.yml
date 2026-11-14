@@ -5,7 +5,7 @@ message: Part of the if statement is a noop to hide the actual code
 language: Python
 rule:
   kind: if_statement
-  pattern: $$$PATTERN
+  pattern: $PATTERN
   matches: if
   any:
     # if...elif...else
@@ -35,7 +35,7 @@ rule:
 
   has:
     kind: block
-    pattern: $$$IF_CODE
+    pattern: $IF_CODE
 
 utils:
   int_comparation:
@@ -68,7 +68,7 @@ utils:
             pattern: $ELIF_COMP
         - has:
             kind: block
-            pattern: $$$ELIF_CODE
+            pattern: $ELIF_CODE
   if:
     has:
       field: condition
@@ -80,7 +80,7 @@ utils:
       kind: else_clause
       has:
         kind: block
-        pattern: $$$ELSE_CODE
+        pattern: $ELSE_CODE
 
 metadata:
   extended-obfuscation: yes

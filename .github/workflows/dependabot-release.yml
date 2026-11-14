@@ -1,0 +1,93 @@
+name: dependabot-release
+run-name: Bump versions of services updated by Dependabot
+
+# main must allow pushes by github-actions (no branch protection blocking GITHUB_TOKEN).
+# Works with squash merges only: the merged commit must be the PR merge commit.
+on:
+  push:
+    branches: [main]
+    paths: ["*/requirements*.txt"]
+  workflow_dispatch:
+    inputs:
+      commit:
+        description: Full SHA of the merged Dependabot commit (default is the branch head)
+        required: false
+
+concurrency:
+  group: dependabot-release
+  cancel-in-progress: false
+
+permissions: {}
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      sha: ${{ steps.check.outputs.sha }}
+    steps:
+      - name: Check the commit is a signed merge of a Dependabot PR
+        id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          SHA: ${{ inputs.commit || github.sha }}
+        run: |
+          if [[ ! "$SHA" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "Commit must be a full SHA"
+            exit 1
+          fi
+          verified=$(gh api "repos/$REPO/commits/$SHA" --jq '.commit.verification.verified')
+          if [[ "$verified" != "true" ]]; then
+            echo "::notice::Commit $SHA has no verified signature, skipping"
+            exit 0
+          fi
+          merged_prs=$(gh api "repos/$REPO/commits/$SHA/pulls" --jq '[.[] | select(.merged_at != null and .base.ref == "main" and .merge_commit_sha == env.SHA and .user.login == "dependabot[bot]")] | length')
+          if [[ "$merged_prs" != "1" ]]; then
+            echo "::notice::Commit $SHA is not the merge of a Dependabot pull request, skipping"
+            exit 0
+          fi
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+  bump-versions:
+    needs: verify
+    if: needs.verify.outputs.sha != ''
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          ref: main
+          persist-credentials: true
+      - name: Bump versions of changed services
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ needs.verify.outputs.sha }}
+        run: |
+          git merge-base --is-ancestor "$SHA" HEAD
+          changed=$(git diff --name-only -z "$SHA~1" "$SHA" | tr '\0' '\n')
+          bumped=""
+          while IFS= read -r service; do
+            [[ "$service" =~ ^[A-Za-z0-9_-]+$ && -f "$service/VERSION" ]] || continue
+            awk 'NR==1 && /^[0-9]+$/ {ok=1} END {exit !(ok && NR==1)}' "$service/VERSION" || continue
+            if grep -qx "$service/VERSION" <<< "$changed"; then
+              continue
+            fi
+            make -C "$service" bump_version
+            bumped="$bumped $service"
+          done < <(grep -E '^[^/]+/requirements[^/]*\.txt$' <<< "$changed" | cut -d/ -f1 | sort -u)
+          if [[ -z "$bumped" ]]; then
+            echo "No service to bump"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -- '*/VERSION'
+          git commit -m "Bump versions after dependency update:$bumped"
+          git push origin HEAD:main
+          gh workflow run build.yaml --ref main

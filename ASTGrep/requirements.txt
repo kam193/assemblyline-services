@@ -320,15 +320,15 @@ assemblyline-toolbox==0.4.0 \
 assemblyline-v4-service==4.8.0.2 \
     --hash=sha256:2a2c0ff9f95d111eaf6ee7cc8c4099083b4b987f0b6e2f8e3d8aa539d6e63607
     # via -r requirements.in
-ast-grep-cli==0.38.5 \
-    --hash=sha256:2245ee61d59c7a76c9a0d19e01f699b3d448d4e8e7b4d77684ce3b0aa743ac3c \
-    --hash=sha256:35036ad8e4983ccd3698f7df0fdb3153f2efe4e6f949acc5c170ac4a07a8b4bf \
-    --hash=sha256:3e292e1e194fac91d78c49cc6e584d5b2af29a8fe87a4f5b3aee58d49f5b2a6e \
-    --hash=sha256:51ff1d97c5ed2acd47aa4be474642331b64da71528c1ac0657018a97f953106e \
-    --hash=sha256:66a125070cd7cddab0f02feb4463d8fee3ec05eb371136ab448356774516a1a9 \
-    --hash=sha256:6dda939f065e0eac2732dd6a07d05738cefb8d8717e03fe7e5c8d92e5b9906ee \
-    --hash=sha256:dfa16667597691c832edc02730193098e0d5346c6245cd69e1ed1479bcfc67ba \
-    --hash=sha256:f681ed2272bfba1855ba8b77b457300b03e960c56b540460dd3c9b128f29a061
+ast-grep-cli==0.51.1 \
+    --hash=sha256:01827dfcc986673dc8b911d1ebb19b229772aa12e9ef9c28429af09699f78bef \
+    --hash=sha256:1de5b7c8d74a6b1a92dd13545ed7604ad663ffc5b367a2c88fa2adbcac63ecc5 \
+    --hash=sha256:8141811f78542527d9ebfb51eefd8a1dd24d132ca775dda3d7dbdbe05437510d \
+    --hash=sha256:b24a766dbc311fe340831a11bdf4071573543c338f48f38f379dc6a61bdd349c \
+    --hash=sha256:ca4195b9c8d844fbd541991062ca64b1a6b81fb6e90a95c96e6b468366436ffd \
+    --hash=sha256:ccff11653cfd2ca55424d3a32b1301725865403b2d4f0447223d49bc2994ffa3 \
+    --hash=sha256:f924a19765482f2ec8ce5450b053510b8fb609da4b57d19e332ad7b02584587b \
+    --hash=sha256:fab0058789f5bf9c46cbcce58055942128bd170dda6517bcdb03f8e56fb51095
     # via -r requirements.in
 ast-grep-py==0.51.1 \
     --hash=sha256:0d50fa5c0fa606f51a7a7877ed3bb0c1a9c2d627bf7179194b17244f000c367a \
@@ -452,13 +452,13 @@ blinker==1.9.0 \
     --hash=sha256:b4ce2265a7abece45e7cc896e98dbebe6cead56bcf805a3d23136d145f5445bf \
     --hash=sha256:ba0efaa9080b619ff2f3459d1d500c57bddea4a6b424b60a91141db6fd2f08bc
     # via elastic-apm
-boto3==1.43.125 \
-    --hash=sha256:101fe3ee99664e671efb9af65c8e98ec0bceddf6de922ea89685da4adc8c6907 \
-    --hash=sha256:5a635a0fbbd51f319e465b809cf043668705defbb9dddaf26ae66747f70b2a49
+boto3==1.43.126 \
+    --hash=sha256:5fda4a3dd2782c134a01d1678911962c2860dd8de8cd10bef168ba1507b371a9 \
+    --hash=sha256:dd701a973b02a73930e546a6a15d13edbfbedc3180bb3d55b0a88678c284ccd6
     # via assemblyline
-botocore==1.43.125 \
-    --hash=sha256:e3969c8191d3435440037310187d324f37c00da53987ea31df2eceff19a2795a \
-    --hash=sha256:e3ae5ebbfa8033015958a9cb16cef67a0592902ca8afb46ef06e8ae77475183f
+botocore==1.43.126 \
+    --hash=sha256:2f2239a47025a2fa173cd145ab8803ac02b76114864bf5b66475ff1cb88e6b0a \
+    --hash=sha256:96996af07d8b703c3cdf44863f69c0b4b8b2d1cb6976c641986ced3e38c072f3
     # via
     #   boto3
     #   s3transfer

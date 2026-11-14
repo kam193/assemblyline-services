@@ -2,14 +2,15 @@ name: build-containers
 run-name: Building service containers
 on:
   push:
+  workflow_dispatch:
 
 permissions: {}
 
 env:
-  BASE_IMAGE: cccs/assemblyline-v4-service-base:4.7.stable
+  BASE_IMAGE: cccs/assemblyline-v4-service-base:4.8.stable
   REGISTRY: ghcr.io
   PUSH_REGISTRY: ghcr.io
-  BASE_TAG: 4.7.0.stable
+  BASE_TAG: 4.8.0.stable
   MANIFEST_REGISTRY: ghcr.io/
 
 jobs:
@@ -53,6 +54,8 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
+      - name: Validate service version
+        run: awk 'NR==1 && /^[0-9]+$/ {ok=1} END {exit !(ok && NR==1)}' VERSION
       - name: Authorize to GitHub Packages
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -64,7 +67,7 @@ jobs:
           BEFORE: ${{ github.event.before }}
           AFTER: ${{ github.event.after }}
         run: |
-          git diff --quiet "$BEFORE" "$AFTER" -- .
+          git diff --quiet "${BEFORE:-HEAD~1}" "${AFTER:-HEAD}" -- .
           echo exit-code=$? >> $GITHUB_OUTPUT
         shell: bash {0}
         continue-on-error: true

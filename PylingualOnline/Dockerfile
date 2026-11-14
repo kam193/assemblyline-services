@@ -30,7 +30,8 @@ COPY . .
 USER root
 ARG MANIFEST_REGISTRY=ghcr.io/
 ARG BASE_TAG=4.6.0.stable
-RUN sed -i "s|\(image: \${REGISTRY}\).*\(kam193/.*\)|\1$MANIFEST_REGISTRY\2|g" service_manifest.yml && \
+RUN awk 'NR==1 && /^[0-9]+$/ {ok=1} END {exit !(ok && NR==1)}' VERSION && \
+    sed -i "s|\(image: \${REGISTRY}\).*\(kam193/.*\)|\1$MANIFEST_REGISTRY\2|g" service_manifest.yml && \
     sed -i "s/\$SERVICE_TAG/$BASE_TAG$(cat VERSION)/g" service_manifest.yml
 
 USER assemblyline

@@ -40,15 +40,13 @@ rule:
         - pattern:
             context: "const $KEY_2 = crypto.scryptSync($MASTER_PARAM, Buffer.from($SALT_PARAM, 'hex'), $KEY_LENGTH, { N: $OPT_N, r: $OPT_R, p: $OPT_P }).slice($SLICE_START, $SLICE_END)"
             strictness: signature
-            # selector: lexical_declaration
+          precedes:
             stopBy: end
-            preceeds:
+            pattern:
+              context: const $DECIPHER = crypto.createDecipheriv('$AES_MODE', $KEY, Buffer.from($IV_PARAM, 'hex'));
+              strictness: signature
+            precedes:
+              stopBy: end
               pattern:
-                context: const $DECIPHER = crypto.createDecipheriv('$AES_MODE', $KEY, Buffer.from($IV_PARAM, 'hex'));
+                context: $DECIPHER.setAuthTag(Buffer.from($AUTH_TAG_PARAM, 'hex'));
                 strictness: signature
-                stopBy: end
-                preceeds:
-                  pattern:
-                    context: $DECIPHER.setAuthTag(Buffer.from($AUTH_TAG_PARAM, 'hex'));
-                    strictness: signature
-                    stopBy: end

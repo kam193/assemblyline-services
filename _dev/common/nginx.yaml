@@ -8,6 +8,8 @@ services:
       - UI_HOST=ui
       - SOCKET_HOST=socketio
       - FRONTEND_HOST=frontend
+      - MCP_HOST=mcp
+      - KIBANA_HOST=kibana
       - FQDN=${DOMAIN}
       - MAX_BODY_SIZE=100M
       - WORKERS=${WORKERS}

@@ -1,13 +1,14 @@
 REGISTRY?=
 PUSH_REGISTRY?=
-BASE_IMAGE?=${REGISTRY}cccs/assemblyline-v4-service-base:4.7.stable
+BASE_IMAGE?=${REGISTRY}cccs/assemblyline-v4-service-base:4.8.stable
 AL_SERVICE_NAME=Template
 SERVICE_NAME=assemblyline-service-$(shell echo ${AL_SERVICE_NAME} | tr '[:upper:]' '[:lower:]')
-BASE_TAG?=4.7.0.stable
-SERVICE_TAG=4.7.stable
+BASE_TAG?=4.8.0.stable
+SERVICE_TAG=4.8.stable
 APT_CFG_MOUNT?=../empty
 PYPI_CFG?=../empty
 SERVICE_API_KEY?=password_789
+REGISTER_API_KEY?=dev-register-key
 
 MANIFEST_REGISTRY?=
 LOCK_PYTHON_VERSION ?= 3.14
@@ -34,6 +35,7 @@ build: manifest
 
 TAG=$(shell cat VERSION)
 bump_version:
+	awk 'NR==1 && /^[0-9]+$/ {ok=1} END {exit !(ok && NR==1)}' VERSION
 	NEW_TAG=$$((${TAG}+1)) && echo $$NEW_TAG > VERSION
 
 tag:
@@ -81,6 +83,7 @@ run-with-updates: run
 run-with-external: run
 
 register: ARGS_INT=-e REGISTER_ONLY=true
+register: SERVICE_API_KEY=$(REGISTER_API_KEY)
 register: run
 
 pull-base:
@@ -155,6 +158,7 @@ TEST_TAG = kam193/$(SERVICE_NAME):test
 TEST_REGISTRY ?=
 build-test: manifest
 	docker build --target test -t $(TEST_TAG) --build-arg REGISTRY=$(TEST_REGISTRY) \
+		--build-arg BASE_IMAGE=$(BASE_IMAGE) \
 		--secret id=apt,src=$(APT_CFG_MOUNT) \
 		--secret id=pypi,src=$(PYPI_CFG) \
 		.
