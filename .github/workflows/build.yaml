@@ -114,7 +114,12 @@ jobs:
           grep -oE '^    "[a-z0-9_]+\.[a-z0-9_.]+",$' service/extractor.py | tr -d ' ",' | while read -r f; do
             grep -qF "$(printf '\t%s\t' "$f")" /tmp/fields.txt || echo "MISSING $f"
           done
-          tshark -r tests/data/dns-record-types.pcap -T ek -e dns.svcb.targetname -q 2>&1 | tail -5
+          id
+          ls -l tests/data/dns-record-types.pcap
+          head -c 16 tests/data/dns-record-types.pcap | xxd
+          cp tests/data/dns-record-types.pcap /tmp/t.pcap
+          tshark -r /tmp/t.pcap -T ek -e dns.svcb.targetname -q 2>&1 | tail -5 || true
+          tshark -r tests/data/dns-record-types.pcap -T ek -e dns.svcb.targetname -q 2>&1 | tail -5 || true
       - name: Run tests
         if: steps.check-service-changed.outputs.exit-code != 0 && matrix.service != 'ASTGrep'
         run: |
