@@ -8,8 +8,8 @@ BASE_URL=https://raw.githubusercontent.com/pyinstxtractor/pyinstxtractor-ng/$VER
 
 echo "Downloading dependencies for pyinstxtractor-ng $VERSION_PEX from $BASE_URL"
 
-curl -L $BASE_URL/pyinstxtractor-ng.py -o pyinstxtractor.py
+curl -fL $BASE_URL/pyinstxtractor_ng.py -o pyinstxtractor.py
 
 VERSION_PYI=$(cat helpers/VERSION.pyinstaller)
 echo "Downloading hooks for pyinstaller $VERSION_PYI"
-curl -L https://raw.githubusercontent.com/pyinstaller/pyinstaller/$VERSION_PYI/PyInstaller/hooks/rthooks.dat -o rthooks.dat
+curl -fL https://raw.githubusercontent.com/pyinstaller/pyinstaller/$VERSION_PYI/PyInstaller/hooks/rthooks.dat -o rthooks.dat

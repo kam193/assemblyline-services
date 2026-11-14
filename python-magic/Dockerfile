@@ -38,7 +38,9 @@ COPY requirements-test.txt requirements-test.txt
 RUN --mount=type=secret,id=pypi,target=/etc/pip.conf,mode=0444 \
     pip install --no-cache-dir --user --requirement requirements-test.txt && rm -rf ~/.cache/pip
 ENV SERVICE_MANIFEST_PATH=/opt/al_service/service_manifest.yml
-ENTRYPOINT ["python", "-m", "pytest"]
+RUN mkdir -p /var/lib/assemblyline/test-deps && cp pyinstxtractor.py rthooks.dat /var/lib/assemblyline/test-deps/
+# Downloaded files are hidden by the source mount in docker-test
+ENTRYPOINT ["sh", "-c", "cp -n /var/lib/assemblyline/test-deps/* . && exec python -m pytest \"$@\"", "pytest"]
 
 FROM base AS service
 COPY . .
