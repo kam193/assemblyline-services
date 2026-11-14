@@ -106,23 +106,11 @@ jobs:
         run: |
           sudo apt-get install -y libfuzzy-dev
           make test-dependencies
-      - name: Debug tshark fields
+      - name: Allow tshark to read the workspace (AppArmor)
         if: steps.check-service-changed.outputs.exit-code != 0 && matrix.service == 'pcap-extractor'
         run: |
-          tshark -v | head -1
-          tshark -G fields > /tmp/fields.txt
-          grep -oE '^    "[a-z0-9_]+\.[a-z0-9_.]+",$' service/extractor.py | tr -d ' ",' | while read -r f; do
-            grep -qF "$(printf '\t%s\t' "$f")" /tmp/fields.txt || echo "MISSING $f"
-          done
-          cp tests/data/dns-record-types.pcap /tmp/t.pcap
-          for f in /tmp/t.pcap "$PWD/tests/data/dns-record-types.pcap"; do
-            echo "== $f"
-            tshark -r "$f" -q -T ek -e tcp.stream -e frame.protocols -e ip.src -e tcp.srcport -e ip.dst -e tcp.dstport -e http.host -e http.request.uri -e http2.streamid -e http2.header.name -e http2.header.value -e tls.handshake.extensions_server_name -e dns.flags.response -e dns.qry.name -e dns.qry.type -e dns.a -e dns.aaaa -e dns.cname -e dns.ns -e dns.mx.mail_exchange -e dns.ptr.domain_name -e dns.srv.target -e dns.txt -e dns.soa.mname -e dns.soa.rname -e dns.svcb.targetname -e dns.svcb.svcparam.ipv4hint.ip -e dns.svcb.svcparam.ipv6hint.ip -e dns.caa.tag -e dns.caa.value -e dns.naptr.replacement -Y '(tcp or dns)' -z conv,ip, -z conv,tcp, 2>&1 >/dev/null | tail -3
-            echo "exit ${PIPESTATUS[0]}"
-          done
-          namei -l "$PWD/tests/data/dns-record-types.pcap"
-          sudo aa-status 2>&1 | grep -i -E "wireshark|tshark|dumpcap" || true
-          sudo dmesg 2>&1 | grep -i -E "apparmor.*(denied|DENIED)" | tail -3 || true
+          echo "${GITHUB_WORKSPACE}/pcap-extractor/tests/** r," | sudo tee -a /etc/apparmor.d/local/tshark
+          sudo apparmor_parser -r /etc/apparmor.d/tshark
       - name: Run tests
         if: steps.check-service-changed.outputs.exit-code != 0 && matrix.service != 'ASTGrep'
         run: |
