@@ -2,6 +2,7 @@ import logging
 import shutil
 import subprocess
 
+import pytest
 from assemblyline.odm.models.service import UpdateSource
 from service.updater import ClamavServiceUpdater
 
@@ -102,3 +103,45 @@ class TestClamavServiceUpdaterPrepareConfigs:
         assert "_InternalOption" not in conf
         assert service_configs == {"_InternalOption": "hidden"}
         _assert_accepted_by_clamconf(tmp_path)
+
+
+class TestClamavServiceUpdaterUpdateFreshclam:
+    @pytest.fixture
+    def updater(self, mocker, tmp_path):
+        updater = mocker.create_autospec(ClamavServiceUpdater, instance=True)
+        updater.latest_updates_dir = str(tmp_path / "latest")
+        updater.log = logging.getLogger("test.clamav_updater")
+        return updater
+
+    @pytest.fixture
+    def source(self):
+        return UpdateSource({"name": "freshclam", "uri": "database.clamav.net"})
+
+    def test_failure_pushes_error_for_source(self, mocker, updater, source):
+        mocker.patch(
+            "service.updater.subprocess.run",
+            autospec=True,
+            side_effect=subprocess.TimeoutExpired("freshclam", 1),
+        )
+
+        ClamavServiceUpdater._update_freshclam(updater, mocker.Mock(), source)
+
+        updater.push_status.assert_called_with("freshclam", "ERROR", mocker.ANY)
+
+    @pytest.mark.parametrize(
+        "stdout, final_state",
+        [("daily.cld updated", "DONE"), ("daily.cld is up-to-date", "DONE")],
+    )
+    def test_success_pushes_status_and_update_time_for_source(
+        self, mocker, updater, source, stdout, final_state
+    ):
+        mocker.patch(
+            "service.updater.subprocess.run",
+            autospec=True,
+            return_value=subprocess.CompletedProcess([], 0, stdout=stdout, stderr=""),
+        )
+
+        ClamavServiceUpdater._update_freshclam(updater, mocker.Mock(), source)
+
+        updater.push_status.assert_called_with("freshclam", final_state, mocker.ANY)
+        updater.set_source_update_time.assert_called_once_with("freshclam", mocker.ANY)

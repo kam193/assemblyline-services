@@ -67,8 +67,7 @@ class AssemblylineServiceUpdater(ServiceUpdater):
         self.log.info("Loading TLSH data from Badlist")
         run_time = time.time()
 
-        self._current_source = BADLIST_NAME
-        self.push_status("UPDATING", "Starting..")
+        self.push_status(BADLIST_NAME, "UPDATING", "Starting..")
 
         old_hashes = self._load_hashes_set(
             f"{self.latest_updates_dir}/{BADLIST_NAME}/{HASH_FILE_NAME}"
@@ -76,7 +75,7 @@ class AssemblylineServiceUpdater(ServiceUpdater):
 
         hashes = set()
         errors = 0
-        self.push_status("UPDATING", "Pulling currently badlisted files..")
+        self.push_status(BADLIST_NAME, "UPDATING", "Pulling currently badlisted files..")
         # TODO: streaming results and configurable limit
         results: Iterable[Badlist] = self.datastore.badlist.search(
             BADLIST_QUERY, fl="*", rows=10000
@@ -86,7 +85,7 @@ class AssemblylineServiceUpdater(ServiceUpdater):
             writer = csv.DictWriter(f, fieldnames=HEADERS)
             writer.writeheader()
 
-            self.push_status("UPDATING", "Processing badlisted files..")
+            self.push_status(BADLIST_NAME, "UPDATING", "Processing badlisted files..")
             for result in results:
                 type_ = self._safe_get(result, "file.type") or "*"
                 # Some external sources doesn't treat file type as Assemblyline does
@@ -127,17 +126,17 @@ class AssemblylineServiceUpdater(ServiceUpdater):
                 )
             self.log.info(f"Loaded {len(hashes)} TLSH hashes")
 
-            self.set_source_update_time(run_time)
+            self.set_source_update_time(BADLIST_NAME, run_time)
 
             if hashes == old_hashes:
                 self.log.debug("No changes in Badlist")
-                self.push_status("DONE", "Skipped.")
+                self.push_status(BADLIST_NAME, "DONE", "Skipped.")
 
                 if len(hashes) == 0:
                     # copy empty file to prevent sanity check from going crazy
                     shutil.copytree(
                         tmpdir,
-                        f"{self.latest_updates_dir}/{self._current_source}",
+                        f"{self.latest_updates_dir}/{BADLIST_NAME}",
                         dirs_exist_ok=True,
                     )
                 return
@@ -145,10 +144,10 @@ class AssemblylineServiceUpdater(ServiceUpdater):
             f.close()
             shutil.copytree(
                 tmpdir,
-                f"{self.latest_updates_dir}/{self._current_source}",
+                f"{self.latest_updates_dir}/{BADLIST_NAME}",
                 dirs_exist_ok=True,
             )
-            self.push_status("DONE", f"Imported {len(hashes)} hashes, {errors} errors")
+            self.push_status(BADLIST_NAME, "DONE", f"Imported {len(hashes)} hashes, {errors} errors")
 
     def do_source_update(self, service: Service) -> None:
         sources_to_update = []

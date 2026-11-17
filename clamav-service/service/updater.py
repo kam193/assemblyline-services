@@ -8,8 +8,8 @@ import time
 import uuid
 from functools import lru_cache
 
-from assemblyline_v4_service.common import helper
 from assemblyline.odm.models.service import UpdateSource
+from assemblyline_v4_service.common import helper
 from assemblyline_v4_service.common.api import ServiceAPI
 from assemblyline_v4_service.updater.updater import Service, ServiceUpdater
 
@@ -89,12 +89,12 @@ class ClamavServiceUpdater(ServiceUpdater):
         run_time = time.time()
 
         with tempfile.TemporaryDirectory() as tmpdir:
-            self._current_source = source_obj["name"]
-            self.push_status("UPDATING", "Starting..")
+            source = source_obj["name"]
+            self.push_status(source, "UPDATING", "Starting..")
 
-            if os.path.exists(f"{self.latest_updates_dir}/{self._current_source}"):
+            if os.path.exists(f"{self.latest_updates_dir}/{source}"):
                 shutil.copytree(
-                    f"{self.latest_updates_dir}/{self._current_source}",
+                    f"{self.latest_updates_dir}/{source}",
                     tmpdir,
                     dirs_exist_ok=True,
                 )
@@ -102,7 +102,7 @@ class ClamavServiceUpdater(ServiceUpdater):
             self._prepare_configs(tmpdir, source_obj)
             args = []
 
-            self.push_status("UPDATING", "Pulling..")
+            self.push_status(source, "UPDATING", "Pulling..")
             try:
                 freshclam = subprocess.run(
                     [
@@ -122,7 +122,7 @@ class ClamavServiceUpdater(ServiceUpdater):
                 # ext. 8 - memory kill
                 # ext. 11 - HTTP error
                 self.log.exception("freshclam failed: %s", exc)
-                self.push_status("ERROR", str(exc))
+                self.push_status(source, "ERROR", str(exc))
                 return
 
             if (
@@ -135,6 +135,7 @@ class ClamavServiceUpdater(ServiceUpdater):
                     cooldown.group(1),
                 )
                 self.push_status(
+                    source,
                     "ERROR",
                     f"Rate-limit on ClamAV CDN hit. Cool-down until after: {cooldown.group(1)}",
                 )
@@ -144,24 +145,25 @@ class ClamavServiceUpdater(ServiceUpdater):
             # Can be higher that number of dbs due to incremental updates
             number_of_updated = freshclam.stdout.count("updated")
 
-            self.set_source_update_time(run_time)
+            self.set_source_update_time(source, run_time)
 
             if number_of_updated > 0:
                 self.log.info(f"Updated {number_of_updated} databases")
             self.log.info(f"Skipped {number_of_skipped} databases")
             if number_of_updated == 0:
                 self.log.info("No updates available")
-                self.push_status("DONE", "Skipped.")
+                self.push_status(source, "DONE", "Skipped.")
                 return
 
             self.push_status(
+                source,
                 "DONE",
                 f"Databases updated (changed: {number_of_updated}, skipped: {number_of_skipped}).",
             )
 
             shutil.copytree(
                 tmpdir,
-                f"{self.latest_updates_dir}/{self._current_source}",
+                f"{self.latest_updates_dir}/{source}",
                 dirs_exist_ok=True,
             )
 
