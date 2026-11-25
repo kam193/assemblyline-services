@@ -1,7 +1,7 @@
 {
-  "version": "v1.33.1",
+  "version": "v2.1.0",
   "assets": {
-    "opengrep_manylinux_x86": "46e8133cc490f9f50518061590ce2f6be5a08afaeda034471c0ceda4b3899808",
-    "opengrep_manylinux_aarch64": "d1433f63a90b8bc0b6ad4b498a13b372b856ce9a754a43484ba4920fe2d76dcf"
+    "opengrep_linux_x86": "d6a68a84c01a3d8ee933f60847decf1b4d0fd7791a26833b32b95922baf28974",
+    "opengrep_linux_aarch64": "3abfc87d66f208efd143a1b408d489af934cea7d9968ab1f37dca001f9886092"
   }
 }

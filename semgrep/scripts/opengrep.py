@@ -22,8 +22,8 @@ from pathlib import Path
 REPO = "opengrep/opengrep"
 LOCK = Path(__file__).resolve().parent.parent / "opengrep.lock.json"
 ASSETS = {
-    "x86_64": "opengrep_manylinux_x86",
-    "aarch64": "opengrep_manylinux_aarch64",
+    "x86_64": "opengrep_linux_x86",
+    "aarch64": "opengrep_linux_aarch64",
 }
 
 

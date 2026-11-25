@@ -440,6 +440,23 @@ class SemgrepLSPController(SemgrepScanController):
             with suppress(Exception):
                 stream.close()
 
+    def _shutdown(self):
+        if self._server_process is None:
+            return
+        self.log.info("Shutting down semgrep lsp server")
+        if self._server_process.poll() is None:
+            with suppress(Exception):
+                self.client.exit()
+            with suppress(Exception):
+                self.client.shutdown()
+        self._kill_server(self.SHUTDOWN_TIMEOUT)
+
+    def _reload_server(self):
+        self._shutdown()
+        self.log.info("Resetting state for engine lsp server")
+        self._startup_values()
+        self.load_rules([], "")
+
     def load_rules(self, _: list[str], __: str):
         if self._is_initialized and self._files_scanned > self.RESTART_ON_REFRESH_FILES:
             # A refresh makes the server republish diagnostics for every cached file
@@ -468,17 +485,6 @@ class SemgrepLSPController(SemgrepScanController):
             if not self._ready and not self._refresh_rules_cond.wait(self.cli_timeout):
                 raise TimeoutError("Semgrep LSP wasn't ready on time")
 
-    def _shutdown(self):
-        if self._server_process is None:
-            return
-        self.log.info("Shutting down semgrep lsp server")
-        if self._server_process.poll() is None:
-            with suppress(Exception):
-                self.client.exit()
-            with suppress(Exception):
-                self.client.shutdown()
-        self._kill_server(self.SHUTDOWN_TIMEOUT)
-
     def _server_rss_mb(self) -> float:
         group = self._server_process.pid
         total_kb = 0
@@ -504,12 +510,6 @@ class SemgrepLSPController(SemgrepScanController):
             self.log.info("Recycling engine lsp server using %.0f MB", rss)
             return True
         return False
-
-    def _reload_server(self):
-        self._shutdown()
-        self.log.info("Resetting state for engine lsp server")
-        self._startup_values()
-        self.load_rules([], "")
 
     def process_file(self, file_path: str, file_type: str, retry: bool = False) -> Iterable[dict]:
         self.wait_for_ready()

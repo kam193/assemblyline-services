@@ -9,6 +9,16 @@ from tests.factories import default_meta, rule, write_rules
 EXEC = rule("exec-call", "exec(...)")
 EVAL = rule("eval-call", "eval(...)", severity="ERROR")
 PRINT = rule("print-call", "print(...)", severity="INFO")
+INTRAFILE_TAINT = {
+    "id": "taint-exec",
+    "mode": "taint",
+    "options": {"taint_intrafile": True},
+    "pattern-sources": [{"pattern": "input(...)"}],
+    "pattern-sinks": [{"pattern": "exec(...)"}],
+    "message": "Message of taint-exec",
+    "severity": "ERROR",
+    "languages": ["python"],
+}
 
 
 class TestAssemblylineService:
@@ -87,6 +97,20 @@ class TestAssemblylineService:
         svc.execute(request)
 
         assert matches(request) == {"Message of print-call": ["Match at line 1"]}
+
+    def test_taint_is_tracked_between_functions_when_rule_enables_intrafile(
+        self, service_with_rules, sample_file, engine
+    ):
+        if engine != "opengrep":
+            pytest.skip("intrafile taint is OpenGrep only")
+        svc = service_with_rules(INTRAFILE_TAINT)
+        request = build_request(
+            sample_file("def run(cmd):\n    exec(cmd)\n\n\ndef main():\n    run(input())\n")
+        )
+
+        svc.execute(request)
+
+        assert matches(request) == {"Message of taint-exec": ["Match at line 2"]}
 
     def test_blank_lines_in_message_are_squeezed(self, service_with_rules, data_file):
         r = rule("eval-call", "eval(...)", message="First\n\nSecond")

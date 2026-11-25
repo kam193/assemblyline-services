@@ -30,7 +30,7 @@
         "lines": "exec(base64.b64decode(\"cHJpbnQoIiI=\"))",
         "is_ignored": false,
         "validation_state": "NO_VALIDATOR",
-        "engine_kind": "OSS"
+        "engine_kind": "Opengrep"
       }
     },
     {
@@ -54,7 +54,7 @@
         "lines": "value = eval(\"1 + 1\")",
         "is_ignored": false,
         "validation_state": "NO_VALIDATOR",
-        "engine_kind": "OSS"
+        "engine_kind": "Opengrep"
       }
     },
     {
@@ -87,7 +87,7 @@
         "lines": "exec(\n    base64.b64decode(\n        \"cHJpbnQoIiI=\"\n    )\n)",
         "is_ignored": false,
         "validation_state": "NO_VALIDATOR",
-        "engine_kind": "OSS"
+        "engine_kind": "Opengrep"
       }
     },
     {
@@ -111,7 +111,7 @@
         "lines": "print(\"done\")",
         "is_ignored": false,
         "validation_state": "NO_VALIDATOR",
-        "engine_kind": "OSS"
+        "engine_kind": "Opengrep"
       }
     }
   ],
